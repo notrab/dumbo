@@ -57,5 +57,11 @@ $app->get("/greet/:greeting/:name", function ($c) {
 
 $app->route("/users", $user);
 
+$app->use(function ($c, $next) {
+    $c->setHeader("X-Powered-By", "Dumbo");
+
+    return $next($c);
+});
+
 $app->run();
 ```
