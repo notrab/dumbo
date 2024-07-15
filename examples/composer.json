@@ -1,0 +1,14 @@
+{
+  "require": {
+    "notrab/dumbo": "@dev"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../"
+    }
+  ],
+  "scripts": {
+    "start": "php -S localhost:8080 index.php"
+  }
+}
