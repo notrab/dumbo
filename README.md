@@ -31,7 +31,7 @@ $user->get("/", function ($c) use ($userData) {
 });
 
 $user->get("/:id", function ($c) use ($userData) {
-    $id = (int) $c->param("id");
+    $id = (int) $c->req->param("id");
 
     if ($id !== $userData["id"]) {
         return $c->json(["error" => "User not found"], 404);
@@ -46,9 +46,9 @@ $app->get("/", function ($c) {
     ]);
 });
 
-$app->get("/greet/:greeting/:name", function ($c) {
-    $greeting = $c->param("greeting");
-    $name = $c->param("name");
+$app->get("/greet/:greeting", function ($c) {
+    $greeting = $c->req->param("greeting");
+    $name = $c->req->query("name");
 
     return $c->json([
         "message" => "$greeting, $name!",
@@ -58,7 +58,7 @@ $app->get("/greet/:greeting/:name", function ($c) {
 $app->route("/users", $user);
 
 $app->use(function ($c, $next) {
-    $c->setHeader("X-Powered-By", "Dumbo");
+    $c->header("X-Powered-By", "Dumbo");
 
     return $next($c);
 });

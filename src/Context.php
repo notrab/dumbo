@@ -4,53 +4,44 @@ namespace Dumbo;
 
 class Context
 {
-    private $params;
+    public $req;
+    public $res;
 
-    public function __construct($params = [])
+    public function __construct($params, $query, $body, $headers)
     {
-        $this->params = $params;
+        $this->req = new Request($params, $query, $body, $headers);
+        $this->res = new Response();
     }
 
-    public function param($name)
+    public function json($data, $status = 200)
     {
-        return $this->params[$name] ?? null;
+        return $this->res->status($status)->json($data);
     }
 
-    public function json($data, $status = 200, $headers = [])
+    public function text($data, $status = 200)
     {
-        $headers = array_merge(
-            [
-                "Content-Type" => "application/json",
-            ],
-            $headers
-        );
-        return new Response(json_encode($data), $headers, $status);
+        return $this->res->status($status)->text($data);
     }
 
-    public function text($data, $status = 200, $headers = [])
+    public function html($data, $status = 200)
     {
-        $headers = array_merge(
-            [
-                "Content-Type" => "text/plain",
-            ],
-            $headers
-        );
-        return new Response($data, $headers, $status);
+        return $this->res->status($status)->html($data);
     }
 
-    public function html($data, $status = 200, $headers = [])
+    public function status($code)
     {
-        $headers = array_merge(
-            [
-                "Content-Type" => "text/html",
-            ],
-            $headers
-        );
-        return new Response($data, $headers, $status);
+        $this->res->status($code);
+        return $this;
     }
 
-    public function body($data, $status = 200, $headers = [])
+    public function header($name, $value)
     {
-        return new Response($data, $headers, $status);
+        $this->res->header($name, $value);
+        return $this;
+    }
+
+    public function getResponse()
+    {
+        return $this->res;
     }
 }

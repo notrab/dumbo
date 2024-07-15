@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a2b6d88439595ac374df32e82f168249",
+    "content-hash": "b90682638694a02fb9a0f15a8ae5d2cf",
     "packages": [
         {
             "name": "notrab/dumbo",
@@ -12,13 +12,13 @@
             "dist": {
                 "type": "path",
                 "url": "..",
-                "reference": "42f63456173e86e0c925e6c02f2d617463a22f0e"
+                "reference": "66d75d301761d2341b9b22a18559a7cca6232e2b"
             },
             "require": {
                 "php": ">=7.4"
             },
             "require-dev": {
-                "phpunit/phpunit": "^9.0"
+                "phpunit/phpunit": "^11.0"
             },
             "type": "library",
             "autoload": {
