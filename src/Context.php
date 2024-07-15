@@ -16,15 +16,41 @@ class Context
         return $this->params[$name] ?? null;
     }
 
-    public function json($data)
+    public function json($data, $status = 200, $headers = [])
     {
-        return new Response(json_encode($data), [
-            "Content-Type" => "application/json",
-        ]);
+        $headers = array_merge(
+            [
+                "Content-Type" => "application/json",
+            ],
+            $headers
+        );
+        return new Response(json_encode($data), $headers, $status);
     }
 
-    public function text($data)
+    public function text($data, $status = 200, $headers = [])
     {
-        return new Response($data, ["Content-Type" => "text/plain"]);
+        $headers = array_merge(
+            [
+                "Content-Type" => "text/plain",
+            ],
+            $headers
+        );
+        return new Response($data, $headers, $status);
+    }
+
+    public function html($data, $status = 200, $headers = [])
+    {
+        $headers = array_merge(
+            [
+                "Content-Type" => "text/html",
+            ],
+            $headers
+        );
+        return new Response($data, $headers, $status);
+    }
+
+    public function body($data, $status = 200, $headers = [])
+    {
+        return new Response($data, $headers, $status);
     }
 }

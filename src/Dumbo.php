@@ -6,32 +6,36 @@ class Dumbo
 {
     private $routes = [];
     private $middleware = [];
+    private $prefix = "";
 
-    public function get($path, $handler)
+    public function __call($method, $arguments)
     {
-        $this->addRoute("GET", $path, $handler);
+        $supportedMethods = [
+            "get",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "options",
+        ];
+
+        if (in_array(strtolower($method), $supportedMethods)) {
+            $this->addRoute(strtoupper($method), ...$arguments);
+        } else {
+            throw new \BadMethodCallException("METHOD $method does not exist.");
+        }
     }
 
-    public function post($path, $handler)
+    public function on($method, $path, $handler)
     {
-        $this->addRoute("POST", $path, $handler);
-    }
-
-    public function put($path, $handler)
-    {
-        $this->addRoute("PUT", $path, $handler);
-    }
-
-    public function delete($path, $handler)
-    {
-        $this->addRoute("DELETE", $path, $handler);
+        $this->addRoute(strtoupper($method), $path, $handler);
     }
 
     private function addRoute($method, $path, $handler)
     {
         $this->routes[] = [
             "method" => $method,
-            "path" => $path,
+            "path" => $this->prefix . $path,
             "handler" => $handler,
         ];
     }
@@ -41,30 +45,40 @@ class Dumbo
         $this->middleware[] = $middleware;
     }
 
+    public function route($prefix, Dumbo $nestedApp)
+    {
+        foreach ($nestedApp->routes as $route) {
+            $this->routes[] = [
+                "method" => $route["method"],
+                "path" => $prefix . $route["path"],
+                "handler" => $route["handler"],
+            ];
+        }
+    }
+
     public function run()
     {
         $method = $_SERVER["REQUEST_METHOD"];
         $path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 
         foreach ($this->routes as $route) {
-            if ($route["method"] === $method) {
-                $params = $this->matchRoute($route["path"], $path);
-                if ($params !== false) {
-                    $context = new Context($params);
+            if (
+                $route["method"] === $method &&
+                $this->matchPath($route["path"], $path)
+            ) {
+                $context = new Context(
+                    $this->extractParams($route["path"], $path)
+                );
 
-                    foreach ($this->middleware as $mw) {
-                        $mw($context);
-                    }
+                $response = $this->runMiddleware($context, $route["handler"]);
 
-                    $response = $route["handler"]($context);
-
-                    if ($response instanceof Response) {
-                        $response->send();
-                    } else {
-                        echo $response;
-                    }
-                    return;
+                if ($response instanceof Response) {
+                    $response->send();
+                } else {
+                    echo $response;
                 }
+
+                return;
             }
         }
 
@@ -72,7 +86,20 @@ class Dumbo
         echo "404 Not Found";
     }
 
-    private function matchRoute($routePath, $requestPath)
+    private function runMiddleware($context, $handler)
+    {
+        $next = $handler;
+
+        foreach (array_reverse($this->middleware) as $mw) {
+            $next = function ($ctx) use ($mw, $next) {
+                return $mw($ctx, $next);
+            };
+        }
+
+        return $next($context);
+    }
+
+    private function matchPath($routePath, $requestPath)
     {
         $routeParts = explode("/", trim($routePath, "/"));
         $requestParts = explode("/", trim($requestPath, "/"));
@@ -81,16 +108,39 @@ class Dumbo
             return false;
         }
 
-        $params = [];
-        for ($i = 0; $i < count($routeParts); $i++) {
-            if (strpos($routeParts[$i], ":") === 0) {
-                $paramName = substr($routeParts[$i], 1);
-                $params[$paramName] = $requestParts[$i];
-            } elseif ($routeParts[$i] !== $requestParts[$i]) {
-                return false;
-            }
-        }
+        return array_reduce(
+            array_map(null, $routeParts, $requestParts),
+            function ($carry, $parts) {
+                [$routePart, $requestPart] = $parts;
 
-        return $params;
+                return $carry &&
+                    ($routePart === $requestPart || $this->isParam($routePart));
+            },
+            true
+        );
+    }
+
+    private function isParam($part)
+    {
+        return strpos($part, ":") === 0;
+    }
+
+    private function extractParams($routePath, $requestPath)
+    {
+        $routeParts = explode("/", trim($routePath, "/"));
+        $requestParts = explode("/", trim($requestPath, "/"));
+
+        return array_reduce(
+            array_map(null, $routeParts, $requestParts),
+            function ($params, $parts) {
+                [$routePart, $requestPart] = $parts;
+                if ($this->isParam($routePart)) {
+                    $params[substr($routePart, 1)] = $requestPart;
+                }
+
+                return $params;
+            },
+            []
+        );
     }
 }
