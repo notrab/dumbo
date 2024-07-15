@@ -46,14 +46,18 @@ class Response
         return $this;
     }
 
-    public function send()
+    public function getStatusCode()
     {
-        http_response_code($this->statusCode);
+        return $this->statusCode;
+    }
 
-        foreach ($this->headers as $name => $value) {
-            header("$name: $value");
-        }
+    public function getHeaders()
+    {
+        return $this->headers;
+    }
 
-        echo $this->body;
+    public function getBody()
+    {
+        return $this->body;
     }
 }

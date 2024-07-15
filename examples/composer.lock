@@ -12,7 +12,7 @@
             "dist": {
                 "type": "path",
                 "url": "..",
-                "reference": "66d75d301761d2341b9b22a18559a7cca6232e2b"
+                "reference": "4f49187515039f66e0784fcc98fbab85985d72fb"
             },
             "require": {
                 "php": ">=7.4"

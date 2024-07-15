@@ -3,9 +3,12 @@
 require "vendor/autoload.php";
 
 use Dumbo\Dumbo;
+use Dumbo\Adapters\PhpDevelopmentServer;
 
-$app = new Dumbo();
-$user = new Dumbo();
+$server = new PhpDevelopmentServer();
+
+$app = new Dumbo($server);
+$user = new Dumbo($server);
 
 $userData = [
     [
@@ -47,10 +50,14 @@ $user->post("/", function ($c) use ($userData) {
     return $c->json($newUserData, 201);
 });
 
-$user->delete("/:id", function ($c) {
+$user->delete("/:id", function ($c) use ($userData) {
     $id = (int) $c->req->param("id");
 
-    if ($id !== $userData["id"]) {
+    $user =
+        array_values(array_filter($userData, fn($u) => $u["id"] === $id))[0] ??
+        null;
+
+    if (!$user) {
         return $c->json(["error" => "User not found"], 404);
     }
 

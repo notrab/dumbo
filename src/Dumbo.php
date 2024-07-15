@@ -7,6 +7,12 @@ class Dumbo
     private $routes = [];
     private $middleware = [];
     private $prefix = "";
+    private $server;
+
+    public function __construct(ServerInterface $server)
+    {
+        $this->server = $server;
+    }
 
     public function __call($method, $arguments)
     {
@@ -58,8 +64,8 @@ class Dumbo
 
     public function run()
     {
-        $method = $_SERVER["REQUEST_METHOD"];
-        $uri = $_SERVER["REQUEST_URI"];
+        $method = $this->server->getMethod();
+        $uri = $this->server->getUri();
         $path = parse_url($uri, PHP_URL_PATH);
 
         foreach ($this->routes as $route) {
@@ -69,27 +75,40 @@ class Dumbo
             ) {
                 $params = $this->extractParams($route["path"], $path);
                 $context = new Context(
+                    $method,
                     $params,
                     $this->parseQueryString($uri),
-                    $this->parseRequestBody(),
-                    $this->getRequestHeaders()
+                    $this->server->getBody(),
+                    $this->server->getHeaders()
                 );
 
                 $response = $this->runMiddleware($context, $route["handler"]);
 
                 if ($response instanceof Response) {
-                    $response->send();
+                    $this->server->sendResponse(
+                        $response->getStatusCode(),
+                        $response->getHeaders(),
+                        $response->getBody()
+                    );
                 } elseif ($response !== null) {
-                    $context->getResponse()->text($response)->send();
+                    $this->server->sendResponse(
+                        200,
+                        ["Content-Type" => "text/plain"],
+                        $response
+                    );
                 } else {
-                    $context->getResponse()->send();
+                    $this->server->sendResponse(204, [], "");
                 }
 
                 return;
             }
         }
 
-        (new Response())->status(404)->text("404 Not Found")->send();
+        $this->server->sendResponse(
+            404,
+            ["Content-Type" => "text/plain"],
+            "404 Not Found"
+        );
     }
 
     private function matchPath($routePath, $requestPath)
@@ -148,67 +167,6 @@ class Dumbo
         parse_str($query, $queryParams);
 
         return $queryParams;
-    }
-
-    private function parseRequestBody()
-    {
-        $contentType = $_SERVER["CONTENT_TYPE"] ?? "";
-        $contentLength = $_SERVER["CONTENT_LENGTH"] ?? 0;
-
-        if (
-            strpos($contentType, "application/x-www-form-urlencoded") !== false
-        ) {
-            return $_POST;
-        }
-
-        if (strpos($contentType, "application/json") !== false) {
-            $input = file_get_contents("php://input");
-            return json_decode($input, true);
-        }
-
-        if (strpos($contentType, "multipart/form-data") !== false) {
-            return [
-                "post" => $_POST,
-                "files" => $_FILES,
-            ];
-        }
-
-        if ($contentLength > 1024 * 1024) {
-            return fopen("php://input", "rb");
-        }
-
-        return file_get_contents("php://input");
-    }
-
-    private function getRequestHeaders()
-    {
-        $headers = [];
-
-        foreach ($_SERVER as $key => $value) {
-            if (strpos($key, "HTTP_") === 0) {
-                $name = str_replace(
-                    " ",
-                    "-",
-                    ucwords(strtolower(str_replace("_", " ", substr($key, 5))))
-                );
-                $headers[$name] = $value;
-            } elseif (
-                in_array(
-                    $key,
-                    ["CONTENT_TYPE", "CONTENT_LENGTH", "CONTENT_MD5"],
-                    true
-                )
-            ) {
-                $name = str_replace(
-                    " ",
-                    "-",
-                    ucwords(strtolower(str_replace("_", " ", $key)))
-                );
-                $headers[$name] = $value;
-            }
-        }
-
-        return $headers;
     }
 
     private function runMiddleware($context, $handler)

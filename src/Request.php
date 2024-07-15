@@ -3,17 +3,24 @@ namespace Dumbo;
 
 class Request
 {
+    private $method;
     private $params;
     private $query;
     private $body;
     private $headers;
 
-    public function __construct($params, $query, $body, $headers)
+    public function __construct($method, $params, $query, $body, $headers)
     {
+        $this->method = strtoupper($method);
         $this->params = $params;
         $this->query = $query;
         $this->body = $body;
-        $this->headers = $headers;
+        $this->headers = array_change_key_case($headers, CASE_UPPER);
+    }
+
+    public function method()
+    {
+        return $this->method;
     }
 
     public function param($key)
@@ -38,5 +45,10 @@ class Request
     {
         $name = str_replace("-", "_", strtoupper($name));
         return $this->headers[$name] ?? null;
+    }
+
+    public function headers()
+    {
+        return $this->headers;
     }
 }

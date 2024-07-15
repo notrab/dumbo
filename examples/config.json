@@ -1,0 +1,15 @@
+{
+  "listeners": {
+    "*:8080": {
+      "pass": "applications/dumbo"
+    }
+  },
+  "applications": {
+    "dumbo": {
+      "type": "php",
+      "processes": 5,
+      "root": "/",
+      "index": "index.php"
+    }
+  }
+}

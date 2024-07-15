@@ -1,5 +1,4 @@
 <?php
-
 namespace Dumbo;
 
 class Context
@@ -7,9 +6,9 @@ class Context
     public $req;
     public $res;
 
-    public function __construct($params, $query, $body, $headers)
+    public function __construct($method, $params, $query, $body, $headers)
     {
-        $this->req = new Request($params, $query, $body, $headers);
+        $this->req = new Request($method, $params, $query, $body, $headers);
         $this->res = new Response();
     }
 
@@ -43,5 +42,10 @@ class Context
     public function getResponse()
     {
         return $this->res;
+    }
+
+    public function method()
+    {
+        return $this->req->method();
     }
 }
