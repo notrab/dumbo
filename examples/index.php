@@ -13,12 +13,8 @@ $userData = [
     "email" => "jamie@notrab.dev",
 ];
 
-$user->on("GET", "/", function ($c) {
-    return $c->json([
-        "id" => 1,
-        "name" => "Jamie Barton",
-        "email" => "jamie@notrab.dev",
-    ]);
+$user->get("/", function ($c) use ($userData) {
+    return $c->json($userData);
 });
 
 $user->get("/:id", function ($c) use ($userData) {
@@ -35,10 +31,6 @@ $app->get("/", function ($c) {
     return $c->html("<h1>Hello from Dumbo!</h1>", 200, [
         "X-Hello" => "World",
     ]);
-});
-
-$app->get("/json", function ($c) {
-    return $c->json(["message" => "Hello from Dumbo!"]);
 });
 
 $app->get("/greet/:greeting/:name", function ($c) {
