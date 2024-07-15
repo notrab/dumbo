@@ -5,7 +5,7 @@ A lightweight, friendly PHP framework for HTTP &mdash; inspired by Hono.
 ## Install
 
 ```bash
-composer require yourname/dumbo
+composer require notrab/dumbo
 ```
 
 ## Quickstart
