@@ -21,6 +21,27 @@ use Dumbo\Adapters\PhpDevelopmentServer;
 $server = new PhpDevelopmentServer();
 
 $app = new Dumbo($server);
+
+$app->get("/", function ($c) {
+    return $c->text('Hello from Dumbo!');
+});
+
+$app->run();
+```
+
+## Extended
+
+```php
+<?php
+
+require "vendor/autoload.php";
+
+use Dumbo\Dumbo;
+use Dumbo\Adapters\PhpDevelopmentServer;
+
+$server = new PhpDevelopmentServer();
+
+$app = new Dumbo($server);
 $user = new Dumbo($server);
 
 $userData = [
