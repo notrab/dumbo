@@ -2,6 +2,8 @@
 
 namespace Dumbo;
 
+use Dumbo\Adapters\PhpDevelopmentServer;
+
 class Dumbo
 {
     private $routes = [];
@@ -9,9 +11,9 @@ class Dumbo
     private $prefix = "";
     private $server;
 
-    public function __construct(ServerInterface $server)
+    public function __construct(ServerInterface $server = null)
     {
-        $this->server = $server;
+        $this->server = $server ?? $this->createDefaultServer();
     }
 
     public function __call($method, $arguments)
@@ -180,5 +182,10 @@ class Dumbo
         }
 
         return $next($context);
+    }
+
+    private function createDefaultServer(): ServerInterface
+    {
+        return new PhpDevelopmentServer();
     }
 }
