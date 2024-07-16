@@ -90,13 +90,13 @@ class Dumbo
                     $this->server->sendResponse(
                         $response->getStatusCode(),
                         $response->getHeaders(),
-                        $response->getBody()
+                        $response->getBody() ?? ""
                     );
                 } elseif ($response !== null) {
                     $this->server->sendResponse(
                         200,
                         ["Content-Type" => "text/plain"],
-                        $response
+                        (string) $response
                     );
                 } else {
                     $this->server->sendResponse(204, [], "");

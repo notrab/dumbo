@@ -86,6 +86,12 @@ $app->use(function ($c, $next) {
     return $next($c);
 });
 
+$app->get("/redirect", function ($c) {
+    $message = $c->get("message");
+
+    return $c->redirect("/greet/hello?name=jamie", 301);
+});
+
 $app->get("/", function ($c) {
     $message = $c->get("message");
 

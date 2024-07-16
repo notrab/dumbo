@@ -60,4 +60,12 @@ class Response
     {
         return $this->body;
     }
+
+    public function redirect($url, $status = 302)
+    {
+        $this->statusCode = $status;
+        $this->header("Location", $url);
+
+        return $this;
+    }
 }

@@ -64,4 +64,9 @@ class Context
     {
         return isset($this->variables[$key]);
     }
+
+    public function redirect($url, $status = 302)
+    {
+        return $this->res->redirect($url, $status);
+    }
 }
