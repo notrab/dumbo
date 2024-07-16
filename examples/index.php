@@ -75,6 +75,11 @@ $app->get("/greet/:greeting", function ($c) {
 
 $app->route("/users", $user);
 
+$app->use(function ($ctx, $next) {
+    $ctx->set("message", "Dumbo");
+    return $next($ctx);
+});
+
 $app->use(function ($c, $next) {
     $c->header("X-Powered-By", "Dumbo");
 
@@ -82,7 +87,9 @@ $app->use(function ($c, $next) {
 });
 
 $app->get("/", function ($c) {
-    return $c->html("<h1>Hello from Dumbo!</h1>", 200, [
+    $message = $c->get("message");
+
+    return $c->html("<h1>Hello from $message!</h1>", 200, [
         "X-Hello" => "World",
     ]);
 });

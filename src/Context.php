@@ -5,6 +5,7 @@ class Context
 {
     public $req;
     public $res;
+    private $variables;
 
     public function __construct($method, $params, $query, $body, $headers)
     {
@@ -47,5 +48,20 @@ class Context
     public function method()
     {
         return $this->req->method();
+    }
+
+    public function set(string $key, $value): void
+    {
+        $this->variables[$key] = $value;
+    }
+
+    public function get(string $key)
+    {
+        return $this->variables[$key] ?? null;
+    }
+
+    public function has(string $key): bool
+    {
+        return isset($this->variables[$key]);
     }
 }
