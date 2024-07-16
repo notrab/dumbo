@@ -2,19 +2,16 @@
 
 namespace Dumbo;
 
-use Dumbo\Adapters\PhpDevelopmentServer;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\ServerRequest;
 
 class Dumbo
 {
     private $routes = [];
     private $middleware = [];
     private $prefix = "";
-    private $server;
-
-    public function __construct(ServerInterface $server = null)
-    {
-        $this->server = $server ?? $this->createDefaultServer();
-    }
 
     public function __call($method, $arguments)
     {
@@ -26,17 +23,11 @@ class Dumbo
             "patch",
             "options",
         ];
-
         if (in_array(strtolower($method), $supportedMethods)) {
             $this->addRoute(strtoupper($method), ...$arguments);
         } else {
             throw new \BadMethodCallException("METHOD $method does not exist.");
         }
-    }
-
-    public function on($method, $path, $handler)
-    {
-        $this->addRoute(strtoupper($method), $path, $handler);
     }
 
     private function addRoute($method, $path, $handler)
@@ -64,11 +55,10 @@ class Dumbo
         }
     }
 
-    public function run()
+    public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $method = $this->server->getMethod();
-        $uri = $this->server->getUri();
-        $path = parse_url($uri, PHP_URL_PATH);
+        $method = $request->getMethod();
+        $path = $request->getUri()->getPath();
 
         foreach ($this->routes as $route) {
             if (
@@ -76,116 +66,116 @@ class Dumbo
                 $this->matchPath($route["path"], $path)
             ) {
                 $params = $this->extractParams($route["path"], $path);
-                $context = new Context(
-                    $method,
-                    $params,
-                    $this->parseQueryString($uri),
-                    $this->server->getBody(),
-                    $this->server->getHeaders()
-                );
+                $context = new Context($request, $params);
 
                 $response = $this->runMiddleware($context, $route["handler"]);
 
-                if ($response instanceof Response) {
-                    $this->server->sendResponse(
-                        $response->getStatusCode(),
-                        $response->getHeaders(),
-                        $response->getBody() ?? ""
-                    );
-                } elseif ($response !== null) {
-                    $this->server->sendResponse(
-                        200,
-                        ["Content-Type" => "text/plain"],
-                        (string) $response
-                    );
-                } else {
-                    $this->server->sendResponse(204, [], "");
-                }
-
-                return;
+                return $response instanceof ResponseInterface
+                    ? $response
+                    : $context->getResponse();
             }
         }
 
-        $this->server->sendResponse(
-            404,
-            ["Content-Type" => "text/plain"],
-            "404 Not Found"
-        );
+        return new Response(404, [], "404 Not Found");
     }
 
-    private function matchPath($routePath, $requestPath)
+    public function run()
     {
-        $routeParts = explode("/", trim($routePath, "/"));
-        $requestParts = explode("/", trim($requestPath, "/"));
-
-        if (count($routeParts) !== count($requestParts)) {
-            return false;
-        }
-
-        return array_reduce(
-            array_map(null, $routeParts, $requestParts),
-            function ($carry, $parts) {
-                [$routePart, $requestPart] = $parts;
-                return $carry &&
-                    ($routePart === $requestPart || $this->isParam($routePart));
-            },
-            true
-        );
+        $request = $this->createServerRequestFromGlobals();
+        $response = $this->handle($request);
+        $this->send($response);
     }
 
-    private function extractParams($routePath, $requestPath)
+    private function createServerRequestFromGlobals(): ServerRequestInterface
     {
-        $routeParts = explode("/", trim($routePath, "/"));
-        $requestParts = explode("/", trim($requestPath, "/"));
+        $request = ServerRequest::fromGlobals();
+        $body = file_get_contents("php://input");
 
-        return array_reduce(
-            array_map(null, $routeParts, $requestParts),
-            function ($params, $parts) {
-                [$routePart, $requestPart] = $parts;
-
-                if ($this->isParam($routePart)) {
-                    $params[substr($routePart, 1)] = $requestPart;
-                }
-
-                return $params;
-            },
-            []
-        );
-    }
-
-    private function isParam($part)
-    {
-        return strpos($part, ":") === 0;
-    }
-
-    private function parseQueryString($uri)
-    {
-        $query = parse_url($uri, PHP_URL_QUERY);
-
-        if ($query === null) {
-            return [];
-        }
-
-        parse_str($query, $queryParams);
-
-        return $queryParams;
+        return $request->withBody(\GuzzleHttp\Psr7\Utils::streamFor($body));
     }
 
     private function runMiddleware($context, $handler)
     {
-        $next = $handler;
+        $next = function ($ctx) use ($handler) {
+            $result = $handler($ctx);
+
+            return $result instanceof ResponseInterface
+                ? $result
+                : $ctx->getResponse();
+        };
 
         foreach (array_reverse($this->middleware) as $middleware) {
             $next = function ($ctx) use ($middleware, $next) {
-                return $middleware($ctx, $next);
+                $result = $middleware($ctx, $next);
+
+                return $result instanceof ResponseInterface
+                    ? $result
+                    : $ctx->getResponse();
             };
         }
 
         return $next($context);
     }
 
-    private function createDefaultServer(): ServerInterface
+    private function matchPath($routePath, $requestPath)
     {
-        return new PhpDevelopmentServer();
+        $routePath = trim($routePath, "/");
+        $requestPath = trim($requestPath, "/");
+
+        if ($routePath === "" && $requestPath === "") {
+            return true;
+        }
+
+        $routeParts = $routePath ? explode("/", $routePath) : [];
+        $requestParts = $requestPath ? explode("/", $requestPath) : [];
+
+        if (count($routeParts) !== count($requestParts)) {
+            return false;
+        }
+
+        foreach ($routeParts as $index => $routePart) {
+            if ($routePart[0] === ":") {
+                continue;
+            }
+
+            if ($routePart !== $requestParts[$index]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function extractParams($routePath, $requestPath)
+    {
+        $params = [];
+
+        $routePath = trim($routePath, "/");
+        $requestPath = trim($requestPath, "/");
+
+        if ($routePath === "" && $requestPath === "") {
+            return $params;
+        }
+
+        $routeParts = $routePath ? explode("/", $routePath) : [];
+        $requestParts = $requestPath ? explode("/", $requestPath) : [];
+
+        foreach ($routeParts as $index => $routePart) {
+            if ($routePart[0] === ":") {
+                $params[substr($routePart, 1)] = $requestParts[$index] ?? null;
+            }
+        }
+        return $params;
+    }
+
+    private function send(ResponseInterface $response)
+    {
+        http_response_code($response->getStatusCode());
+        foreach ($response->getHeaders() as $name => $values) {
+            foreach ($values as $value) {
+                header("$name: $value", false);
+            }
+        }
+        echo $response->getBody();
     }
 }

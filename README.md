@@ -16,14 +16,11 @@ composer require notrab/dumbo
 require "vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Adapters\PhpDevelopmentServer;
 
-$server = new PhpDevelopmentServer();
-
-$app = new Dumbo($server);
+$app = new Dumbo();
 
 $app->get("/", function ($c) {
-    return $c->text('Hello from Dumbo!');
+    return $c->json('Hello from Dumbo!');
 });
 
 $app->run();
@@ -37,12 +34,9 @@ $app->run();
 require "vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Adapters\PhpDevelopmentServer;
 
-$server = new PhpDevelopmentServer();
-
-$app = new Dumbo($server);
-$user = new Dumbo($server);
+$app = new Dumbo();
+$user = new Dumbo();
 
 $userData = [
     [
@@ -109,14 +103,28 @@ $app->get("/greet/:greeting", function ($c) {
 
 $app->route("/users", $user);
 
+$app->use(function ($ctx, $next) {
+    $ctx->set("message", "Dumbo");
+
+    return $next($ctx);
+});
+
 $app->use(function ($c, $next) {
     $c->header("X-Powered-By", "Dumbo");
 
     return $next($c);
 });
 
+$app->get("/redirect", function ($c) {
+    $message = $c->get("message");
+
+    return $c->redirect("/greet/hello?name=$message", 301);
+});
+
 $app->get("/", function ($c) {
-    return $c->html("<h1>Hello from Dumbo!</h1>", 200, [
+    $message = $c->get("message");
+
+    return $c->html("<h1>Hello from $message!</h1>", 200, [
         "X-Hello" => "World",
     ]);
 });

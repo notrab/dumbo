@@ -3,12 +3,9 @@
 require "vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Adapters\PhpDevelopmentServer;
 
-$server = new PhpDevelopmentServer();
-
-$app = new Dumbo($server);
-$user = new Dumbo($server);
+$app = new Dumbo();
+$user = new Dumbo();
 
 $userData = [
     [
@@ -89,7 +86,7 @@ $app->use(function ($c, $next) {
 $app->get("/redirect", function ($c) {
     $message = $c->get("message");
 
-    return $c->redirect("/greet/hello?name=jamie", 301);
+    return $c->redirect("/greet/hello?name=$message", 301);
 });
 
 $app->get("/", function ($c) {
