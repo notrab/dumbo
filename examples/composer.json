@@ -9,7 +9,7 @@
     }
   ],
   "scripts": {
-    "start": "php -S localhost:8080 index.php"
+    "start": "php -S localhost:8000 index.php"
   },
   "prefer-stable": false
 }
