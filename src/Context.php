@@ -29,25 +29,57 @@ class Context
      *
      * @param ServerRequestInterface $request The server request object
      * @param array $params The route parameters
+     * @param string $routePath The registered route path
      */
     public function __construct(
         private ServerRequestInterface $request,
-        private array $params
+        private array $params,
+        private string $routePath
     ) {
         $this->response = new Response();
-        $this->req = new class ($request, $params) implements RequestWrapper {
+        $this->req = new class ($request, $params, $routePath) implements
+            RequestWrapper
+        {
             /** @var array The parsed request body */
             private array $parsedBody;
 
             /**
              * @param ServerRequestInterface $request The server request object
              * @param array $params The route parameters
+             * @param string $routePath The registered route path
              */
             public function __construct(
                 private ServerRequestInterface $request,
-                private array $params
+                private array $params,
+                private string $routePath
             ) {
                 $this->parsedBody = $this->parseBody();
+            }
+
+            /**
+             * Get the current request path
+             *
+             * This method returns the path component of the request URI.
+             * The path will be normalized to remove trailing slashes, except for the root path.
+             *
+             * @return string The current request path
+             */
+            public function path(): string
+            {
+                return $this->request->getUri()->getPath();
+            }
+
+            /**
+             * Get the registered route path for the current request
+             *
+             * This method returns the original route path as it was registered,
+             * including any path parameters (e.g., '/posts/:id').
+             *
+             * @return string The registered route path
+             */
+            public function routePath(): string
+            {
+                return $this->routePath;
             }
 
             /**
@@ -97,6 +129,22 @@ class Context
             }
 
             /**
+             * Get query parameters as an array
+             *
+             * If the parameter is a comma-separated string, it will be split into an array.
+             * If the parameter is already an array, it will be returned as is.
+             *
+             * @param string $name The name of the query parameter
+             * @return array The query parameter value(s) as an array
+             */
+            public function queries(string $name): array
+            {
+                $query = $this->request->getQueryParams();
+                $value = $query[$name] ?? "";
+                return is_array($value) ? $value : explode(",", $value);
+            }
+
+            /**
              * Get query parameters
              *
              * @param string|null $name The parameter name (optional)
@@ -140,6 +188,21 @@ class Context
                 return $name === null
                     ? $this->request->getHeaders()
                     : $this->request->getHeader($name);
+            }
+
+            /**
+             * Get a single header value
+             *
+             * Returns the first value of the specified header. If the header has multiple
+             * values, only the first one is returned. If the header doesn't exist, null is returned.
+             *
+             * @param string $name The name of the header
+             * @return string|null The header value, or null if the header doesn't exist
+             */
+            public function header(string $name): ?string
+            {
+                $headers = $this->request->getHeader($name);
+                return !empty($headers) ? $headers[0] : null;
             }
         };
     }
@@ -275,7 +338,7 @@ class Context
      *
      * @return ResponseInterface The response object
      */
-    protected function getResponse(): ResponseInterface
+    public function getResponse(): ResponseInterface
     {
         return $this->response;
     }

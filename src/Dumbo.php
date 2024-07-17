@@ -120,7 +120,7 @@ class Dumbo
                 $this->matchPath($route["path"], $path)
             ) {
                 $params = $this->extractParams($route["path"], $path);
-                $context = new Context($request, $params);
+                $context = new Context($request, $params, $route["path"]);
 
                 $response = $this->runMiddleware($context, $route["handler"]);
 
