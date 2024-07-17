@@ -23,14 +23,15 @@ use GuzzleHttp\Psr7\ServerRequest;
  */
 class Dumbo
 {
-    /** @var array<array{method: string, path: string, handler: callable(Context): (ResponseInterface|null)}> */
-    private $routes = [];
+    private Router $router;
 
     /** @var array<callable> */
     private $middleware = [];
 
-    /** @var string */
-    private $prefix = "";
+    public function __construct()
+    {
+        $this->router = new Router();
+    }
 
     /**
      * Magic method to handle dynamic route addition
@@ -51,29 +52,10 @@ class Dumbo
         ];
 
         if (in_array(strtolower($method), $supportedMethods)) {
-            $this->addRoute(strtoupper($method), ...$arguments);
+            $this->router->addRoute(strtoupper($method), ...$arguments);
         } else {
             throw new \BadMethodCallException("METHOD $method does not exist.");
         }
-    }
-
-    /**
-     * Add a route to the application
-     *
-     * @param string $method The HTTP method
-     * @param string $path The route path
-     * @param callable(Context): (ResponseInterface|null) $handler The route handler
-     */
-    private function addRoute(
-        string $method,
-        string $path,
-        callable $handler
-    ): void {
-        $this->routes[] = [
-            "method" => $method,
-            "path" => $this->prefix . $path,
-            "handler" => $handler,
-        ];
     }
 
     /**
@@ -92,14 +74,14 @@ class Dumbo
      * @param string $prefix The prefix for the nested routes
      * @param self $nestedApp The nested Dumbo application
      */
-    public function route(string $prefix, Dumbo $nestedApp): void
+    public function route(string $prefix, self $nestedApp): void
     {
-        foreach ($nestedApp->routes as $route) {
-            $this->routes[] = [
-                "method" => $route["method"],
-                "path" => $prefix . $route["path"],
-                "handler" => $route["handler"],
-            ];
+        foreach ($nestedApp->router->getRoutes() as $route) {
+            $this->router->addRoute(
+                $route["method"],
+                $prefix . $route["path"],
+                $route["handler"]
+            );
         }
     }
 
@@ -111,23 +93,19 @@ class Dumbo
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $method = $request->getMethod();
-        $path = $request->getUri()->getPath();
+        $route = $this->router->findRoute($request);
 
-        foreach ($this->routes as $route) {
-            if (
-                $route["method"] === $method &&
-                $this->matchPath($route["path"], $path)
-            ) {
-                $params = $this->extractParams($route["path"], $path);
-                $context = new Context($request, $params, $route["path"]);
+        if ($route) {
+            $context = new Context(
+                $request,
+                $route["params"],
+                $route["routePath"]
+            );
+            $response = $this->runMiddleware($context, $route["handler"]);
 
-                $response = $this->runMiddleware($context, $route["handler"]);
-
-                return $response instanceof ResponseInterface
-                    ? $response
-                    : $context->getResponse();
-            }
+            return $response instanceof ResponseInterface
+                ? $response
+                : $context->getResponse();
         }
 
         return new Response(status: 404, body: "404 Not Found");
@@ -190,81 +168,6 @@ class Dumbo
         }
 
         return $next($context);
-    }
-
-    /**
-     * Check if a route path matches the request path
-     *
-     * This method compares the route path pattern with the actual request path,
-     * accounting for path parameters (e.g., ":id" in "/users/:id").
-     *
-     * @param string $routePath The route path pattern
-     * @param string $requestPath The actual request path
-     * @return bool True if the paths match, false otherwise
-     */
-    private function matchPath(string $routePath, string $requestPath): bool
-    {
-        $routePath = trim($routePath, "/");
-        $requestPath = trim($requestPath, "/");
-
-        if ($routePath === "" && $requestPath === "") {
-            return true;
-        }
-
-        $routeParts = $routePath ? explode("/", $routePath) : [];
-        $requestParts = $requestPath ? explode("/", $requestPath) : [];
-
-        if (count($routeParts) !== count($requestParts)) {
-            return false;
-        }
-
-        foreach ($routeParts as $index => $routePart) {
-            if ($routePart[0] === ":") {
-                continue;
-            }
-
-            if ($routePart !== $requestParts[$index]) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Extract parameters from the request path based on the route path
-     *
-     * This method extracts values for path parameters defined in the route path
-     * (e.g., it will extract "123" as the value for ":id" from "/users/123" if the
-     * route path is "/users/:id").
-     *
-     * @param string $routePath The route path pattern
-     * @param string $requestPath The actual request path
-     * @return array<string, string|null> An associative array of parameter names and their values
-     */
-    private function extractParams(
-        string $routePath,
-        string $requestPath
-    ): array {
-        $params = [];
-
-        $routePath = trim($routePath, "/");
-        $requestPath = trim($requestPath, "/");
-
-        if ($routePath === "" && $requestPath === "") {
-            return $params;
-        }
-
-        $routeParts = $routePath ? explode("/", $routePath) : [];
-        $requestParts = $requestPath ? explode("/", $requestPath) : [];
-
-        foreach ($routeParts as $index => $routePart) {
-            if ($routePart[0] === ":") {
-                $params[substr($routePart, 1)] = $requestParts[$index] ?? null;
-            }
-        }
-
-        return $params;
     }
 
     /**
