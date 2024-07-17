@@ -10,124 +10,94 @@ composer require notrab/dumbo
 
 ## Quickstart
 
+Here's a basic example of how it works!
+
 ```php
 <?php
-
-require "vendor/autoload.php";
 
 use Dumbo\Dumbo;
 
 $app = new Dumbo();
 
 $app->get("/", function ($c) {
-    return $c->json('Hello from Dumbo!');
+    return $c->json('Hello Dumbo!');
 });
 
 $app->run();
 ```
 
-## Extended
+## Routing
 
 ```php
 <?php
 
-require "vendor/autoload.php";
+$app->get('/users', function($c) { /* ... */ });
+$app->post('/users', function($c) { /* ... */ });
+$app->put('/users/:id', function($c) { /* ... */ });
+$app->delete('/users/:id', function($c) { /* ... */ });
+```
 
-use Dumbo\Dumbo;
+### Params
 
-$app = new Dumbo();
-$user = new Dumbo();
+```php
+<?php
 
-$userData = [
-    [
-        "id" => 1,
-        "name" => "Jamie Barton",
-        "email" => "jamie@notrab.dev",
-    ],
-];
+$app->get('/users/:id', function($c) {
+    $id = $c->req->param('id');
 
-$user->get("/", function ($c) use ($userData) {
-    return $c->json($userData);
+    return $c->json(['id' => $id]);
+});
+```
+
+### Nested
+
+```php
+<?php
+
+$nestedApp = new Dumbo();
+
+$nestedApp->get('/nested', function($c) {
+    return $c->text('This is a nested route');
 });
 
-$user->get("/:id", function ($c) use ($userData) {
-    $id = (int) $c->req->param("id");
+$app->route('/prefix', $nestedApp);
 
-    $user =
-        array_values(array_filter($userData, fn($u) => $u["id"] === $id))[0] ??
-        null;
+```
 
-    if (!$user) {
-        return $c->json(["error" => "User not found"], 404);
-    }
+### Context
 
-    return $c->json($user);
-});
+```php
+<?php
 
-$user->post("/", function ($c) use ($userData) {
+$app->get('/', function($c) {
+    $pathname = $c->req->pathname();
+    $routePath = $c->req->routePath();
+    $queryParam = $c->req->query('param');
+    $tags = $c->req->queries('tags');
     $body = $c->req->body();
-
-    if (!isset($body["name"]) || !isset($body["email"])) {
-        return $c->json(["error" => "Name and email are required"], 400);
-    }
-
-    $newId = max(array_column($userData, "id")) + 1;
-
-    $newUserData = array_merge(["id" => $newId], $body);
-
-    return $c->json($newUserData, 201);
+    $userAgent = $c->req->header('User-Agent');
 });
+```
 
-$user->delete("/:id", function ($c) use ($userData) {
-    $id = (int) $c->req->param("id");
+## Response
 
-    $user =
-        array_values(array_filter($userData, fn($u) => $u["id"] === $id))[0] ??
-        null;
+```php
+<?php
 
-    if (!$user) {
-        return $c->json(["error" => "User not found"], 404);
-    }
+return $c->json(['key' => 'value']);
+return $c->text('Hello, World!');
+return $c->html('<h1>Hello, World!</h1>');
+return $c->redirect('/new-url');
+```
 
-    return $c->json(["message" => "User deleted successfully"]);
+## Middleware
+
+```php
+<?php
+
+$app->use(function($c, $next) {
+    $response = $next($c);
+
+    return $response;
 });
-
-$app->get("/greet/:greeting", function ($c) {
-    $greeting = $c->req->param("greeting");
-    $name = $c->req->query("name");
-
-    return $c->json([
-        "message" => "$greeting, $name!",
-    ]);
-});
-
-$app->route("/users", $user);
-
-$app->use(function ($ctx, $next) {
-    $ctx->set("message", "Dumbo");
-
-    return $next($ctx);
-});
-
-$app->use(function ($c, $next) {
-    $c->header("X-Powered-By", "Dumbo");
-
-    return $next($c);
-});
-
-$app->get("/redirect", function ($c) {
-    $message = $c->get("message");
-
-    return $c->redirect("/greet/hello?name=$message", 301);
-});
-
-$app->get("/", function ($c) {
-    $message = $c->get("message");
-
-    return $c->html("<h1>Hello from $message!</h1>", 200, [
-        "X-Hello" => "World",
-    ]);
-});
-
-$app->run();
 ```
