@@ -2,6 +2,8 @@
 
 A lightweight, friendly PHP framework for HTTP &mdash; inspired by Hono.
 
+![Dumbo](/dumbo.jpeg)
+
 ## Install
 
 ```bash
