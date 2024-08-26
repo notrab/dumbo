@@ -3,9 +3,21 @@
 require "vendor/autoload.php";
 
 use Dumbo\Dumbo;
+use Dumbo\Helpers\BearerAuth;
 
 $app = new Dumbo();
 $user = new Dumbo();
+
+$protectedRoutes = new Dumbo();
+$token = "mysupersecret";
+
+$protectedRoutes->use(BearerAuth::bearer($token));
+
+$protectedRoutes->get("/", function ($c) {
+    return $c->json(["message" => "Welcome to the protected routes!"]);
+});
+
+$app->route("/api", $protectedRoutes);
 
 $userData = [
     [
