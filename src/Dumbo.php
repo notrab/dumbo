@@ -69,6 +69,16 @@ class Dumbo
     }
 
     /**
+     * Get the middleware stack
+     *
+     * @return array The middleware stack
+     */
+    public function getMiddleware(): array
+    {
+        return $this->middleware;
+    }
+
+    /**
      * Add a nested route to the application
      *
      * @param string $prefix The prefix for the nested routes
@@ -77,10 +87,16 @@ class Dumbo
     public function route(string $prefix, self $nestedApp): void
     {
         foreach ($nestedApp->router->getRoutes() as $route) {
+            $combinedMiddleware = array_merge(
+                $this->middleware,
+                $nestedApp->getMiddleware()
+            );
+
             $this->router->addRoute(
                 $route["method"],
                 $prefix . $route["path"],
-                $route["handler"]
+                $route["handler"],
+                $combinedMiddleware
             );
         }
     }
@@ -101,7 +117,17 @@ class Dumbo
                 $route["params"],
                 $route["routePath"]
             );
-            $response = $this->runMiddleware($context, $route["handler"]);
+
+            $combinedMiddleware = array_merge(
+                $this->middleware,
+                $route["middleware"] ?? []
+            );
+
+            $response = $this->runMiddleware(
+                $context,
+                $route["handler"],
+                $combinedMiddleware
+            );
 
             return $response instanceof ResponseInterface
                 ? $response
@@ -122,6 +148,11 @@ class Dumbo
         $this->send($response);
     }
 
+    /**
+     * Create a server request from the PHP globals
+     *
+     * @return ServerRequestInterface The server request
+     */
     private function createServerRequestFromGlobals(): ServerRequestInterface
     {
         $request = ServerRequest::fromGlobals();

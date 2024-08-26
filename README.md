@@ -108,6 +108,10 @@ $app->use(function($c, $next) {
 
 ### Bearer Auth
 
+```bash
+curl -H 'Authorization: Bearer mysupersecret' http://localhost:8000/api
+```
+
 ```php
 <?php
 

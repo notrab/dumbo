@@ -6,21 +6,31 @@ use Psr\Http\Message\ServerRequestInterface;
 
 class Router
 {
-    /** @var array<array{method: string, path: string, handler: callable(Context): (ResponseInterface|null)}> */
+    /** @var array<array{method: string, path: string, handler: callable(Context): (ResponseInterface|null), middleware: array}> */
     private $routes = [];
 
     /** @var string */
     private $prefix = "";
 
+    /**
+     * Add a route to the router
+     *
+     * @param string $method The HTTP method for this route
+     * @param string $path The path for this route
+     * @param callable(Context): (ResponseInterface|null) $handler The handler function for this route
+     * @param array $middleware Array of middleware functions for this route
+     */
     public function addRoute(
         string $method,
         string $path,
-        callable $handler
+        callable $handler,
+        array $middleware = []
     ): void {
         $this->routes[] = [
             "method" => $method,
             "path" => $this->prefix . $path,
             "handler" => $handler,
+            "middleware" => $middleware,
         ];
     }
 
