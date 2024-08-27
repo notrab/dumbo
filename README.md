@@ -122,6 +122,9 @@ $token = "mysupersecret";
 
 $protectedRoutes->use(BearerAuth::bearer($token));
 
+// You can add custom failure message as a second argument.😍 It's optional.
+$protectedRoutes->use(BearerAuth::bearer($token, 'Unauthorized request.'));
+
 $protectedRoutes->get("/", function ($c) {
     return $c->json(["message" => "Welcome to the protected routes!"]);
 });
