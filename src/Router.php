@@ -2,45 +2,23 @@
 
 namespace Dumbo;
 
-use FastRoute\Dispatcher;
-use FastRoute\RouteCollector;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
-/**
- * Router class for handling HTTP routes in the Dumbo framework
- */
 class Router
 {
-    private ?Dispatcher $dispatcher = null;
-
     /** @var array<array{method: string, path: string, handler: callable(Context): (ResponseInterface|null), middleware: array}> */
     private $routes = [];
 
-    /**
-     * Array of route groups
-     *
-     * @var array<string, array>
-     */
-    private array $groups = [];
-
-    /**
-     * Constructor
-     *
-     * Initializes the router and invokes the initial dispatcher.
-     */
-    public function __construct()
-    {
-        $this->rebuildDispatcher();
-    }
+    /** @var string */
+    private $prefix = "";
 
     /**
      * Add a route to the router
      *
-     * @param string $method The HTTP method for the route
-     * @param string $path The URL path for the route
-     * @param callable $handler The handler function for the route
-     * @param array<callable> $middleware Array of middleware functions for the route
+     * @param string $method The HTTP method for this route
+     * @param string $path The path for this route
+     * @param callable(Context): (ResponseInterface|null) $handler The handler function for this route
+     * @param array $middleware Array of middleware functions for this route
      */
     public function addRoute(
         string $method,
@@ -50,110 +28,118 @@ class Router
     ): void {
         $this->routes[] = [
             "method" => $method,
-            "path" => $path,
+            "path" => $this->prefix . $path,
             "handler" => $handler,
             "middleware" => $middleware,
         ];
-        $this->rebuildDispatcher();
     }
 
-    /**
-     * Add a group of routes with a common prefix
-     *
-     * @param string $prefix The common prefix for the group of routes
-     * @param array $groupRoutes Array of routes in the group
-     */
-    public function addGroup(string $prefix, array $groupRoutes): void
-    {
-        $this->groups[$prefix] = $groupRoutes;
-        $this->rebuildDispatcher();
-    }
-
-    /**
-     * Find a matching route for the given request
-     *
-     * @param ServerRequestInterface $request The incoming HTTP request
-     * @return array|null The matched route information or null if no match found
-     */
     public function findRoute(ServerRequestInterface $request): ?array
     {
-        if (!$this->dispatcher) {
-            return null;
-        }
+        $method = $request->getMethod();
+        $path = $request->getUri()->getPath();
 
-        $httpMethod = $request->getMethod();
-        $uri = $this->normalizeUri($request->getUri()->getPath());
-
-        $routeInfo = $this->dispatcher->dispatch($httpMethod, $uri);
-
-        if ($routeInfo[0] === Dispatcher::FOUND) {
-            $handler = $routeInfo[1];
-            $vars = $routeInfo[2];
-
-            return [
-                "handler" => $handler["handler"],
-                "params" => $vars,
-                "routePath" => $handler["path"],
-                "middleware" => $handler["middleware"] ?? [],
-            ];
+        foreach ($this->routes as $route) {
+            if (
+                ($route["method"] === $method ||
+                    $route["method"] === "ALL" ||
+                    $method === "OPTIONS") &&
+                $this->matchPath($route["path"], $path)
+            ) {
+                $params = $this->extractParams($route["path"], $path);
+                return [
+                    "handler" => $route["handler"],
+                    "params" => $params,
+                    "routePath" => $route["path"],
+                ];
+            }
         }
 
         return null;
     }
 
     /**
-     * Get all declared routes
+     * Check if a route path matches the request path
      *
-     * @return array All registered routes including group routes
+     * This method compares the route path pattern with the actual request path,
+     * accounting for path parameters (e.g., ":id" in "/users/:id").
+     *
+     * @param string $routePath The route path pattern
+     * @param string $requestPath The actual request path
+     * @return bool True if the paths match, false otherwise
      */
-    public function getRoutes(): array
+    private function matchPath(string $routePath, string $requestPath): bool
     {
-        $allRoutes = $this->routes;
+        $routePath = trim($routePath, "/");
+        $requestPath = trim($requestPath, "/");
 
-        foreach ($this->groups as $groupRoutes) {
-            $allRoutes = array_merge($allRoutes, $groupRoutes);
+        if ($routePath === "" && $requestPath === "") {
+            return true;
         }
 
-        return $allRoutes;
-    }
+        $routeParts = $routePath ? explode("/", $routePath) : [];
+        $requestParts = $requestPath ? explode("/", $requestPath) : [];
 
-    /**
-     * Prepare the path by converting :parameter syntax to {parameter}
-     *
-     * @param string $path The route path to prepare
-     * @return string The prepared path
-     */
-    private function preparePath(string $path): string
-    {
-        $path = preg_replace("/:(\w+)/", '{$1}', $path);
-        return $this->normalizeUri($path);
-    }
+        if (count($routeParts) !== count($requestParts)) {
+            return false;
+        }
 
-    /**
-     * Rebuild the FastRoute dispatcher
-     *
-     * This method is called whenever routes are added or modified.
-     */
-    private function rebuildDispatcher(): void
-    {
-        $this->dispatcher = \FastRoute\simpleDispatcher(function (
-            RouteCollector $r
-        ) {
-            foreach ($this->routes as $route) {
-                $path = $this->preparePath($route["path"]);
-                $r->addRoute($route["method"], $path, $route);
+        foreach ($routeParts as $index => $routePart) {
+            if ($routePart[0] === ":") {
+                continue;
             }
-        });
+
+            if ($routePart !== $requestParts[$index]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
-     * Normalize the given URI by ensuring it starts with a forward slash
+     * Extract parameters from the request path based on the route path
      *
-     * @param string $uri The URI to normalize
-     * @return string The normalized URI
+     * This method extracts values for path parameters defined in the route path
+     * (e.g., it will extract "123" as the value for ":id" from "/users/123" if the
+     * route path is "/users/:id").
+     *
+     * @param string $routePath The route path pattern
+     * @param string $requestPath The actual request path
+     * @return array<string, string|null> An associative array of parameter names and their values
      */
-    private function normalizeUri(string $uri): string
+    private function extractParams(
+        string $routePath,
+        string $requestPath
+    ): array {
+        $params = [];
+
+        $routePath = trim($routePath, "/");
+        $requestPath = trim($requestPath, "/");
+
+        if ($routePath === "" && $requestPath === "") {
+            return $params;
+        }
+
+        $routeParts = $routePath ? explode("/", $routePath) : [];
+        $requestParts = $requestPath ? explode("/", $requestPath) : [];
+
+        foreach ($routeParts as $index => $routePart) {
+            if ($routePart[0] === ":") {
+                $params[substr($routePart, 1)] = $requestParts[$index] ?? null;
+            }
+        }
+
+        return $params;
+    }
+
+    public function setPrefix(string $prefix): void
     {
-        return "/" . trim($uri, "/");
+        $this->prefix = $prefix;
+    }
+
+    public function getRoutes(): array
+    {
+        return $this->routes;
     }
 }

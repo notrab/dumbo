@@ -14,6 +14,7 @@ use GuzzleHttp\Psr7\ServerRequest;
  * @author Jamie Barton
  * @version 1.0.0
  *
+ * @method void all(string $path, callable(Context): (ResponseInterface|null) $handler) Add a catch-all method route
  * @method void get(string $path, callable(Context): (ResponseInterface|null) $handler) Add a GET route
  * @method void post(string $path, callable(Context): (ResponseInterface|null) $handler) Add a POST route
  * @method void put(string $path, callable(Context): (ResponseInterface|null) $handler) Add a PUT route
@@ -53,6 +54,7 @@ class Dumbo
     public function __call(string $method, array $arguments): void
     {
         $supportedMethods = [
+            "all",
             "get",
             "post",
             "put",
