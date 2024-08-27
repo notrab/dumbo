@@ -3,6 +3,7 @@
 require "vendor/autoload.php";
 
 use Dumbo\Dumbo;
+use Dumbo\HTTPException;
 use Dumbo\Helpers\BearerAuth;
 
 $app = new Dumbo();
@@ -11,7 +12,7 @@ $user = new Dumbo();
 $protectedRoutes = new Dumbo();
 $token = "mysupersecret";
 
-$app->use(BearerAuth::bearer($token));
+$user->use(BearerAuth::bearer($token));
 
 $userData = [
     [
@@ -101,6 +102,11 @@ $app->get("/", function ($c) {
     return $c->html("<h1>Hello from $message!</h1>", 200, [
         "X-Hello" => "World",
     ]);
+});
+
+$app->get("/error", function ($c) {
+    $customResponse = $c->html("<h1>Something went wrong</h1>", 404);
+    throw new HTTPException(404, "Something went wrong", $customResponse);
 });
 
 $app->run();

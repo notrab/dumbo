@@ -128,3 +128,32 @@ $protectedRoutes->get("/", function ($c) {
 
 $app->route("/api", $protectedRoutes);
 ```
+
+### Exception handlers
+
+```php
+<?php
+
+$app = new Dumbo();
+
+$app->post('/', function(Context $c) {
+    if (!checkAuthStatus()) {
+        throw new HTTPException(401, 'Unauthorized');
+    }
+});
+```
+
+Or with a custom response:
+
+```php
+<?php
+
+$app = new Dumbo();
+
+$app->post('/', function(Context $c) {
+    if (!doSomething()) {
+        $customResponse = $c->html('<h1>Something went wrong</h1>', 404);
+        throw new HTTPException(404, 'Something went wrong', $customResponse);
+    }
+});
+```
