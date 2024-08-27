@@ -10,12 +10,14 @@ class BearerAuth
      * Create a middleware that checks for a Bearer token in the Authorization header
      *
      * @param string $token The expected Bearer token
+     * @param string $failureMessage The message to return when the token is invalid
      * @return callable The middleware
      */
-    public static function bearer(string $token): callable
+    public static function bearer(string $token, string $failureMessage = "Invalid token"): callable
     {
-        return function (Context $ctx, callable $next) use ($token) {
+        return function (Context $ctx, callable $next) use ($token, $failureMessage) {
             $authHeader = $ctx->req->header("Authorization");
+
             if (!$authHeader) {
                 return $ctx->json(
                     ["error" => "Authorization header missing"],
@@ -32,7 +34,7 @@ class BearerAuth
             }
 
             if ($parts[1] !== $token) {
-                return $ctx->json(["error" => "Invalid token"], 401);
+                return $ctx->json(["error" => $failureMessage], 401);
             }
 
             return $next($ctx);
