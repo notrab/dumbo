@@ -28,7 +28,7 @@ class Router
     ): void {
         $this->routes[] = [
             "method" => $method,
-            "path" => $this->prefix . $path,
+            "path" => $path,
             "handler" => $handler,
             "middleware" => $middleware,
         ];
@@ -49,6 +49,7 @@ class Router
                     "handler" => $route["handler"],
                     "params" => $params,
                     "routePath" => $route["path"],
+                    "middleware" => $route["middleware"] ?? [],
                 ];
             }
         }
