@@ -4,7 +4,7 @@ require "vendor/autoload.php";
 
 use Dumbo\Dumbo;
 use Dumbo\HTTPException;
-use Dumbo\Helpers\BearerAuth;
+// use Dumbo\Helpers\BearerAuth;
 
 $app = new Dumbo();
 $user = new Dumbo();
@@ -12,7 +12,7 @@ $user = new Dumbo();
 $protectedRoutes = new Dumbo();
 $token = "mysupersecret";
 
-$user->use(BearerAuth::bearer($token));
+// $app->use(BearerAuth::bearerAuth($token));
 
 $userData = [
     [

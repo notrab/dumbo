@@ -118,12 +118,25 @@ curl -H 'Authorization: Bearer mysupersecret' http://localhost:8000/api
 $app = new Dumbo();
 $protectedRoutes = new Dumbo();
 
+
+$protectedRoutes->use(BearerAuth::bearerAuth([
+    'tokens' => ['token1', 'token2'],
+    'realm' => 'API Access'
+]));
+
 $token = "mysupersecret";
 
-$protectedRoutes->use(BearerAuth::bearer($token));
-
 // You can add custom failure message as a second argument.😍 It's optional.
-$protectedRoutes->use(BearerAuth::bearer($token, 'Unauthorized request.'));
+$protectedRoutes->use(BearerAuth::bearerAuth($token, 'Unauthorized request.'));
+
+// Custom token verification function
+$app->use(BearerAuth::bearerAuth([
+    'verifyToken' => function($token, $ctx) {
+        // Perform custom token verification logic
+        return verifyJWT($token);
+    },
+    'realm' => 'JWT API'
+]));
 
 $protectedRoutes->get("/", function ($c) {
     return $c->json(["message" => "Welcome to the protected routes!"]);
@@ -153,10 +166,27 @@ Or with a custom response:
 
 $app = new Dumbo();
 
+$app->onError(function (\Exception $error, Context $c) {
+    // Custom error response
+    if ($error instanceof HTTPException) {
+        // We can now use the toArray() method to get a structured error response
+        return $c->json($error->toArray(), $error->getStatusCode());
+    }
+
+    // Gotta catch 'em all
+    return $c->json(['error' => 'Internal Server Error'], 500);
+});
+
 $app->post('/', function(Context $c) {
     if (!doSomething()) {
         $customResponse = $c->html('<h1>Something went wrong</h1>', 404);
-        throw new HTTPException(404, 'Something went wrong', $customResponse);
+        throw new HTTPException(
+            404,
+            'Something went wrong',
+            'OPERATION_FAILED',
+            ['operation' => 'doSomething'],
+            $customResponse
+        );
     }
 });
 ```

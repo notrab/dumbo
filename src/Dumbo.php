@@ -28,6 +28,8 @@ class Dumbo
     /** @var array<callable> */
     private $middleware = [];
 
+    private $errorHandler;
+
     public function __construct()
     {
         $this->router = new Router();
@@ -226,6 +228,16 @@ class Dumbo
     }
 
     /**
+     * Set a custom error handler
+     *
+     * @param callable $handler The custom error handler function
+     */
+    public function onError(callable $handler): void
+    {
+        $this->errorHandler = $handler;
+    }
+
+    /**
      * Handle HTTPException
      *
      * @param HTTPException $e The caught HTTPException
@@ -236,16 +248,18 @@ class Dumbo
         HTTPException $e,
         ServerRequestInterface $request
     ): ResponseInterface {
+        if ($this->errorHandler) {
+            $context = new Context($request, [], "");
+            return call_user_func($this->errorHandler, $e, $context);
+        }
+
         $customResponse = $e->getCustomResponse();
         if ($customResponse) {
             return $customResponse;
         }
 
         $context = new Context($request, [], "");
-        return $context->json(
-            ["error" => $e->getMessage()],
-            $e->getStatusCode()
-        );
+        return $context->json($e->toArray(), $e->getStatusCode());
     }
 
     /**
@@ -259,6 +273,14 @@ class Dumbo
         \Exception $e,
         ServerRequestInterface $request
     ): ResponseInterface {
+        $context = new Context($request, [], "");
+        return $context->json(["error" => "Internal Server Error"], 500);
+
+        if ($this->errorHandler) {
+            $context = new Context($request, [], "");
+            return call_user_func($this->errorHandler, $e, $context);
+        }
+
         $context = new Context($request, [], "");
         return $context->json(["error" => "Internal Server Error"], 500);
     }
