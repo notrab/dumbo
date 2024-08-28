@@ -28,6 +28,8 @@ class Dumbo
     /** @var array<callable> */
     private $middleware = [];
 
+    private ?Dumbo $parent = null;
+
     private $errorHandler;
 
     public function __construct()
@@ -88,17 +90,18 @@ class Dumbo
      */
     public function route(string $prefix, self $nestedApp): void
     {
-        foreach ($nestedApp->router->getRoutes() as $route) {
-            $combinedMiddleware = array_merge(
-                $this->middleware,
-                $nestedApp->getMiddleware()
-            );
+        $nestedApp->parent = $this;
 
+        foreach ($nestedApp->router->getRoutes() as $route) {
             $this->router->addRoute(
                 $route["method"],
                 $prefix . $route["path"],
                 $route["handler"],
-                $combinedMiddleware
+                array_merge(
+                    $this->middleware,
+                    $nestedApp->middleware,
+                    $route["middleware"] ?? []
+                )
             );
         }
     }
@@ -121,15 +124,15 @@ class Dumbo
                     $route["routePath"]
                 );
 
-                $combinedMiddleware = array_merge(
-                    $this->middleware,
+                $fullMiddlewareStack = array_merge(
+                    $this->getFullMiddlewareStack(),
                     $route["middleware"] ?? []
                 );
 
                 $response = $this->runMiddleware(
                     $context,
                     $route["handler"],
-                    $combinedMiddleware
+                    $fullMiddlewareStack
                 );
 
                 return $response instanceof ResponseInterface
@@ -137,7 +140,7 @@ class Dumbo
                     : $context->getResponse();
             }
 
-            return new Response(status: 404, body: "404 Not Found");
+            return new Response(404, [], "404 Not Found");
         } catch (HTTPException $e) {
             return $this->handleHTTPException($e, $request);
         } catch (\Exception $e) {
@@ -174,11 +177,13 @@ class Dumbo
      *
      * @param Context $context The request context
      * @param callable $handler The final handler to be executed after all middleware
+     * @param array<callable> $middleware The middleware stack
      * @return ResponseInterface The response after running middleware and handler
      */
     private function runMiddleware(
         Context $context,
-        callable $handler
+        callable $handler,
+        array $middleware
     ): ResponseInterface {
         $next = function ($ctx) use ($handler) {
             $result = $handler($ctx);
@@ -186,15 +191,15 @@ class Dumbo
             if ($result instanceof ResponseInterface) {
                 return $result;
             } elseif ($result === null) {
-                return $ctx->json(null); // not sure I need this tbh
+                return $ctx->getResponse();
             } else {
                 return $ctx->json($result);
             }
         };
 
-        foreach (array_reverse($this->middleware) as $middleware) {
-            $next = function ($ctx) use ($middleware, $next) {
-                $result = $middleware($ctx, $next);
+        foreach (array_reverse($middleware) as $mw) {
+            $next = function ($ctx) use ($mw, $next) {
+                $result = $mw($ctx, $next);
 
                 if ($result instanceof ResponseInterface) {
                     return $result;
@@ -283,5 +288,19 @@ class Dumbo
 
         $context = new Context($request, [], "");
         return $context->json(["error" => "Internal Server Error"], 500);
+    }
+
+    private function getFullMiddlewareStack(): array
+    {
+        $stack = $this->middleware;
+
+        $current = $this;
+
+        while ($current->parent !== null) {
+            $stack = array_merge($current->parent->middleware, $stack);
+            $current = $current->parent;
+        }
+
+        return $stack;
     }
 }
