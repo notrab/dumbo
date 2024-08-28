@@ -109,32 +109,38 @@ class Dumbo
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $route = $this->router->findRoute($request);
+        try {
+            $route = $this->router->findRoute($request);
 
-        if ($route) {
-            $context = new Context(
-                $request,
-                $route["params"],
-                $route["routePath"]
-            );
+            if ($route) {
+                $context = new Context(
+                    $request,
+                    $route["params"],
+                    $route["routePath"]
+                );
 
-            $combinedMiddleware = array_merge(
-                $this->middleware,
-                $route["middleware"] ?? []
-            );
+                $combinedMiddleware = array_merge(
+                    $this->middleware,
+                    $route["middleware"] ?? []
+                );
 
-            $response = $this->runMiddleware(
-                $context,
-                $route["handler"],
-                $combinedMiddleware
-            );
+                $response = $this->runMiddleware(
+                    $context,
+                    $route["handler"],
+                    $combinedMiddleware
+                );
 
-            return $response instanceof ResponseInterface
-                ? $response
-                : $context->getResponse();
+                return $response instanceof ResponseInterface
+                    ? $response
+                    : $context->getResponse();
+            }
+
+            return new Response(status: 404, body: "404 Not Found");
+        } catch (HTTPException $e) {
+            return $this->handleHTTPException($e, $request);
+        } catch (\Exception $e) {
+            return $this->handleGenericException($e, $request);
         }
-
-        return new Response(status: 404, body: "404 Not Found");
     }
 
     /**
@@ -217,5 +223,43 @@ class Dumbo
         }
 
         echo $response->getBody();
+    }
+
+    /**
+     * Handle HTTPException
+     *
+     * @param HTTPException $e The caught HTTPException
+     * @param ServerRequestInterface $request The original request
+     * @return ResponseInterface The response
+     */
+    private function handleHTTPException(
+        HTTPException $e,
+        ServerRequestInterface $request
+    ): ResponseInterface {
+        $customResponse = $e->getCustomResponse();
+        if ($customResponse) {
+            return $customResponse;
+        }
+
+        $context = new Context($request, [], "");
+        return $context->json(
+            ["error" => $e->getMessage()],
+            $e->getStatusCode()
+        );
+    }
+
+    /**
+     * Handle generic exceptions
+     *
+     * @param \Exception $e The caught exception
+     * @param ServerRequestInterface $request The original request
+     * @return ResponseInterface The response
+     */
+    private function handleGenericException(
+        \Exception $e,
+        ServerRequestInterface $request
+    ): ResponseInterface {
+        $context = new Context($request, [], "");
+        return $context->json(["error" => "Internal Server Error"], 500);
     }
 }
