@@ -118,12 +118,25 @@ curl -H 'Authorization: Bearer mysupersecret' http://localhost:8000/api
 $app = new Dumbo();
 $protectedRoutes = new Dumbo();
 
+
+$protectedRoutes->use(BearerAuth::bearerAuth([
+    'tokens' => ['token1', 'token2'],
+    'realm' => 'API Access'
+]));
+
 $token = "mysupersecret";
 
-$protectedRoutes->use(BearerAuth::bearer($token));
-
 // You can add custom failure message as a second argument.😍 It's optional.
-$protectedRoutes->use(BearerAuth::bearer($token, 'Unauthorized request.'));
+$protectedRoutes->use(BearerAuth::bearerAuth($token, 'Unauthorized request.'));
+
+// Custom token verification function
+$app->use(BearerAuth::bearerAuth([
+    'verifyToken' => function($token, $ctx) {
+        // Perform custom token verification logic
+        return verifyJWT($token);
+    },
+    'realm' => 'JWT API'
+]));
 
 $protectedRoutes->get("/", function ($c) {
     return $c->json(["message" => "Welcome to the protected routes!"]);
@@ -132,11 +145,55 @@ $protectedRoutes->get("/", function ($c) {
 $app->route("/api", $protectedRoutes);
 ```
 
+### Exception handlers
+
+```php
+<?php
+
+$app = new Dumbo();
+
+$app->post('/', function(Context $c) {
+    if (!checkAuthStatus()) {
+        throw new HTTPException(401, 'Unauthorized');
+    }
+});
+```
+
+Or with a custom response:
+
+```php
+<?php
+
+$app = new Dumbo();
+
+$app->onError(function (\Exception $error, Context $c) {
+    // Custom error response
+    if ($error instanceof HTTPException) {
+        // We can now use the toArray() method to get a structured error response
+        return $c->json($error->toArray(), $error->getStatusCode());
+    }
+
+    // Gotta catch 'em all
+    return $c->json(['error' => 'Internal Server Error'], 500);
+});
+
+$app->post('/', function(Context $c) {
+    if (!doSomething()) {
+        $customResponse = $c->html('<h1>Something went wrong</h1>', 404);
+        throw new HTTPException(
+            404,
+            'Something went wrong',
+            'OPERATION_FAILED',
+            ['operation' => 'doSomething'],
+            $customResponse
+        );
+    }
+});
+```
+
 ### Basic Auth
 
 Implementing Basic authentication on Cloudflare Workers or other platforms can be complex. This helper middleware offers a straightforward solution for securing specific routes.
-
-##### Usage
 
 ```php
 <?php
@@ -144,7 +201,6 @@ Implementing Basic authentication on Cloudflare Workers or other platforms can b
 use Dumbo\Dumbo;
 use Dumbo\Context;
 
-// Import the BasicAuth Helper
 use Dumbo\Helpers\BasicAuth;
 
 $app = new Dumbo();
@@ -156,7 +212,6 @@ $app->use(BasicAuth::basicAuth([
     'realm' => 'Secure Area',
 ]));
 
-
 // Use case 2: Dynamic verification function
 $app->use(BasicAuth::basicAuth([
     'verifyUser' => function ($username, $password, Context $ctx) {
@@ -164,7 +219,6 @@ $app->use(BasicAuth::basicAuth([
     },
     'realm' => 'Secure Area',
 ]));
-
 
 // Use case 3: Multiple static users
 $app->use(BasicAuth::basicAuth([
@@ -174,7 +228,6 @@ $app->use(BasicAuth::basicAuth([
     ],
     'realm' => 'Secure Area',
 ]));
-
 
 // Define the route
 $app->get("/", function (Context $ctx) {

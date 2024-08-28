@@ -28,6 +28,10 @@ class Dumbo
     /** @var array<callable> */
     private $middleware = [];
 
+    private ?Dumbo $parent = null;
+
+    private $errorHandler;
+
     public function __construct()
     {
         $this->router = new Router();
@@ -86,17 +90,18 @@ class Dumbo
      */
     public function route(string $prefix, self $nestedApp): void
     {
-        foreach ($nestedApp->router->getRoutes() as $route) {
-            $combinedMiddleware = array_merge(
-                $this->middleware,
-                $nestedApp->getMiddleware()
-            );
+        $nestedApp->parent = $this;
 
+        foreach ($nestedApp->router->getRoutes() as $route) {
             $this->router->addRoute(
                 $route["method"],
                 $prefix . $route["path"],
                 $route["handler"],
-                $combinedMiddleware
+                array_merge(
+                    $this->middleware,
+                    $nestedApp->middleware,
+                    $route["middleware"] ?? []
+                )
             );
         }
     }
@@ -109,32 +114,38 @@ class Dumbo
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $route = $this->router->findRoute($request);
+        try {
+            $route = $this->router->findRoute($request);
 
-        if ($route) {
-            $context = new Context(
-                $request,
-                $route["params"],
-                $route["routePath"]
-            );
+            if ($route) {
+                $context = new Context(
+                    $request,
+                    $route["params"],
+                    $route["routePath"]
+                );
 
-            $combinedMiddleware = array_merge(
-                $this->middleware,
-                $route["middleware"] ?? []
-            );
+                $fullMiddlewareStack = array_merge(
+                    $this->getFullMiddlewareStack(),
+                    $route["middleware"] ?? []
+                );
 
-            $response = $this->runMiddleware(
-                $context,
-                $route["handler"],
-                $combinedMiddleware
-            );
+                $response = $this->runMiddleware(
+                    $context,
+                    $route["handler"],
+                    $fullMiddlewareStack
+                );
 
-            return $response instanceof ResponseInterface
-                ? $response
-                : $context->getResponse();
+                return $response instanceof ResponseInterface
+                    ? $response
+                    : $context->getResponse();
+            }
+
+            return new Response(404, [], "404 Not Found");
+        } catch (HTTPException $e) {
+            return $this->handleHTTPException($e, $request);
+        } catch (\Exception $e) {
+            return $this->handleGenericException($e, $request);
         }
-
-        return new Response(status: 404, body: "404 Not Found");
     }
 
     /**
@@ -166,11 +177,13 @@ class Dumbo
      *
      * @param Context $context The request context
      * @param callable $handler The final handler to be executed after all middleware
+     * @param array<callable> $middleware The middleware stack
      * @return ResponseInterface The response after running middleware and handler
      */
     private function runMiddleware(
         Context $context,
-        callable $handler
+        callable $handler,
+        array $middleware
     ): ResponseInterface {
         $next = function ($ctx) use ($handler) {
             $result = $handler($ctx);
@@ -178,15 +191,15 @@ class Dumbo
             if ($result instanceof ResponseInterface) {
                 return $result;
             } elseif ($result === null) {
-                return $ctx->json(null); // not sure I need this tbh
+                return $ctx->getResponse();
             } else {
                 return $ctx->json($result);
             }
         };
 
-        foreach (array_reverse($this->middleware) as $middleware) {
-            $next = function ($ctx) use ($middleware, $next) {
-                $result = $middleware($ctx, $next);
+        foreach (array_reverse($middleware) as $mw) {
+            $next = function ($ctx) use ($mw, $next) {
+                $result = $mw($ctx, $next);
 
                 if ($result instanceof ResponseInterface) {
                     return $result;
@@ -217,5 +230,77 @@ class Dumbo
         }
 
         echo $response->getBody();
+    }
+
+    /**
+     * Set a custom error handler
+     *
+     * @param callable $handler The custom error handler function
+     */
+    public function onError(callable $handler): void
+    {
+        $this->errorHandler = $handler;
+    }
+
+    /**
+     * Handle HTTPException
+     *
+     * @param HTTPException $e The caught HTTPException
+     * @param ServerRequestInterface $request The original request
+     * @return ResponseInterface The response
+     */
+    private function handleHTTPException(
+        HTTPException $e,
+        ServerRequestInterface $request
+    ): ResponseInterface {
+        if ($this->errorHandler) {
+            $context = new Context($request, [], "");
+            return call_user_func($this->errorHandler, $e, $context);
+        }
+
+        $customResponse = $e->getCustomResponse();
+        if ($customResponse) {
+            return $customResponse;
+        }
+
+        $context = new Context($request, [], "");
+        return $context->json($e->toArray(), $e->getStatusCode());
+    }
+
+    /**
+     * Handle generic exceptions
+     *
+     * @param \Exception $e The caught exception
+     * @param ServerRequestInterface $request The original request
+     * @return ResponseInterface The response
+     */
+    private function handleGenericException(
+        \Exception $e,
+        ServerRequestInterface $request
+    ): ResponseInterface {
+        $context = new Context($request, [], "");
+        return $context->json(["error" => "Internal Server Error"], 500);
+
+        if ($this->errorHandler) {
+            $context = new Context($request, [], "");
+            return call_user_func($this->errorHandler, $e, $context);
+        }
+
+        $context = new Context($request, [], "");
+        return $context->json(["error" => "Internal Server Error"], 500);
+    }
+
+    private function getFullMiddlewareStack(): array
+    {
+        $stack = $this->middleware;
+
+        $current = $this;
+
+        while ($current->parent !== null) {
+            $stack = array_merge($current->parent->middleware, $stack);
+            $current = $current->parent;
+        }
+
+        return $stack;
     }
 }
