@@ -1,6 +1,6 @@
-# Basic Auth Example
+# Basic Auth Nested Route Example
 
-This example demonstrates how to use Basic authentication in Dumbo.
+This example demonstrates how to use Basic authentication in Dumbo using nested routes (e.g. `/api`).
 
 ## Running the Example
 
