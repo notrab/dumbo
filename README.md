@@ -190,3 +190,52 @@ $app->post('/', function(Context $c) {
     }
 });
 ```
+
+### Basic Auth
+
+Implementing Basic authentication on Cloudflare Workers or other platforms can be complex. This helper middleware offers a straightforward solution for securing specific routes.
+
+```php
+<?php
+
+use Dumbo\Dumbo;
+use Dumbo\Context;
+
+use Dumbo\Helpers\BasicAuth;
+
+$app = new Dumbo();
+
+// Use case 1: Static username and password
+$app->use(BasicAuth::basicAuth([
+    'username' => 'dumbo',
+    'password' => 'youarecool',
+    'realm' => 'Secure Area',
+]));
+
+// Use case 2: Dynamic verification function
+$app->use(BasicAuth::basicAuth([
+    'verifyUser' => function ($username, $password, Context $ctx) {
+        return $username === 'dynamic-user' && $password === 'dumbo-password';
+    },
+    'realm' => 'Secure Area',
+]));
+
+// Use case 3: Multiple static users
+$app->use(BasicAuth::basicAuth([
+    'users' => [
+        ['username' => 'user1', 'password' => 'pass1'],
+        ['username' => 'user2', 'password' => 'pass2'],
+    ],
+    'realm' => 'Secure Area',
+]));
+
+// Define the route
+$app->get("/", function (Context $ctx) {
+    return $ctx->json([
+        "status" => 'success',
+        "message" => "Your authentication is successful! 😎"
+    ], 200);
+});
+
+$app->run();
+```
