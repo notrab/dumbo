@@ -1,3 +1,7 @@
 vendor
 .DS_Store
+.idea/
 composer.lock
+.idea
+.fleet
+.vscode
