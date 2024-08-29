@@ -106,7 +106,11 @@ $app->get("/", function ($c) {
 
 $app->get("/error", function ($c) {
     $customResponse = $c->html("<h1>Something went wrong</h1>", 404);
-    throw new HTTPException(404, "Something went wrong", $customResponse);
+    throw new HTTPException(
+        statusCode: 404,
+        message: "Something went wrong",
+        customResponse: $customResponse
+    );
 });
 
 $app->run();
