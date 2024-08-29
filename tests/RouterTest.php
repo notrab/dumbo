@@ -1,5 +1,7 @@
 <?php
 
+namespace Dumbo\Tests;
+
 use PHPUnit\Framework\TestCase;
 use Dumbo\Router;
 use Dumbo\Context;

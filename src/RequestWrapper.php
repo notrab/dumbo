@@ -4,6 +4,9 @@ namespace Dumbo;
 
 use Psr\Http\Message\ServerRequestInterface;
 
+/**
+ * Interface for the RequestWrapper class
+ */
 #[\Attribute]
 interface RequestWrapperInterface
 {
@@ -18,6 +21,9 @@ interface RequestWrapperInterface
     public function routePath(): string;
 }
 
+/**
+ * RequestWrapper class for handling HTTP request details in the Dumbo framework
+ */
 class RequestWrapper implements RequestWrapperInterface
 {
     /** @var array The parsed request body */
@@ -25,7 +31,7 @@ class RequestWrapper implements RequestWrapperInterface
 
     /**
      * @param ServerRequestInterface $request The server request object
-     * @param array $params The route parameters
+     * @param array $params The route parameters extracted by FastRoute
      * @param string $routePath The registered route path
      */
     public function __construct(
@@ -46,7 +52,7 @@ class RequestWrapper implements RequestWrapperInterface
      */
     public function path(): string
     {
-        return $this->request->getUri()->getPath();
+        return $this->normalizeUri($this->request->getUri()->getPath());
     }
 
     /**
@@ -72,15 +78,19 @@ class RequestWrapper implements RequestWrapperInterface
         $contentType = $this->request->getHeaderLine("Content-Type");
         $body = (string) $this->request->getBody();
 
-        return match (true) {
-            str_contains($contentType, "application/json") => json_decode(
-                $body,
-                true
-            ) ?? [],
-            str_contains($contentType, "application/x-www-form-urlencoded")
-                => $this->parseFormUrlEncoded($body),
-            default => $this->request->getParsedBody() ?? [],
-        };
+        if (str_contains($contentType, "application/json")) {
+            return json_decode($body, true) ?? [];
+        }
+
+        if (str_contains($contentType, "application/x-www-form-urlencoded")) {
+            $data = [];
+
+            parse_str($body, $data);
+
+            return $data;
+        }
+
+        return $this->request->getParsedBody() ?? [];
     }
 
     /**
@@ -92,7 +102,9 @@ class RequestWrapper implements RequestWrapperInterface
     private function parseFormUrlEncoded(string $body): array
     {
         $data = [];
+
         parse_str($body, $data);
+
         return $data;
     }
 
@@ -102,7 +114,7 @@ class RequestWrapper implements RequestWrapperInterface
      * @param string $name The parameter name
      * @return string|null The parameter value or null if not found
      */
-    public function param($name): ?string
+    public function param(string $name): ?string
     {
         return $this->params[$name] ?? null;
     }
@@ -189,5 +201,16 @@ class RequestWrapper implements RequestWrapperInterface
     {
         $headers = $this->request->getHeader($name);
         return !empty($headers) ? $headers[0] : null;
+    }
+
+    /**
+     * Normalize the given URI by ensuring it starts with a forward slash
+     *
+     * @param string $uri The URI to normalize
+     * @return string The normalized URI
+     */
+    private function normalizeUri(string $uri): string
+    {
+        return "/" . trim($uri, "/");
     }
 }
