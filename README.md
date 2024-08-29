@@ -206,36 +206,53 @@ use Dumbo\Helpers\BasicAuth;
 $app = new Dumbo();
 
 // Use case 1: Static username and password
-$app->use(BasicAuth::basicAuth([
-    'username' => 'dumbo',
-    'password' => 'youarecool',
-    'realm' => 'Secure Area',
-]));
+$app->use(BasicAuth::basicAuth("user:password"));
 
-// Use case 2: Dynamic verification function
+// Use case 2: Dynamic verification
 $app->use(BasicAuth::basicAuth([
-    'verifyUser' => function ($username, $password, Context $ctx) {
-        return $username === 'dynamic-user' && $password === 'dumbo-password';
-    },
-    'realm' => 'Secure Area',
-]));
+        "verifyUser" => function ($username, $password, $ctx) {
+            // You could call a database here...
+            $validUsers = [
+                "admin" => "strongpassword",
+                "user" => "password",
+            ];
+            return isset($validUsers[$username]) &&
+                $validUsers[$username] === $password;
+        },
+        "realm" => "Admin Area",
+        ])
+);
 
-// Use case 3: Multiple static users
+// Use case 3: For multiple users
 $app->use(BasicAuth::basicAuth([
-    'users' => [
-        ['username' => 'user1', 'password' => 'pass1'],
-        ['username' => 'user2', 'password' => 'pass2'],
+    // You could call a database here...
+    "users" => [
+        ["username" => "user1", "password" => "pass1"],
+        ["username" => "user2", "password" => "pass2"],
     ],
-    'realm' => 'Secure Area',
-]));
+    "realm" => "Admin Area"
+    ])
+);
 
-// Define the route
+// Define routes for the above three use cases
 $app->get("/", function (Context $ctx) {
     return $ctx->json([
         "status" => 'success',
-        "message" => "Your authentication is successful! 😎"
+        "message" => "Your authentication is successful!!!"
     ], 200);
 });
+
+// Use case 4: For nested routes
+$api = new Dumbo();
+
+$api->use(BasicAuth::basicAuth("user:password"));
+
+$api->get("/", function (Context $c) {
+    return $c->html("<h1>Your authentication is successful! 😎</h1>");
+});
+
+$app->route("/api", $api);
+
 
 $app->run();
 ```
