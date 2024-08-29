@@ -22,7 +22,7 @@ use Dumbo\Dumbo;
 $app = new Dumbo();
 
 $app->get("/", function ($c) {
-    return $c->json('Hello Dumbo!');
+    return $context->json('Hello Dumbo!');
 });
 
 $app->run();
@@ -45,9 +45,9 @@ $app->delete('/users/:id', function($c) { /* ... */ });
 <?php
 
 $app->get('/users/:id', function($c) {
-    $id = $c->req->param('id');
+    $id = $context->req->param('id');
 
-    return $c->json(['id' => $id]);
+    return $context->json(['id' => $id]);
 });
 ```
 
@@ -59,7 +59,7 @@ $app->get('/users/:id', function($c) {
 $nestedApp = new Dumbo();
 
 $nestedApp->get('/nested', function($c) {
-    return $c->text('This is a nested route');
+    return $context->text('This is a nested route');
 });
 
 $app->route('/prefix', $nestedApp);
@@ -72,12 +72,12 @@ $app->route('/prefix', $nestedApp);
 <?php
 
 $app->get('/', function($c) {
-    $pathname = $c->req->pathname();
-    $routePath = $c->req->routePath();
-    $queryParam = $c->req->query('param');
-    $tags = $c->req->queries('tags');
-    $body = $c->req->body();
-    $userAgent = $c->req->header('User-Agent');
+    $pathname = $context->req->pathname();
+    $routePath = $context->req->routePath();
+    $queryParam = $context->req->query('param');
+    $tags = $context->req->queries('tags');
+    $body = $context->req->body();
+    $userAgent = $context->req->header('User-Agent');
 });
 ```
 
@@ -86,10 +86,10 @@ $app->get('/', function($c) {
 ```php
 <?php
 
-return $c->json(['key' => 'value']);
-return $c->text('Hello, World!');
-return $c->html('<h1>Hello, World!</h1>');
-return $c->redirect('/new-url');
+return $context->json(['key' => 'value']);
+return $context->text('Hello, World!');
+return $context->html('<h1>Hello, World!</h1>');
+return $context->redirect('/new-url');
 ```
 
 ## Middleware
@@ -139,7 +139,7 @@ $app->use(BearerAuth::bearerAuth([
 ]));
 
 $protectedRoutes->get("/", function ($c) {
-    return $c->json(["message" => "Welcome to the protected routes!"]);
+    return $context->json(["message" => "Welcome to the protected routes!"]);
 });
 
 $app->route("/api", $protectedRoutes);
@@ -170,16 +170,16 @@ $app->onError(function (\Exception $error, Context $c) {
     // Custom error response
     if ($error instanceof HTTPException) {
         // We can now use the toArray() method to get a structured error response
-        return $c->json($error->toArray(), $error->getStatusCode());
+        return $context->json($error->toArray(), $error->getStatusCode());
     }
 
     // Gotta catch 'em all
-    return $c->json(['error' => 'Internal Server Error'], 500);
+    return $context->json(['error' => 'Internal Server Error'], 500);
 });
 
 $app->post('/', function(Context $c) {
     if (!doSomething()) {
-        $customResponse = $c->html('<h1>Something went wrong</h1>', 404);
+        $customResponse = $context->html('<h1>Something went wrong</h1>', 404);
         throw new HTTPException(
             404,
             'Something went wrong',
@@ -236,7 +236,7 @@ $app->use(BasicAuth::basicAuth([
 
 // Define routes for the above three use cases
 $app->get("/", function (Context $ctx) {
-    return $ctx->json([
+    return $context->json([
         "status" => 'success',
         "message" => "Your authentication is successful!!!"
     ], 200);
@@ -248,7 +248,7 @@ $api = new Dumbo();
 $api->use(BasicAuth::basicAuth("user:password"));
 
 $api->get("/", function (Context $c) {
-    return $c->html("<h1>Your authentication is successful! 😎</h1>");
+    return $context->html("<h1>Your authentication is successful! 😎</h1>");
 });
 
 $app->route("/api", $api);
