@@ -24,6 +24,7 @@ use GuzzleHttp\Psr7\ServerRequest;
 class Dumbo
 {
     private Router $router;
+    private bool $removeTrailingSlash = true;
 
     /** @var array<callable> */
     private $middleware = [];
@@ -115,6 +116,17 @@ class Dumbo
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
+        if ($this->removeTrailingSlash) {
+            $uri = $request->getUri();
+            $path = $uri->getPath();
+
+            if (strlen($path) > 1 && substr($path, -1) === "/") {
+                $newPath = rtrim($path, "/");
+                $newUri = $uri->withPath($newPath);
+                return new Response(301, ["Location" => (string) $newUri]);
+            }
+        }
+
         try {
             $route = $this->router->findRoute($request);
 

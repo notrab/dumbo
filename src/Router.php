@@ -48,22 +48,17 @@ class Router
     public function findRoute(ServerRequestInterface $request): ?array
     {
         if (!$this->dispatcher) {
-            error_log("Dispatcher is null");
             return null;
         }
 
         $httpMethod = $request->getMethod();
-        $uri = "/" . trim($request->getUri()->getPath(), "/");
-
-        error_log("Attempting to match route: $httpMethod $uri");
+        $uri = $this->normalizeUri($request->getUri()->getPath());
 
         $routeInfo = $this->dispatcher->dispatch($httpMethod, $uri);
 
         if ($routeInfo[0] === Dispatcher::FOUND) {
             $handler = $routeInfo[1];
             $vars = $routeInfo[2];
-
-            error_log("Route found: " . json_encode($handler));
 
             return [
                 "handler" => $handler["handler"],
@@ -73,7 +68,6 @@ class Router
             ];
         }
 
-        error_log("No matching route found");
         return null;
     }
 
@@ -91,7 +85,7 @@ class Router
     private function preparePath(string $path): string
     {
         $path = preg_replace("/:(\w+)/", '{$1}', $path);
-        return "/" . trim($path, "/");
+        return $this->normalizeUri($path);
     }
 
     private function rebuildDispatcher(): void
@@ -104,5 +98,10 @@ class Router
                 $r->addRoute($route["method"], $path, $route);
             }
         });
+    }
+
+    private function normalizeUri(string $uri): string
+    {
+        return "/" . trim($uri, "/");
     }
 }
