@@ -131,7 +131,7 @@ $protectedRoutes->use(BearerAuth::bearerAuth($token, 'Unauthorized request.'));
 
 // Custom token verification function
 $app->use(BearerAuth::bearerAuth([
-    'verifyToken' => function($token, $ctx) {
+    'verifyToken' => function($token, $context) {
         // Perform custom token verification logic
         return verifyJWT($token);
     },
@@ -210,7 +210,7 @@ $app->use(BasicAuth::basicAuth("user:password"));
 
 // Use case 2: Dynamic verification
 $app->use(BasicAuth::basicAuth([
-        "verifyUser" => function ($username, $password, $ctx) {
+        "verifyUser" => function ($username, $password, $context) {
             // You could call a database here...
             $validUsers = [
                 "admin" => "strongpassword",
@@ -235,7 +235,7 @@ $app->use(BasicAuth::basicAuth([
 );
 
 // Define routes for the above three use cases
-$app->get("/", function (Context $ctx) {
+$app->get("/", function (Context $context) {
     return $context->json([
         "status" => 'success',
         "message" => "Your authentication is successful!!!"
@@ -276,7 +276,7 @@ $app->use(RequestId::requestId());
 //     RequestId::requestId([
 //         "headerName" => "X-Custom-Request-Id",
 //         "limitLength" => 128,
-//         "generator" => function ($ctx) {
+//         "generator" => function ($context) {
 //             return uniqid("custom-", true);
 //         },
 //     ])
