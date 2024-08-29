@@ -93,13 +93,14 @@ class Dumbo
         $nestedApp->parent = $this;
 
         foreach ($nestedApp->router->getRoutes() as $route) {
+            $fullPath = rtrim($prefix, "/") . "/" . ltrim($route["path"], "/");
             $this->router->addRoute(
                 $route["method"],
-                $prefix . $route["path"],
+                $fullPath,
                 $route["handler"],
                 array_merge(
                     $this->middleware,
-                    $nestedApp->middleware,
+                    $nestedApp->getMiddleware(),
                     $route["middleware"] ?? []
                 )
             );
