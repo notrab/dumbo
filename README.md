@@ -21,7 +21,7 @@ use Dumbo\Dumbo;
 
 $app = new Dumbo();
 
-$app->get("/", function ($c) {
+$app->get("/", function ($context) {
     return $context->json('Hello Dumbo!');
 });
 
@@ -33,10 +33,10 @@ $app->run();
 ```php
 <?php
 
-$app->get('/users', function($c) { /* ... */ });
-$app->post('/users', function($c) { /* ... */ });
-$app->put('/users/:id', function($c) { /* ... */ });
-$app->delete('/users/:id', function($c) { /* ... */ });
+$app->get('/users', function($context) { /* ... */ });
+$app->post('/users', function($context) { /* ... */ });
+$app->put('/users/:id', function($context) { /* ... */ });
+$app->delete('/users/:id', function($context) { /* ... */ });
 ```
 
 ### Params
@@ -44,7 +44,7 @@ $app->delete('/users/:id', function($c) { /* ... */ });
 ```php
 <?php
 
-$app->get('/users/:id', function($c) {
+$app->get('/users/:id', function($context) {
     $id = $context->req->param('id');
 
     return $context->json(['id' => $id]);
@@ -58,7 +58,7 @@ $app->get('/users/:id', function($c) {
 
 $nestedApp = new Dumbo();
 
-$nestedApp->get('/nested', function($c) {
+$nestedApp->get('/nested', function($context) {
     return $context->text('This is a nested route');
 });
 
@@ -71,7 +71,7 @@ $app->route('/prefix', $nestedApp);
 ```php
 <?php
 
-$app->get('/', function($c) {
+$app->get('/', function($context) {
     $pathname = $context->req->pathname();
     $routePath = $context->req->routePath();
     $queryParam = $context->req->query('param');
@@ -97,8 +97,8 @@ return $context->redirect('/new-url');
 ```php
 <?php
 
-$app->use(function($c, $next) {
-    $response = $next($c);
+$app->use(function($context, $next) {
+    $response = $next($context);
 
     return $response;
 });
@@ -138,7 +138,7 @@ $app->use(BearerAuth::bearerAuth([
     'realm' => 'JWT API'
 ]));
 
-$protectedRoutes->get("/", function ($c) {
+$protectedRoutes->get("/", function ($context) {
     return $context->json(["message" => "Welcome to the protected routes!"]);
 });
 
@@ -152,7 +152,7 @@ $app->route("/api", $protectedRoutes);
 
 $app = new Dumbo();
 
-$app->post('/', function(Context $c) {
+$app->post('/', function(Context $context) {
     if (!checkAuthStatus()) {
         throw new HTTPException(401, 'Unauthorized');
     }
@@ -166,7 +166,7 @@ Or with a custom response:
 
 $app = new Dumbo();
 
-$app->onError(function (\Exception $error, Context $c) {
+$app->onError(function (\Exception $error, Context $context) {
     // Custom error response
     if ($error instanceof HTTPException) {
         // We can now use the toArray() method to get a structured error response
@@ -177,7 +177,7 @@ $app->onError(function (\Exception $error, Context $c) {
     return $context->json(['error' => 'Internal Server Error'], 500);
 });
 
-$app->post('/', function(Context $c) {
+$app->post('/', function(Context $context) {
     if (!doSomething()) {
         $customResponse = $context->html('<h1>Something went wrong</h1>', 404);
         throw new HTTPException(
@@ -247,7 +247,7 @@ $api = new Dumbo();
 
 $api->use(BasicAuth::basicAuth("user:password"));
 
-$api->get("/", function (Context $c) {
+$api->get("/", function (Context $context) {
     return $context->html("<h1>Your authentication is successful! 😎</h1>");
 });
 

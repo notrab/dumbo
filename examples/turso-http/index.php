@@ -19,29 +19,29 @@ $client->execute("
 
 $app = new Dumbo();
 
-$app->get("/users", function ($c) use ($client) {
+$app->get("/users", function ($context) use ($client) {
     $result = $client->execute("SELECT * FROM users");
 
-    return $c->json($result);
+    return $context->json($result);
 });
 
-$app->get("/users/:id", function ($c) use ($client) {
-    $id = $c->req->param("id");
+$app->get("/users/:id", function ($context) use ($client) {
+    $id = $context->req->param("id");
 
     $result = $client->execute("SELECT * FROM users WHERE id = ?", [$id]);
 
     if (empty($result)) {
-        return $c->json(["error" => "User not found"], 404);
+        return $context->json(["error" => "User not found"], 404);
     }
 
-    return $c->json($result[0]);
+    return $context->json($result[0]);
 });
 
-$app->post("/users", function ($c) use ($client) {
-    $body = $c->req->body();
+$app->post("/users", function ($context) use ($client) {
+    $body = $context->req->body();
 
     if (!isset($body["name"]) || !isset($body["email"])) {
-        return $c->json(["error" => "Name and email are required"], 400);
+        return $context->json(["error" => "Name and email are required"], 400);
     }
 
     $result = $client->execute(
@@ -49,15 +49,15 @@ $app->post("/users", function ($c) use ($client) {
         [$body["name"], $body["email"]]
     );
 
-    return $c->json(["id" => $result[0]["id"]], 201);
+    return $context->json(["id" => $result[0]["id"]], 201);
 });
 
-$app->put("/users/:id", function ($c) use ($client) {
-    $id = $c->req->param("id");
-    $body = $c->req->body();
+$app->put("/users/:id", function ($context) use ($client) {
+    $id = $context->req->param("id");
+    $body = $context->req->body();
 
     if (!isset($body["name"]) && !isset($body["email"])) {
-        return $c->json(["error" => "Name or email is required"], 400);
+        return $context->json(["error" => "Name or email is required"], 400);
     }
 
     $setClause = [];
@@ -82,24 +82,24 @@ $app->put("/users/:id", function ($c) use ($client) {
     );
 
     if (empty($result)) {
-        return $c->json(["error" => "User not found"], 404);
+        return $context->json(["error" => "User not found"], 404);
     }
 
-    return $c->json($result[0]);
+    return $context->json($result[0]);
 });
 
-$app->delete("/users/:id", function ($c) use ($client) {
-    $id = $c->req->param("id");
+$app->delete("/users/:id", function ($context) use ($client) {
+    $id = $context->req->param("id");
 
     $result = $client->execute("DELETE FROM users WHERE id = ? RETURNING id", [
         $id,
     ]);
 
     if (empty($result)) {
-        return $c->json(["error" => "User not found"], 404);
+        return $context->json(["error" => "User not found"], 404);
     }
 
-    return $c->json(["message" => "User deleted successfully"]);
+    return $context->json(["message" => "User deleted successfully"]);
 });
 
 $app->run();

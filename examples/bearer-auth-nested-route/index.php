@@ -12,8 +12,10 @@ $token = "mysupersecret";
 
 $api->use(BearerAuth::bearerAuth($token));
 
-$api->get("/", function ($c) {
-    return $c->json(["message" => "Protected route accessed successfully"]);
+$api->get("/", function ($context) {
+    return $context->json([
+        "message" => "Protected route accessed successfully",
+    ]);
 });
 
 $app->route("/api", $api);

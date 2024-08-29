@@ -13,12 +13,12 @@ $app->use(
             ["username" => "user1", "password" => "pass1"],
             ["username" => "user2", "password" => "pass2"],
         ],
-        "realm" => "Admin Area"
+        "realm" => "Admin Area",
     ])
 );
 
-$app->get("/", function ($c) {
-    return $c->html("<h1>Welcome to the protected area!</h1>");
+$app->get("/", function ($context) {
+    return $context->html("<h1>Welcome to the protected area!</h1>");
 });
 
 $app->run();

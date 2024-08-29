@@ -22,8 +22,8 @@ $app->use(
     ])
 );
 
-$app->get("/", function ($c) {
-    return $c->html("<h1>Welcome to the admin area!</h1>");
+$app->get("/", function ($context) {
+    return $context->html("<h1>Welcome to the admin area!</h1>");
 });
 
 $app->run();

@@ -9,8 +9,8 @@ $app = new Dumbo();
 
 $app->use(BasicAuth::basicAuth("user:password"));
 
-$app->get("/", function ($c) {
-    return $c->html("<h1>Welcome to the protected area!</h1>");
+$app->get("/", function ($context) {
+    return $context->html("<h1>Welcome to the protected area!</h1>");
 });
 
 $app->run();
