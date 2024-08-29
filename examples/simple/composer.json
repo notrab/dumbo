@@ -5,7 +5,7 @@
   "repositories": [
     {
       "type": "path",
-      "url": "../"
+      "url": "../../"
     }
   ],
   "scripts": {
