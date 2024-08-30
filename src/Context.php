@@ -9,6 +9,8 @@ use GuzzleHttp\Psr7\Response;
 /**
  * Context class for handling request and response in the Dumbo framework
  *
+ * This class encapsulates the request, response, and route information for each HTTP request.
+ *
  * @package Dumbo
  * @author Jamie Barton
  * @version 1.0.0
@@ -28,7 +30,7 @@ class Context
      * Context constructor
      *
      * @param ServerRequestInterface $request The server request object
-     * @param array $params The route parameters
+     * @param array $params The route parameters extracted by FastRoute
      * @param string $routePath The registered route path
      */
     public function __construct(
