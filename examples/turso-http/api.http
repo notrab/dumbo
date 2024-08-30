@@ -1,0 +1,21 @@
+POST http://localhost:8003/users
+Content-Type: application/json
+
+{
+    "name": "darkterminal",
+    "email": "darkterminal@duck.com"
+}
+
+###
+
+PUT http://localhost:8003/users/1
+Content-Type: application/json
+
+{
+    "name": "Imam Ali Mustofa",
+    "email": "darkterminal@duck.com"
+}
+
+###
+
+DELETE http://localhost:8002/users/1

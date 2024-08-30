@@ -1,7 +1,7 @@
 {
   "require": {
     "notrab/dumbo": "@dev",
-    "darkterminal/turso-http": "^2.9"
+    "darkterminal/turso-client-http": "^2.9"
   },
   "repositories": [
     {
@@ -10,6 +10,9 @@
     }
   ],
   "scripts": {
-    "start": "php -S localhost:8000 index.php"
+    "start": [
+      "Composer\\Config::disableProcessTimeout",
+      "php -S localhost:8000 -t ."
+    ]
   }
 }
