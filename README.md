@@ -66,7 +66,7 @@ $app->route('/prefix', $nestedApp);
 
 ```
 
-### Context
+## Context
 
 ```php
 <?php
@@ -81,7 +81,7 @@ $app->get('/', function($context) {
 });
 ```
 
-## Response
+### Response
 
 ```php
 <?php
@@ -92,7 +92,7 @@ return $context->html('<h1>Hello, World!</h1>');
 return $context->redirect('/new-url');
 ```
 
-## Middleware
+### Middleware
 
 ```php
 <?php
@@ -102,6 +102,34 @@ $app->use(function($context, $next) {
 
     return $response;
 });
+```
+
+### Custom context
+
+```php
+<?php
+
+$app = new Dumbo();
+
+// Set configuration values
+$app->set('DB_URL', 'mysql://user:pass@localhost/mydb');
+$app->set('API_KEY', 'your-secret-key');
+$app->set('DEBUG', true);
+
+// Get configuration values
+$dbUrl = $app->get('DB_URL');
+$apiKey = $app->get('API_KEY');
+$debug = $app->get('DEBUG');
+
+// Use configuration in your routes
+$app->get('/api/data', function(Context $ctx) {
+    $apiKey = $ctx->get('API_KEY');
+
+    // Use $apiKey in your logic...
+    return $ctx->json(['message' => 'API key is set']);
+});
+
+$app->run();
 ```
 
 ## Helpers
