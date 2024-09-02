@@ -4,6 +4,12 @@ This example demonstrates how to use Turso HTTP with Dumbo to build a simple CRU
 
 ## Running the Example
 
+0. Turso DEV CLI
+
+```
+turso dev -p 8001
+```
+
 1. Install dependencies:
 
    ```bash
