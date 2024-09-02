@@ -4,37 +4,43 @@ This example demonstrates how to use Turso HTTP with Dumbo to build a simple CRU
 
 ## Running the Example
 
-0. Turso DEV CLI
+1. Install Turso CLI:
 
-```
-turso dev -p 8001
-```
+   ```bash
+   brew install tursodatabase/tap/turso
+   ```
 
-1. Install dependencies:
+2. Run Turso development server:
+
+   ```bash
+   turso dev -p 8001
+   ```
+
+3. Install dependencies:
 
    ```bash
    composer install
    ```
 
-2. Start the server:
+4. Start the server:
 
    ```bash
    composer start
    ```
 
-3. Get all users:
+5. Get all users:
 
    ```bash
    curl http://localhost:8000/users
    ```
 
-4. Get a specific user (replace 1 with the desired user ID):
+6. Get a specific user (replace 1 with the desired user ID):
 
    ```bash
    curl http://localhost:8000/users/1
    ```
 
-5. Create a new user:
+7. Create a new user:
 
    ```bash
    curl -X POST http://localhost:8000/users \
@@ -42,7 +48,7 @@ turso dev -p 8001
      -d '{"name": "John Doe", "email": "john@example.com"}'
    ```
 
-6. Update a user (replace `1` with the desired user ID):
+8. Update a user (replace `1` with the desired user ID):
 
    ```bash
    curl -X PUT http://localhost:8000/users/1 \
@@ -50,7 +56,7 @@ turso dev -p 8001
      -d '{"name": "John Updated", "email": "john.updated@example.com"}'
    ```
 
-7. Delete a user (replace `1` with the desired user ID):
+9. Delete a user (replace `1` with the desired user ID):
 
    ```bash
    curl -X DELETE http://localhost:8000/users/1
