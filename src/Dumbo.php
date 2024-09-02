@@ -24,6 +24,7 @@ use GuzzleHttp\Psr7\ServerRequest;
 class Dumbo
 {
     private Router $router;
+    private bool $removeTrailingSlash = true;
 
     /** @var array<callable> */
     private $middleware = [];
@@ -93,13 +94,14 @@ class Dumbo
         $nestedApp->parent = $this;
 
         foreach ($nestedApp->router->getRoutes() as $route) {
+            $fullPath = rtrim($prefix, "/") . "/" . ltrim($route["path"], "/");
             $this->router->addRoute(
                 $route["method"],
-                $prefix . $route["path"],
+                $fullPath,
                 $route["handler"],
                 array_merge(
                     $this->middleware,
-                    $nestedApp->middleware,
+                    $nestedApp->getMiddleware(),
                     $route["middleware"] ?? []
                 )
             );
@@ -114,33 +116,53 @@ class Dumbo
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
+        if ($this->removeTrailingSlash) {
+            $uri = $request->getUri();
+            $path = $uri->getPath();
+
+            if (strlen($path) > 1 && substr($path, -1) === "/") {
+                $newPath = rtrim($path, "/");
+                $newUri = $uri->withPath($newPath);
+                return new Response(301, ["Location" => (string) $newUri]);
+            }
+        }
+
         try {
             $route = $this->router->findRoute($request);
 
+            $context = new Context(
+                $request,
+                $route ? $route["params"] : [],
+                $route ? $route["routePath"] : ""
+            );
+
+            $fullMiddlewareStack = $this->getFullMiddlewareStack();
+
             if ($route) {
-                $context = new Context(
-                    $request,
-                    $route["params"],
-                    $route["routePath"]
+                $fullMiddlewareStack = array_unique(
+                    array_merge(
+                        $fullMiddlewareStack,
+                        $route["middleware"] ?? []
+                    ),
+                    SORT_REGULAR
                 );
 
-                $fullMiddlewareStack = array_merge(
-                    $this->getFullMiddlewareStack(),
-                    $route["middleware"] ?? []
-                );
-
-                $response = $this->runMiddleware(
-                    $context,
-                    $route["handler"],
-                    $fullMiddlewareStack
-                );
-
-                return $response instanceof ResponseInterface
-                    ? $response
-                    : $context->getResponse();
+                $handler = $route["handler"];
+            } else {
+                $handler = function () {
+                    return new Response(404, [], "404 Not Found");
+                };
             }
 
-            return new Response(404, [], "404 Not Found");
+            $response = $this->runMiddleware(
+                $context,
+                $handler,
+                $fullMiddlewareStack
+            );
+
+            return $response instanceof ResponseInterface
+                ? $response
+                : $context->getResponse();
         } catch (HTTPException $e) {
             return $this->handleHTTPException($e, $request);
         } catch (\Exception $e) {
@@ -278,9 +300,6 @@ class Dumbo
         \Exception $e,
         ServerRequestInterface $request
     ): ResponseInterface {
-        $context = new Context($request, [], "");
-        return $context->json(["error" => "Internal Server Error"], 500);
-
         if ($this->errorHandler) {
             $context = new Context($request, [], "");
             return call_user_func($this->errorHandler, $e, $context);
@@ -293,7 +312,6 @@ class Dumbo
     private function getFullMiddlewareStack(): array
     {
         $stack = $this->middleware;
-
         $current = $this;
 
         while ($current->parent !== null) {
