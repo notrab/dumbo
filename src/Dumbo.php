@@ -130,30 +130,36 @@ class Dumbo
         try {
             $route = $this->router->findRoute($request);
 
+            $context = new Context(
+                $request,
+                $route ? $route["params"] : [],
+                $route ? $route["routePath"] : ""
+            );
+
+            $fullMiddlewareStack = $this->getFullMiddlewareStack();
+
             if ($route) {
-                $context = new Context(
-                    $request,
-                    $route["params"],
-                    $route["routePath"]
-                );
-
-                $fullMiddlewareStack = array_merge(
-                    $this->getFullMiddlewareStack(),
+                $fullMiddlewareStack = array_unique(array_merge(
+                    $fullMiddlewareStack,
                     $route["middleware"] ?? []
-                );
+                ), SORT_REGULAR);
 
-                $response = $this->runMiddleware(
-                    $context,
-                    $route["handler"],
-                    $fullMiddlewareStack
-                );
-
-                return $response instanceof ResponseInterface
-                    ? $response
-                    : $context->getResponse();
+                $handler = $route["handler"];
+            } else {
+                $handler = function () {
+                    return new Response(404, [], "404 Not Found");
+                };
             }
 
-            return new Response(404, [], "404 Not Found");
+            $response = $this->runMiddleware(
+                $context,
+                $handler,
+                $fullMiddlewareStack
+            );
+
+            return $response instanceof ResponseInterface
+                ? $response
+                : $context->getResponse();
         } catch (HTTPException $e) {
             return $this->handleHTTPException($e, $request);
         } catch (\Exception $e) {
@@ -306,7 +312,6 @@ class Dumbo
     private function getFullMiddlewareStack(): array
     {
         $stack = $this->middleware;
-
         $current = $this;
 
         while ($current->parent !== null) {

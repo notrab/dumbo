@@ -1,0 +1,15 @@
+{
+  "require": {
+    "notrab/dumbo": "@dev",
+    "monolog/monolog": "^3.7"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../"
+    }
+  ],
+  "scripts": {
+    "start": "php -S localhost:8000 index.php"
+  }
+}
