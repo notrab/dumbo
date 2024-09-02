@@ -139,10 +139,13 @@ class Dumbo
             $fullMiddlewareStack = $this->getFullMiddlewareStack();
 
             if ($route) {
-                $fullMiddlewareStack = array_unique(array_merge(
-                    $fullMiddlewareStack,
-                    $route["middleware"] ?? []
-                ), SORT_REGULAR);
+                $fullMiddlewareStack = array_unique(
+                    array_merge(
+                        $fullMiddlewareStack,
+                        $route["middleware"] ?? []
+                    ),
+                    SORT_REGULAR
+                );
 
                 $handler = $route["handler"];
             } else {
@@ -297,9 +300,6 @@ class Dumbo
         \Exception $e,
         ServerRequestInterface $request
     ): ResponseInterface {
-        $context = new Context($request, [], "");
-        return $context->json(["error" => "Internal Server Error"], 500);
-
         if ($this->errorHandler) {
             $context = new Context($request, [], "");
             return call_user_func($this->errorHandler, $e, $context);
