@@ -1,0 +1,12 @@
+{
+  "require": {
+    "notrab/dumbo": "@dev"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../"
+    }
+  ],
+  "prefer-stable": false
+}
