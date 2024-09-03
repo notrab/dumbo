@@ -203,6 +203,11 @@ class RequestWrapper implements RequestWrapperInterface
         return !empty($headers) ? $headers[0] : null;
     }
 
+    public function getUploadedFiles(): array
+    {
+        return $this->request->getUploadedFiles();
+    }
+
     /**
      * Normalize the given URI by ensuring it starts with a forward slash
      *
