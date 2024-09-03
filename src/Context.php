@@ -24,7 +24,7 @@ class Context
     private ResponseInterface $response;
 
     /** @var array<string, mixed> Variables stored in the context */
-    private $variables = [];
+    private $configs = [];
 
     /**
      * Context constructor
@@ -36,10 +36,12 @@ class Context
     public function __construct(
         private ServerRequestInterface $request,
         private array $params,
-        private string $routePath
+        private string $routePath,
+        array $configs = []
     ) {
         $this->response = new Response();
         $this->req = new RequestWrapper($request, $params, $routePath);
+        $this->configs = array_merge($this->configs, $configs);
     }
 
     /**
@@ -50,7 +52,7 @@ class Context
      */
     public function set(string $key, mixed $value): void
     {
-        $this->variables[$key] = $value;
+        $this->configs[$key] = $value;
     }
 
     /**
@@ -61,7 +63,7 @@ class Context
      */
     public function get(string $key): mixed
     {
-        return $this->variables[$key] ?? null;
+        return $this->configs[$key] ?? null;
     }
 
     /**

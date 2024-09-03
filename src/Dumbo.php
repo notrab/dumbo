@@ -29,6 +29,20 @@ class Dumbo
     /** @var array<callable> */
     private $middleware = [];
 
+    /** @var array<string, mixed> Variables stored in the context */
+    private $configs = [];
+
+    public function set(string $key, $value): void
+    {
+        $this->configs[$key] = $value;
+    }
+
+    public function getConfig(): array
+    {
+        return $this->configs;
+    }
+
+
     private ?Dumbo $parent = null;
 
     private $errorHandler;
@@ -133,7 +147,8 @@ class Dumbo
             $context = new Context(
                 $request,
                 $route ? $route["params"] : [],
-                $route ? $route["routePath"] : ""
+                $route ? $route["routePath"] : "",
+                $this->getConfig()
             );
 
             $fullMiddlewareStack = $this->getFullMiddlewareStack();
