@@ -4,6 +4,7 @@ namespace Dumbo;
 
 use FastRoute\Dispatcher;
 use FastRoute\RouteCollector;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
