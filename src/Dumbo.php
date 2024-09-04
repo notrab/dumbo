@@ -2,6 +2,7 @@
 
 namespace Dumbo;
 
+use Dumbo\Traits\HasConfig;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use GuzzleHttp\Psr7\Response;
@@ -23,25 +24,13 @@ use GuzzleHttp\Psr7\ServerRequest;
  */
 class Dumbo
 {
+    use HasConfig;
+
     private Router $router;
     private bool $removeTrailingSlash = true;
 
     /** @var array<callable> */
     private $middleware = [];
-
-    /** @var array<string, mixed> Variables stored in the context */
-    private $variables = [];
-
-    public function set(string $key, $value): void
-    {
-        $this->configs[$key] = $value;
-    }
-
-    public function getConfig(): array
-    {
-        return $this->configs;
-    }
-
 
     private ?Dumbo $parent = null;
 
@@ -147,8 +136,7 @@ class Dumbo
             $context = new Context(
                 $request,
                 $route ? $route["params"] : [],
-                $route ? $route["routePath"] : "",
-                $this->getConfig()
+                $route ? $route["routePath"] : ""
             );
 
             $fullMiddlewareStack = $this->getFullMiddlewareStack();
