@@ -15,10 +15,15 @@ class BodyLimit
      * @param callable|null $onError Custom error handler (optional)
      * @return callable The middleware
      */
-    public static function limit(int $maxSize, callable $onError = null): callable
-    {
-        return function (Context $context, callable $next) use ($maxSize, $onError) {
-            $contentLength = $context->req->header('Content-Length');
+    public static function limit(
+        int $maxSize,
+        callable $onError = null
+    ): callable {
+        return function (Context $context, callable $next) use (
+            $maxSize,
+            $onError
+        ) {
+            $contentLength = $context->req->header("Content-Length");
 
             if ($contentLength !== null && (int) $contentLength > $maxSize) {
                 return self::handleError($context, $maxSize, $onError);
@@ -41,8 +46,11 @@ class BodyLimit
      * "BODY_TOO_LARGE". The exception will also have a "max_size" parameter set to
      * the provided $maxSize value.
      */
-    private static function handleError(Context $context, int $maxSize, callable $onError = null): ResponseInterface
-    {
+    private static function handleError(
+        Context $context,
+        int $maxSize,
+        callable $onError = null
+    ): ResponseInterface {
         if ($onError !== null) {
             return $onError($context, $maxSize);
         }
