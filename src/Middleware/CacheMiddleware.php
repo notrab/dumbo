@@ -29,7 +29,7 @@ class CacheMiddleware
                 return $next($ctx);
             }
 
-            $etag = self::generateEtag($ctx, $strictEtag);
+            $etag =  $request->header('If-None-Match') ?: self::generateEtag($ctx, $strictEtag);
 
             $lastModified = gmdate('D, d M Y H:i:s') . ' GMT';
             $cacheControlHeader = sprintf('%s, max-age=%d%s', $type, $maxAge, $mustRevalidate ? ', must-revalidate' : '');
