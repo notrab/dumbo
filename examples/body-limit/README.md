@@ -19,11 +19,13 @@ This example demonstrates how to use a body limit middleware in Dumbo.
 3. Access the route:
 
    Upload file less than 1MB (Success)
+
    ```bash
-      curl -X POST http://localhost:8000/upload -F "file=@/path/to/your/less-than-1MB.file"
+    curl -X POST http://localhost:8000/upload -F "file=@/path/to/your/less-than-1MB.file"
    ```
 
    Upload file larger than 1MB (Error)
+
    ```bash
-      curl -X POST http://localhost:8000/upload -F "file=@/path/to/your/file-larger-than-1MB.file"
+    curl -X POST http://localhost:8000/upload -F "file=@/path/to/your/file-larger-than-1MB.file"
    ```
