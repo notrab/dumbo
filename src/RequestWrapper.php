@@ -214,8 +214,4 @@ class RequestWrapper implements RequestWrapperInterface
         return "/" . trim($uri, "/");
     }
 
-    public function getUri(): string
-    {
-        return $this->request->getUri();
-    }
 }

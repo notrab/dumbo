@@ -16,7 +16,12 @@ class CacheMiddleware
         bool   $strictEtag = false,
     ): callable
     {
-        return function (Context $ctx, callable $next) use ($type, $mustRevalidate, $maxAge, $strictEtag): ResponseInterface {
+        return function (Context $ctx, callable $next) use (
+            $type,
+            $mustRevalidate,
+            $maxAge,
+            $strictEtag
+        ): ResponseInterface {
 
             $request = $ctx->req;
 
@@ -24,7 +29,8 @@ class CacheMiddleware
                 return $next($ctx);
             }
 
-            $etag = $request->header('If-None-Match') ?: sprintf('"W/%s"', md5($ctx->req->getUri()));
+            $etag = self::generateEtag($ctx, $strictEtag);
+
             $lastModified = gmdate('D, d M Y H:i:s') . ' GMT';
             $cacheControlHeader = sprintf('%s, max-age=%d%s', $type, $maxAge, $mustRevalidate ? ', must-revalidate' : '');
 
@@ -48,5 +54,14 @@ class CacheMiddleware
                 ->withHeader('ETag', $etag)
                 ->withHeader('Last-Modified', $lastModified);
         };
+    }
+
+    private static function generateEtag(Context $ctx, bool $strict): string
+    {
+        $identifier = $strict
+            ? $ctx->req->method() . $ctx->req->path() . serialize($ctx->req->query())
+            : $ctx->req->path();
+
+        return sprintf('"W/%s"', md5($identifier));
     }
 }
