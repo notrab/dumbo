@@ -16,13 +16,17 @@ This example demonstrates how to use the http cache middleware in Dumbo
    composer start
    ```
 
-3. Access the page:
-[Click here to access the page](http://localhost:8000/greet/dumbo)
+3. Access the route:
 
-4. Refresh the page to see the cache in action.
+   ```bash
+     curl -i http://localhost:8000/greet/dumbo
+   ```
+   
+4. Access the route again and pass it the `If-None-Match` header from the previous response:
 
-> **Note:** You can clear your browser cache by pressing `Ctrl + F5` or `Cmd + Shift + R` on Mac.
->
-> Open the developer tools in your browser and check the network tab to see the cache headers.
+   ```bash
+     curl -i -H "If-None-Match: $etag" http://localhost:8000/greet/dumbo
+   ```
+
 
 
