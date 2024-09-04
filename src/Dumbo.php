@@ -30,7 +30,7 @@ class Dumbo
     private $middleware = [];
 
     /** @var array<string, mixed> Variables stored in the context */
-    private $configs = [];
+    private $variables = [];
 
     public function set(string $key, $value): void
     {
