@@ -1,0 +1,41 @@
+services:
+  # Main application service using the FrankenPHP image
+  app:
+    image: dunglas/frankenphp
+    networks:
+      - app_network  # Connect the service to the defined network
+    ports:
+      - "80:80"  # Map port 80 on the host to port 80 in the container (HTTP)
+      - "443:443"  # Map port 443 on the host to port 443 in the container (HTTPS)
+      - "443:443/udp"  # Map UDP traffic on port 443 (useful for QUIC and HTTP/3)
+    volumes:
+      - ./:/app  # Mount the current directory to /app in the container
+      - caddy_data:/data  # Persist Caddy data, such as certificates, in a named volume
+      - caddy_config:/config  # Persist Caddy configuration files in a named volume
+    # Uncomment the following line during development to enable interactive terminal for readable logs
+    # tty: true
+    depends_on:
+      - composer  # Ensure the composer service runs before starting the app service
+
+  # Composer service for managing PHP dependencies
+  composer:
+    image: composer:2.2  # Use the official Composer image, version 2.2
+    working_dir: /app  # Set the working directory inside the container to /app
+    volumes:
+      - ./:/app  # Mount the current directory to /app in the container
+    entrypoint: 
+      - composer  # Override the default entrypoint to run Composer commands
+      - "--ignore-platform-reqs"  # Ignore platform requirements during installation
+      - "--no-progress"  # Disable the progress display for a cleaner output
+      - "--no-ansi"  # Disable ANSI colors in the output
+    command: ["install"]  # Install PHP dependencies defined in composer.json
+
+# Define a custom network for the services to communicate with each other
+networks:
+  app_network:
+    driver: bridge  # Use the bridge driver for creating an isolated network
+
+# Define named volumes for persisting data outside of the container lifecycle
+volumes:
+  caddy_data:  # Volume to store Caddy's data (like SSL certificates)
+  caddy_config:  # Volume to store Caddy's configuration files
