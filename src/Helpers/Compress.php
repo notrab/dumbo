@@ -58,7 +58,7 @@ class Compress
                 return $response;
             }
 
-            $acceptedEncodings = explode(',', $ctx->req->header('Accept-Encoding'));
+            $acceptedEncodings = array_map('trim', explode(',', $ctx->req->header('Accept-Encoding')));
             if (!$encoding) {
                 foreach ($allowedEncodings as $enc) {
                     if (in_array($enc, $acceptedEncodings)) {
