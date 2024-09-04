@@ -24,9 +24,9 @@ class Compress
      */
     public static function compress(array $options = []): callable
     {
-        $threshold = $options['threshold'] ?? 1024;
-        $allowedEncodings = ['gzip', 'deflate'];
-        $encoding = $options['encoding'] ?? null;
+        $threshold = $options["threshold"] ?? 1024;
+        $allowedEncodings = ["gzip", "deflate"];
+        $encoding = $options["encoding"] ?? null;
 
         return self::compressor($threshold, $allowedEncodings, $encoding);
     }
@@ -40,17 +40,24 @@ class Compress
      * @param ?string $encoding The selected encoding, or null to auto-detect
      * @return callable The middleware
      */
-    private static function compressor(int $threshold, array $allowedEncodings, ?string $encoding): callable
-    {
-        return function (Context $ctx, callable $next) use ($threshold, $allowedEncodings, $encoding) {
+    private static function compressor(
+        int $threshold,
+        array $allowedEncodings,
+        ?string $encoding
+    ): callable {
+        return function (Context $ctx, callable $next) use (
+            $threshold,
+            $allowedEncodings,
+            $encoding
+        ) {
             $next($ctx);
 
             $response = $ctx->getResponse();
-            $contentLength = $response->getHeaderLine('Content-Length');
+            $contentLength = $response->getHeaderLine("Content-Length");
 
             if (
-                $response->hasHeader('Content-Encoding') ||
-                $ctx->req->method() === 'HEAD' ||
+                $response->hasHeader("Content-Encoding") ||
+                $ctx->req->method() === "HEAD" ||
                 ($contentLength && (int) $contentLength < $threshold) ||
                 !self::shouldCompress($response) ||
                 !self::shouldTransform($response)
@@ -58,7 +65,10 @@ class Compress
                 return $response;
             }
 
-            $acceptedEncodings = array_map('trim', explode(',', $ctx->req->header('Accept-Encoding')));
+            $acceptedEncodings = array_map(
+                "trim",
+                explode(",", $ctx->req->header("Accept-Encoding"))
+            );
             if (!$encoding) {
                 foreach ($allowedEncodings as $enc) {
                     if (in_array($enc, $acceptedEncodings)) {
@@ -72,10 +82,14 @@ class Compress
                 return $response;
             }
 
-            $compressedBody = self::performCompression($response->getBody(), $encoding);
-            $response = $response->withBody($compressedBody)
-                ->withoutHeader('Content-Length')
-                ->withHeader('Content-Encoding', $encoding);
+            $compressedBody = self::performCompression(
+                $response->getBody(),
+                $encoding
+            );
+            $response = $response
+                ->withBody($compressedBody)
+                ->withoutHeader("Content-Length")
+                ->withHeader("Content-Encoding", $encoding);
 
             return $response;
         };
@@ -89,7 +103,7 @@ class Compress
      */
     private static function shouldCompress(ResponseInterface $response): bool
     {
-        $type = $response->getHeaderLine('Content-Type');
+        $type = $response->getHeaderLine("Content-Type");
         return preg_match(self::STR_REGEX, $type);
     }
 
@@ -102,8 +116,11 @@ class Compress
      */
     private static function shouldTransform(ResponseInterface $response): bool
     {
-        $cacheControl = $response->getHeaderLine('Cache-Control');
-        return !preg_match('/(?:^|,)\s*?no-transform\s*?(?:,|$)/i', $cacheControl);
+        $cacheControl = $response->getHeaderLine("Cache-Control");
+        return !preg_match(
+            '/(?:^|,)\s*?no-transform\s*?(?:,|$)/i',
+            $cacheControl
+        );
     }
 
     /**
@@ -114,21 +131,14 @@ class Compress
      *
      * @return string|StreamInterface The compressed response body
      */
-    private static function performCompression(string $body, string $encoding)
-    {
+    private static function performCompression(
+        string $body,
+        string $encoding
+    ): StreamInterface {
         return match ($encoding) {
-            'br' => Utils::streamFor(self::brotliCompress($body)),
-            'deflate' => Utils::streamFor(gzdeflate($body)),
-            'gzip' => Utils::streamFor(gzencode($body)),
+            "deflate" => Utils::streamFor(gzdeflate($body)),
+            "gzip" => Utils::streamFor(gzencode($body)),
             default => $body,
         };
-    }
-
-    private static function brotliCompress(string $content): string|false
-    {
-        if (!function_exists('brotli_compress')) {
-            throw new \RuntimeException('Brotli compression is not available. Make sure the Brotli PHP extension is installed and enabled.');
-        }
-        return \brotli_compress($content);
     }
 }
