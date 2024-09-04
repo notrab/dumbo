@@ -114,12 +114,21 @@ class Compress
      *
      * @return string|StreamInterface The compressed response body
      */
-    private static function performCompression($body, string $encoding)
+    private static function performCompression(string $body, string $encoding)
     {
         return match ($encoding) {
-            'gzip' => Utils::streamFor(gzencode($body)),
+            'br' => Utils::streamFor(self::brotliCompress($body)),
             'deflate' => Utils::streamFor(gzdeflate($body)),
+            'gzip' => Utils::streamFor(gzencode($body)),
             default => $body,
         };
+    }
+
+    private static function brotliCompress(string $content): string|false
+    {
+        if (!function_exists('brotli_compress')) {
+            throw new \RuntimeException('Brotli compression is not available. Make sure the Brotli PHP extension is installed and enabled.');
+        }
+        return \brotli_compress($content);
     }
 }
