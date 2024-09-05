@@ -1,0 +1,17 @@
+{
+  "require": {
+    "notrab/dumbo": "@dev",
+    "jenssegers/blade": "^2.0",
+    "illuminate/view": "11.7.0"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../"
+    }
+  ],
+  "scripts": {
+    "start": "php -S localhost:8000 index.php"
+  },
+  "prefer-stable": false
+}

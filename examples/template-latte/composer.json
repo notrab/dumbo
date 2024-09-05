@@ -1,0 +1,16 @@
+{
+  "require": {
+    "notrab/dumbo": "@dev",
+    "latte/latte": "^3.0"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../"
+    }
+  ],
+  "scripts": {
+    "start": "php -S localhost:8000 index.php"
+  },
+  "prefer-stable": false
+}
