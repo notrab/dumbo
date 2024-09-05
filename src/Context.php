@@ -2,7 +2,6 @@
 
 namespace Dumbo;
 
-use Dumbo\Traits\HasConfig;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use GuzzleHttp\Psr7\Response;
@@ -18,8 +17,6 @@ use GuzzleHttp\Psr7\Response;
  */
 class Context
 {
-    use HasConfig;
-    
     /** @var RequestWrapper An object containing request-related methods */
     public RequestWrapper $req;
 
@@ -40,6 +37,28 @@ class Context
     ) {
         $this->response = new Response();
         $this->req = new RequestWrapper($request, $params, $routePath);
+    }
+
+    /**
+     * Set a variable in the context
+     *
+     * @param string $key The variable name
+     * @param mixed $value The variable value
+     */
+    public function set(string $key, mixed $value): void
+    {
+        $this->variables[$key] = $value;
+    }
+
+    /**
+     * Get a variable from the context
+     *
+     * @param string $key The variable name
+     * @return mixed The variable value or null if not found
+     */
+    public function get(string $key): mixed
+    {
+        return $this->variables[$key] ?? null;
     }
 
     /**
