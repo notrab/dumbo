@@ -3,67 +3,187 @@
 namespace Dumbo\Helpers;
 
 use Dumbo\Context;
+use Psr\Http\Message\ResponseInterface;
 
 class CORS
 {
     /**
      * Configure CORS headers.
      *
-     * @param array $opts optional - The CORS options
+     * @param array $$options optional - The CORS options
      * @return callable The middleware function for handling CORS.
      */
-    public static function cors(array $opts = []): callable
+    public static function cors(array $options = []): callable
     {
-        return function (Context $c, callable $next) use ($opts) {
-            $origin = $c->req->header('origin');
+        $defaultOptions = [
+            "origin" => "*",
+            "allow_methods" => [
+                "GET",
+                "HEAD",
+                "PUT",
+                "PATCH",
+                "POST",
+                "DELETE",
+            ],
+            "allow_headers" => [
+                "X-Requested-With",
+                "Content-Type",
+                "Accept",
+                "Origin",
+                "Authorization",
+            ],
+            "expose_headers" => [],
+            "credentials" => false,
+            "max_age" => 86400,
+        ];
 
-            $allowOrigin = $opts['origin'] ?? '*';
-            $allowMethods = $opts['allow_methods'] ?? ['GET', 'HEAD', 'PUT', 'POST', 'DELETE', 'PATCH'];
+        $corsOptions = array_merge($defaultOptions, $options);
 
-            if (is_callable($allowOrigin)) {
-                $allowOrigin = $allowOrigin($origin, $c);
-            } else if (is_array($allowOrigin) && array_is_list($allowOrigin)) {
-                $allowOrigin = in_array($origin, $allowOrigin) ? $origin : $allowOrigin[0];
+        return function (
+            Context $context,
+            callable $next
+        ) use ($corsOptions): ResponseInterface {
+            $request = $context->req;
+            $origin = $request->header("Origin");
+
+            if (!$origin) {
+                return $next($context);
             }
 
-            if (!empty($allowOrigin)) {
-                $c->header('Access-Control-Allow-Origin', $allowOrigin);
-            }
+            $allowedOrigin = self::getAllowedOrigin(
+                $corsOptions["origin"],
+                $origin,
+                $context
+            );
 
-            if ($opts['credentials']) {
-                $c->header('Access-Control-Allow-Credentials', 'true');
-            }
-            if (!empty($opts['expose_headers'])) {
-                $c->header('Access-Control-Expose-Headers', implode(', ', $opts['expose_headers']));
-            }
+            if ($request->method() === "OPTIONS") {
+                $response = $context->text("", 204);
+                $response = $response->withHeader(
+                    "Access-Control-Allow-Origin",
+                    $allowedOrigin
+                );
 
-            if ($c->req->method() === 'OPTIONS') {
-                if (!empty($opts['max_age'])) {
-                    $c->header('Access-Control-Max-Age', (string) $opts['max_age']);
+                $requestMethod = $request->header(
+                    "Access-Control-Request-Method"
+                );
+                if (
+                    $requestMethod &&
+                    in_array($requestMethod, $corsOptions["allow_methods"])
+                ) {
+                    $response = $response->withHeader(
+                        "Access-Control-Allow-Methods",
+                        $requestMethod
+                    );
+                } else {
+                    $response = $response->withHeader(
+                        "Access-Control-Allow-Methods",
+                        implode(", ", $corsOptions["allow_methods"])
+                    );
                 }
 
-                if (!empty($allowMethods)) {
-                    $c->header('Access-Control-Allow-Methods', implode(', ', $allowMethods));
+                $requestHeaders = $request->header(
+                    "Access-Control-Request-Headers"
+                );
+                if ($requestHeaders) {
+                    $response = $response->withHeader(
+                        "Access-Control-Allow-Headers",
+                        $requestHeaders
+                    );
+                } elseif (!empty($corsOptions["allow_headers"])) {
+                    $response = $response->withHeader(
+                        "Access-Control-Allow-Headers",
+                        implode(", ", $corsOptions["allow_headers"])
+                    );
                 }
 
-                $headers = $opts['allow_headers'];
-                if (empty($headers)) {
-                    $reqHeaders = $c->req->header('Access-Control-Request-Headers');
-                    if (!empty($reqHeaders)) {
-                        $headers = array_map('trim', explode(',', $reqHeaders));
-                    }
+                if ($corsOptions["max_age"] !== null) {
+                    $response = $response->withHeader(
+                        "Access-Control-Max-Age",
+                        (string) $corsOptions["max_age"]
+                    );
                 }
-                if (!empty($headers)) {
-                    $c->header('Access-Control-Allow-Headers', implode(', ', $opts['allow_headers']));
-                }
+            } else {
+                $response = $next($context);
+                $response = $response->withHeader(
+                    "Access-Control-Allow-Origin",
+                    $allowedOrigin
+                );
 
-                return $c->getResponse()
-                    ->withStatus(204)
-                    ->withoutHeader('Content-Length')
-                    ->withoutHeader('Content-Type');
+                if (!empty($corsOptions["expose_headers"])) {
+                    $response = $response->withHeader(
+                        "Access-Control-Expose-Headers",
+                        implode(", ", $corsOptions["expose_headers"])
+                    );
+                }
             }
 
-            return $next($c);
+            if ($corsOptions["credentials"]) {
+                $response = $response->withHeader(
+                    "Access-Control-Allow-Credentials",
+                    "true"
+                );
+            }
+
+            return $response;
         };
+    }
+
+    /**
+     * Handle preflight requests
+     *
+     * @param ResponseInterface $response The current response
+     * @param array $options CORS configuration options
+     * @return ResponseInterface The updated response
+     */
+    private static function handlePreflightRequest(
+        ResponseInterface $response,
+        array $options
+    ): ResponseInterface {
+        $response = $response->withHeader(
+            "Access-Control-Allow-Methods",
+            implode(", ", $options["allow_methods"])
+        );
+
+        if (!empty($options["allow_headers"])) {
+            $response = $response->withHeader(
+                "Access-Control-Allow-Headers",
+                implode(", ", $options["allow_headers"])
+            );
+        }
+
+        if (isset($options["max_age"])) {
+            $response = $response->withHeader(
+                "Access-Control-Max-Age",
+                (string) $options["max_age"]
+            );
+        }
+
+        return $response;
+    }
+
+    /**
+     * Get the allowed origin based on the configuration
+     *
+     * @param string|array|callable $originConfig The origin configuration
+     * @param string $requestOrigin The origin of the request
+     * @param Context $context The request context
+     * @return string The allowed origin
+     */
+    private static function getAllowedOrigin(
+        $originConfig,
+        string $requestOrigin,
+        Context $context
+    ): string {
+        if (is_callable($originConfig)) {
+            return $originConfig($requestOrigin, $context);
+        }
+
+        if (is_array($originConfig)) {
+            return in_array($requestOrigin, $originConfig)
+                ? $requestOrigin
+                : "";
+        }
+
+        return $originConfig;
     }
 }
