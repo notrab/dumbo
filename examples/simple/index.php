@@ -80,7 +80,7 @@ $app->get("/greet/:greeting", function ($c) {
 $app->route("/users", $user);
 
 $app->use(function ($ctx, $next) {
-    $ctx->setVar("message", "Dumbo");
+    $ctx->set("message", "Dumbo");
     return $next($ctx);
 });
 
@@ -91,13 +91,13 @@ $app->use(function ($c, $next) {
 });
 
 $app->get("/redirect", function ($c) {
-    $message = $c->getVar("message");
+    $message = $c->get("message");
 
     return $c->redirect("/greet/hello?name=$message", 301);
 });
 
 $app->get("/", function ($c) {
-    $message = $c->getVar("message");
+    $message = $c->get("message");
 
     return $c->html("<h1>Hello from $message!</h1>", 200, [
         "X-Hello" => "World",

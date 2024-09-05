@@ -54,7 +54,6 @@ class Router
             "handler" => $handler,
             "middleware" => $middleware,
         ];
-
         $this->rebuildDispatcher();
     }
 
