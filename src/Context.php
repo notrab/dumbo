@@ -23,6 +23,9 @@ class Context
     /** @var ResponseInterface The response object */
     private ResponseInterface $response;
 
+    /** @var array<string, mixed> Variables stored in the context */
+    private $variables = [];
+
     /**
      * Context constructor
      *
