@@ -24,7 +24,7 @@ $user->get("/:id", function ($c) use ($userData) {
     $id = (int) $c->req->param("id");
 
     $user =
-        array_values(array_filter($userData, fn ($u) => $u["id"] === $id))[0] ??
+        array_values(array_filter($userData, fn($u) => $u["id"] === $id))[0] ??
         null;
 
     if (!$user) {
@@ -52,7 +52,7 @@ $user->delete("/:id", function ($c) use ($userData) {
     $id = (int) $c->req->param("id");
 
     $user =
-        array_values(array_filter($userData, fn ($u) => $u["id"] === $id))[0] ??
+        array_values(array_filter($userData, fn($u) => $u["id"] === $id))[0] ??
         null;
 
     if (!$user) {
@@ -73,9 +73,9 @@ $app->get("/greet/:greeting", function ($c) {
 
 $app->route("/users", $user);
 
-$app->use(function ($ctx, $next) {
-    $ctx->set("message", "Dumbo");
-    return $next($ctx);
+$app->use(function ($context, $next) {
+    $context->set("message", "Dumbo");
+    return $next($context);
 });
 
 $app->use(function ($c, $next) {

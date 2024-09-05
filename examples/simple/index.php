@@ -79,9 +79,9 @@ $app->get("/greet/:greeting", function ($c) {
 
 $app->route("/users", $user);
 
-$app->use(function ($ctx, $next) {
-    $ctx->set("message", "Dumbo");
-    return $next($ctx);
+$app->use(function ($context, $next) {
+    $context->set("message", "Dumbo");
+    return $next($context);
 });
 
 $app->use(function ($c, $next) {

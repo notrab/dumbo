@@ -8,8 +8,8 @@ use Psr\Log\LoggerInterface;
 
 class Logger
 {
-    public const LOG_PREFIX_INCOMING = '-->';
-    public const LOG_PREFIX_OUTGOING = '<--';
+    public const LOG_PREFIX_INCOMING = "-->";
+    public const LOG_PREFIX_OUTGOING = "<--";
 
     private LoggerInterface $logger;
 
@@ -38,22 +38,30 @@ class Logger
     /**
      * Invoke the logger middleware.
      *
-     * @param Context $ctx The context object containing the request.
+     * @param Context $context The context object containing the request.
      * @param callable $next The next middleware or handler.
      * @return ResponseInterface The HTTP response.
      */
-    public function __invoke(Context $ctx, callable $next): ResponseInterface
-    {
-        $method = $ctx->req->method();
-        $path = $ctx->req->path();
+    public function __invoke(
+        Context $context,
+        callable $next
+    ): ResponseInterface {
+        $method = $context->req->method();
+        $path = $context->req->path();
 
         $this->log(self::LOG_PREFIX_INCOMING, $method, $path);
 
         $start = microtime(true);
-        $response = $next($ctx);
+        $response = $next($context);
         $elapsed = $this->getElapsedTime($start);
 
-        $this->log(self::LOG_PREFIX_OUTGOING, $method, $path, $response->getStatusCode(), $elapsed);
+        $this->log(
+            self::LOG_PREFIX_OUTGOING,
+            $method,
+            $path,
+            $response->getStatusCode(),
+            $elapsed
+        );
 
         return $response;
     }
@@ -68,11 +76,24 @@ class Logger
      * @param string $elapsed The elapsed time for processing the request (default is an empty string).
      * @return void
      */
-    private function log(string $prefix, string $method, string $path, int $status = 0, string $elapsed = ''): void
-    {
-        $message = $prefix === self::LOG_PREFIX_INCOMING
-            ? sprintf("%s %s %s", $prefix, $method, $path)
-            : sprintf("%s %s %s %s %s", $prefix, $method, $path, $this->colorStatus($status), $elapsed);
+    private function log(
+        string $prefix,
+        string $method,
+        string $path,
+        int $status = 0,
+        string $elapsed = ""
+    ): void {
+        $message =
+            $prefix === self::LOG_PREFIX_INCOMING
+                ? sprintf("%s %s %s", $prefix, $method, $path)
+                : sprintf(
+                    "%s %s %s %s %s",
+                    $prefix,
+                    $method,
+                    $path,
+                    $this->colorStatus($status),
+                    $elapsed
+                );
 
         $this->logger->info($message);
     }
@@ -86,7 +107,7 @@ class Logger
     private function getElapsedTime(float $start): string
     {
         $delta = (microtime(true) - $start) * 1000;
-        return $delta < 1000 ? $delta . 'ms' : round($delta / 1000, 3) . 's';
+        return $delta < 1000 ? $delta . "ms" : round($delta / 1000, 3) . "s";
     }
 
     /**

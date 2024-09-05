@@ -45,19 +45,19 @@ class Compress
         array $allowedEncodings,
         ?string $encoding
     ): callable {
-        return function (Context $ctx, callable $next) use (
+        return function (Context $context, callable $next) use (
             $threshold,
             $allowedEncodings,
             $encoding
         ) {
-            $next($ctx);
+            $next($context);
 
-            $response = $ctx->getResponse();
+            $response = $context->getResponse();
             $contentLength = $response->getHeaderLine("Content-Length");
 
             if (
                 $response->hasHeader("Content-Encoding") ||
-                $ctx->req->method() === "HEAD" ||
+                $context->req->method() === "HEAD" ||
                 ($contentLength && (int) $contentLength < $threshold) ||
                 !self::shouldCompress($response) ||
                 !self::shouldTransform($response)
@@ -67,7 +67,7 @@ class Compress
 
             $acceptedEncodings = array_map(
                 "trim",
-                explode(",", $ctx->req->header("Accept-Encoding"))
+                explode(",", $context->req->header("Accept-Encoding"))
             );
             if (!$encoding) {
                 foreach ($allowedEncodings as $enc) {

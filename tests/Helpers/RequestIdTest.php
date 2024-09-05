@@ -17,7 +17,7 @@ class RequestIdTest extends TestCase
             RequestId::requestId([
                 "headerName" => "X-Custom-Request-Id",
                 "limitLength" => 128,
-                "generator" => function ($ctx) {
+                "generator" => function ($context) {
                     return uniqid("custom-", true);
                 },
             ])

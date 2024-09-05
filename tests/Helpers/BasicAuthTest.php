@@ -29,7 +29,7 @@ class BasicAuthTest extends TestCase
         );
 
         $called = false;
-        $next = function ($ctx) use (&$called) {
+        $next = function ($context) use (&$called) {
             $called = true;
             return new Response(200);
         };
@@ -47,7 +47,7 @@ class BasicAuthTest extends TestCase
             "Basic " . base64_encode("wrong:credentials")
         );
 
-        $next = function ($ctx) {
+        $next = function ($context) {
             return new Response(200);
         };
 
@@ -73,7 +73,7 @@ class BasicAuthTest extends TestCase
         );
 
         $called = false;
-        $next = function ($ctx) use (&$called) {
+        $next = function ($context) use (&$called) {
             $called = true;
             return new Response(200);
         };
@@ -96,7 +96,7 @@ class BasicAuthTest extends TestCase
         );
 
         $called = false;
-        $next = function ($ctx) use (&$called) {
+        $next = function ($context) use (&$called) {
             $called = true;
             return new Response(200);
         };
@@ -116,7 +116,7 @@ class BasicAuthTest extends TestCase
             "Basic " . base64_encode("alice:wrongpass")
         );
 
-        $next = function ($ctx) {
+        $next = function ($context) {
             return new Response(200);
         };
 

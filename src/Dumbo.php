@@ -226,28 +226,28 @@ class Dumbo
         callable $handler,
         array $middleware
     ): ResponseInterface {
-        $next = function ($ctx) use ($handler) {
-            $result = $handler($ctx);
+        $next = function ($context) use ($handler) {
+            $result = $handler($context);
 
             if ($result instanceof ResponseInterface) {
                 return $result;
             } elseif ($result === null) {
-                return $ctx->getResponse();
+                return $context->getResponse();
             } else {
-                return $ctx->json($result);
+                return $context->json($result);
             }
         };
 
         foreach (array_reverse($middleware) as $mw) {
-            $next = function ($ctx) use ($mw, $next) {
-                $result = $mw($ctx, $next);
+            $next = function ($context) use ($mw, $next) {
+                $result = $mw($context, $next);
 
                 if ($result instanceof ResponseInterface) {
                     return $result;
                 } elseif ($result === null) {
-                    return $next($ctx);
+                    return $next($context);
                 } else {
-                    return $ctx->json($result);
+                    return $context->json($result);
                 }
             };
         }

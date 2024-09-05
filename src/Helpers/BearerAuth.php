@@ -41,14 +41,14 @@ class BearerAuth
         string $token,
         string $failureMessage
     ): callable {
-        return function (Context $ctx, callable $next) use (
+        return function (Context $context, callable $next) use (
             $token,
             $failureMessage
         ): ResponseInterface {
-            $authHeader = $ctx->req->header(self::HEADER_AUTHORIZATION);
+            $authHeader = $context->req->header(self::HEADER_AUTHORIZATION);
 
             if (!$authHeader) {
-                return $ctx->json(
+                return $context->json(
                     ["error" => $failureMessage],
                     self::STATUS_UNAUTHORIZED
                 );
@@ -56,20 +56,20 @@ class BearerAuth
 
             $parts = explode(" ", $authHeader, 2);
             if (count($parts) !== 2 || strtolower($parts[0]) !== "bearer") {
-                return $ctx->json(
+                return $context->json(
                     ["error" => $failureMessage],
                     self::STATUS_UNAUTHORIZED
                 );
             }
 
             if ($parts[1] !== $token) {
-                return $ctx->json(
+                return $context->json(
                     ["error" => $failureMessage],
                     self::STATUS_UNAUTHORIZED
                 );
             }
 
-            return $next($ctx);
+            return $next($context);
         };
     }
 
@@ -91,14 +91,14 @@ class BearerAuth
         $realm = $options["realm"] ?? "API";
 
         return function (
-            Context $ctx,
+            Context $context,
             callable $next
         ) use ($options, $realm): ResponseInterface {
-            $authHeader = $ctx->req->header(self::HEADER_AUTHORIZATION);
+            $authHeader = $context->req->header(self::HEADER_AUTHORIZATION);
 
             if (!$authHeader) {
                 return self::unauthorizedResponse(
-                    $ctx,
+                    $context,
                     $realm,
                     "Authorization header missing"
                 );
@@ -107,7 +107,7 @@ class BearerAuth
             $parts = explode(" ", $authHeader, 2);
             if (count($parts) !== 2 || strtolower($parts[0]) !== "bearer") {
                 return self::unauthorizedResponse(
-                    $ctx,
+                    $context,
                     $realm,
                     "Invalid Authorization header format"
                 );
@@ -116,25 +116,29 @@ class BearerAuth
             $token = $parts[1];
 
             if (isset($options["verifyToken"])) {
-                if ($options["verifyToken"]($token, $ctx)) {
-                    return $next($ctx);
+                if ($options["verifyToken"]($token, $context)) {
+                    return $next($context);
                 }
             } elseif (isset($options["tokens"])) {
                 if (in_array($token, $options["tokens"], true)) {
-                    return $next($ctx);
+                    return $next($context);
                 }
             }
 
-            return self::unauthorizedResponse($ctx, $realm, "Invalid token");
+            return self::unauthorizedResponse(
+                $context,
+                $realm,
+                "Invalid token"
+            );
         };
     }
 
     private static function unauthorizedResponse(
-        Context $ctx,
+        Context $context,
         string $realm,
         string $error
     ): ResponseInterface {
-        return $ctx->json(["error" => $error], self::STATUS_UNAUTHORIZED, [
+        return $context->json(["error" => $error], self::STATUS_UNAUTHORIZED, [
             self::HEADER_WWW_AUTHENTICATE => sprintf(
                 'Bearer realm="%s"',
                 $realm
