@@ -22,7 +22,7 @@ use Dumbo\Dumbo;
 $app = new Dumbo();
 
 $app->get("/", function ($context) {
-    return $context->json('Hello Dumbo!');
+    return $context->json(["message" => "Hello, Dumbo!"]);
 });
 
 $app->run();
