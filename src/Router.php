@@ -40,7 +40,7 @@ class Router
      * @param string $method The HTTP method for the route
      * @param string $path The URL path for the route
      * @param callable $handler The handler function for the route
-     * @param array $middleware Array of middleware functions for the route
+     * @param array<callable> $middleware Array of middleware functions for the route
      */
     public function addRoute(
         string $method,
