@@ -2,7 +2,6 @@
 
 namespace Dumbo;
 
-use Dumbo\Traits\HasConfig;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use GuzzleHttp\Psr7\Response;
@@ -24,13 +23,16 @@ use GuzzleHttp\Psr7\ServerRequest;
  */
 class Dumbo
 {
-    use HasConfig;
-
     private Router $router;
     private bool $removeTrailingSlash = true;
 
     /** @var array<callable> */
     private $middleware = [];
+
+    /**
+     * @var array<string, array<callable>> Middleware specific to route groups
+     */
+    private $groupMiddleware = [];
 
     private ?Dumbo $parent = null;
 
@@ -67,13 +69,23 @@ class Dumbo
     }
 
     /**
-     * Add middleware to the application
+     * Add middleware to the application or a specific route group
      *
-     * @param callable $middleware The middleware function
+     * @param string|callable $pathOrMiddleware The path for group-specific middleware or the middleware function
+     * @param callable|null $middleware The middleware function for group-specific middleware
+     * @throws \InvalidArgumentException If the middleware configuration is invalid
      */
-    public function use(callable $middleware): void
+    public function use($pathOrMiddleware, $middleware = null): void
     {
-        $this->middleware[] = $middleware;
+        if (is_callable($pathOrMiddleware)) {
+            $this->middleware[] = $pathOrMiddleware;
+        } elseif (is_string($pathOrMiddleware) && is_callable($middleware)) {
+            $this->groupMiddleware[$pathOrMiddleware][] = $middleware;
+        } else {
+            throw new \InvalidArgumentException(
+                "Invalid middleware configuration"
+            );
+        }
     }
 
     /**
@@ -126,6 +138,7 @@ class Dumbo
             if (strlen($path) > 1 && substr($path, -1) === "/") {
                 $newPath = rtrim($path, "/");
                 $newUri = $uri->withPath($newPath);
+
                 return new Response(301, ["Location" => (string) $newUri]);
             }
         }
@@ -139,7 +152,10 @@ class Dumbo
                 $route ? $route["routePath"] : ""
             );
 
-            $fullMiddlewareStack = $this->getFullMiddlewareStack();
+            $fullMiddlewareStack = array_merge(
+                $this->getMiddlewareForPath($context->req->path()),
+                $route ? $route["middleware"] : []
+            );
 
             if ($route) {
                 $fullMiddlewareStack = array_unique(
@@ -323,5 +339,27 @@ class Dumbo
         }
 
         return $stack;
+    }
+
+    /**
+     * Get all applicable middleware for a given path
+     *
+     * @param string $path The request path
+     * @return array<callable> Array of middleware applicable to the given path
+     */
+    private function getMiddlewareForPath(string $path): array
+    {
+        $applicableMiddleware = $this->middleware;
+
+        foreach ($this->groupMiddleware as $groupPath => $groupMiddlewares) {
+            if (strpos($path, $groupPath) === 0) {
+                $applicableMiddleware = array_merge(
+                    $applicableMiddleware,
+                    $groupMiddlewares
+                );
+            }
+        }
+
+        return $applicableMiddleware;
     }
 }
