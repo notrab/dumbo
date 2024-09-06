@@ -1,9 +1,10 @@
 <?php
 
-require "vendor/autoload.php";
+require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
 use Dumbo\HTTPException;
+
 // use Dumbo\Helpers\BearerAuth;
 
 $app = new Dumbo();
@@ -30,7 +31,7 @@ $user->get("/:id", function ($c) use ($userData) {
     $id = (int) $c->req->param("id");
 
     $user =
-        array_values(array_filter($userData, fn($u) => $u["id"] === $id))[0] ??
+        array_values(array_filter($userData, fn ($u) => $u["id"] === $id))[0] ??
         null;
 
     if (!$user) {
@@ -58,7 +59,7 @@ $user->delete("/:id", function ($c) use ($userData) {
     $id = (int) $c->req->param("id");
 
     $user =
-        array_values(array_filter($userData, fn($u) => $u["id"] === $id))[0] ??
+        array_values(array_filter($userData, fn ($u) => $u["id"] === $id))[0] ??
         null;
 
     if (!$user) {
