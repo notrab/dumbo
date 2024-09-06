@@ -1,4 +1,4 @@
-# Latte Templating Example
+# Cookie Auth Latte Example
 
 This example showcases how to use the Latte templating engine to render views and pass them to Dumbo for displaying as HTML pages.
 
