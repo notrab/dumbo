@@ -12,6 +12,8 @@ $latte = new LatteEngine();
 $latte->setAutoRefresh(true);
 $latte->setTempDirectory(null);
 
+const COOKIE_SECRET = "somesecretkey";
+
 function render($latte, $view, $params = [])
 {
     return $latte->renderToString(__DIR__ . "/views/$view.latte", $params);
@@ -31,24 +33,30 @@ $app->onError(function ($error, $c) {
 });
 
 $app->get("/", function ($c) use ($latte) {
-    $username = Cookie::getCookie($c, "username");
+    $username = Cookie::getSignedCookie($c, COOKIE_SECRET, "username");
     $html = render($latte, "home", ["username" => $username]);
 
     return $c->html($html);
 });
 
 $app->get("/login", function ($c) {
-    Cookie::setCookie($c, "username", "Dumbo", [
+    Cookie::setSignedCookie($c, "username", "Dumbo", COOKIE_SECRET, [
         "httpOnly" => true,
+        "secure" => true,
         "path" => "/",
         "maxAge" => 3600,
+        "sameSite" => Cookie::SAME_SITE_LAX,
     ]);
 
     return $c->redirect("/");
 });
 
 $app->get("/logout", function ($c) {
-    Cookie::deleteCookie($c, "username");
+    Cookie::deleteCookie($c, "username", [
+        "httpOnly" => true,
+        "secure" => true,
+        "path" => "/",
+    ]);
 
     return $c->redirect("/");
 });

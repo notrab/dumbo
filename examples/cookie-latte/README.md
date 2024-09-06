@@ -1,6 +1,6 @@
 # Cookie Auth Latte Example
 
-This example showcases how to use the Latte templating engine to render views and pass them to Dumbo for displaying as HTML pages.
+This example showcases how to use the Latte templating engine to render views and cookies for a simple naive auth example.
 
 ## Getting Started
 
