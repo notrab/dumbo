@@ -8,20 +8,32 @@ require "vendor/autoload.php";
 
 $app = new Dumbo();
 
-$app->use(CacheMiddleware::withHeaders(
+/**
+ * CacheMiddleware is a middleware that adds cache control headers to the HTTP response.
+ * This middleware is applied only to routes that begin with "/cached",
+ * meaning that only these routes will have cache control headers.
+ */
+
+$app->use('/cached', CacheMiddleware::withHeaders(
     type: "public",
     mustRevalidate: true,
     maxAge: 3600,
     strictEtag: true
 ));
 
-$app->get("/greet/:greeting", function ($c) {
+$app->get("/cached/greet", function ($c) {
     sleep(5);
 
-    $greeting = $c->req->param("greeting");
+    return $c->json([
+        "message" => "Welcome cached route!",
+    ]);
+});
+
+$app->get('/uncached/greet', function ($c) {
+    sleep(5);
 
     return $c->json([
-        "message" => "$greeting!",
+        'message' => "Uncached route!",
     ]);
 });
 
