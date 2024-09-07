@@ -27,7 +27,7 @@ class BearerAuthTest extends TestCase
         $context = $this->createMockContext("Bearer valid-token");
 
         $called = false;
-        $next = function ($ctx) use (&$called) {
+        $next = function ($context) use (&$called) {
             $called = true;
             return new Response(200);
         };
@@ -43,7 +43,7 @@ class BearerAuthTest extends TestCase
         $middleware = BearerAuth::bearerAuth("valid-token");
         $context = $this->createMockContext("Bearer invalid-token");
 
-        $next = function ($ctx) {
+        $next = function ($context) {
             return new Response(200);
         };
 
@@ -64,7 +64,7 @@ class BearerAuthTest extends TestCase
         $context = $this->createMockContext("Bearer token2");
 
         $called = false;
-        $next = function ($ctx) use (&$called) {
+        $next = function ($context) use (&$called) {
             $called = true;
             return new Response(200);
         };
@@ -85,7 +85,7 @@ class BearerAuthTest extends TestCase
         $context = $this->createMockContext("Bearer valid-token");
 
         $called = false;
-        $next = function ($ctx) use (&$called) {
+        $next = function ($context) use (&$called) {
             $called = true;
             return new Response(200);
         };
@@ -103,7 +103,7 @@ class BearerAuthTest extends TestCase
         ]);
         $context = $this->createMockContext("Bearer invalid-token");
 
-        $next = function ($ctx) {
+        $next = function ($context) {
             return new Response(200);
         };
 
@@ -121,7 +121,7 @@ class BearerAuthTest extends TestCase
         $middleware = BearerAuth::bearerAuth("valid-token");
         $context = $this->createMockContext();
 
-        $next = function ($ctx) {
+        $next = function ($context) {
             return new Response(200);
         };
 
@@ -139,7 +139,7 @@ class BearerAuthTest extends TestCase
         $middleware = BearerAuth::bearerAuth("valid-token");
         $context = $this->createMockContext("InvalidFormat token");
 
-        $next = function ($ctx) {
+        $next = function ($context) {
             return new Response(200);
         };
 
@@ -160,7 +160,7 @@ class BearerAuthTest extends TestCase
         ]);
         $context = $this->createMockContext("Bearer invalid-token");
 
-        $next = function ($ctx) {
+        $next = function ($context) {
             return new Response(200);
         };
 

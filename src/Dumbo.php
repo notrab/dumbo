@@ -29,6 +29,11 @@ class Dumbo
     /** @var array<callable> */
     private $middleware = [];
 
+    /**
+     * @var array<string, array<callable>> Middleware specific to route groups
+     */
+    private $groupMiddleware = [];
+
     private ?Dumbo $parent = null;
 
     private $errorHandler;
@@ -64,13 +69,23 @@ class Dumbo
     }
 
     /**
-     * Add middleware to the application
+     * Add middleware to the application or a specific route group
      *
-     * @param callable $middleware The middleware function
+     * @param string|callable $pathOrMiddleware The path for group-specific middleware or the middleware function
+     * @param callable|null $middleware The middleware function for group-specific middleware
+     * @throws \InvalidArgumentException If the middleware configuration is invalid
      */
-    public function use(callable $middleware): void
+    public function use($pathOrMiddleware, $middleware = null): void
     {
-        $this->middleware[] = $middleware;
+        if (is_callable($pathOrMiddleware)) {
+            $this->middleware[] = $pathOrMiddleware;
+        } elseif (is_string($pathOrMiddleware) && is_callable($middleware)) {
+            $this->groupMiddleware[$pathOrMiddleware][] = $middleware;
+        } else {
+            throw new \InvalidArgumentException(
+                "Invalid middleware configuration"
+            );
+        }
     }
 
     /**
@@ -123,6 +138,7 @@ class Dumbo
             if (strlen($path) > 1 && substr($path, -1) === "/") {
                 $newPath = rtrim($path, "/");
                 $newUri = $uri->withPath($newPath);
+
                 return new Response(301, ["Location" => (string) $newUri]);
             }
         }
@@ -130,30 +146,42 @@ class Dumbo
         try {
             $route = $this->router->findRoute($request);
 
+            $context = new Context(
+                $request,
+                $route ? $route["params"] : [],
+                $route ? $route["routePath"] : ""
+            );
+
+            $fullMiddlewareStack = array_merge(
+                $this->getMiddlewareForPath($context->req->path()),
+                $route ? $route["middleware"] : []
+            );
+
             if ($route) {
-                $context = new Context(
-                    $request,
-                    $route["params"],
-                    $route["routePath"]
+                $fullMiddlewareStack = array_unique(
+                    array_merge(
+                        $fullMiddlewareStack,
+                        $route["middleware"] ?? []
+                    ),
+                    SORT_REGULAR
                 );
 
-                $fullMiddlewareStack = array_merge(
-                    $this->getFullMiddlewareStack(),
-                    $route["middleware"] ?? []
-                );
-
-                $response = $this->runMiddleware(
-                    $context,
-                    $route["handler"],
-                    $fullMiddlewareStack
-                );
-
-                return $response instanceof ResponseInterface
-                    ? $response
-                    : $context->getResponse();
+                $handler = $route["handler"];
+            } else {
+                $handler = function () {
+                    return new Response(404, [], "404 Not Found");
+                };
             }
 
-            return new Response(404, [], "404 Not Found");
+            $response = $this->runMiddleware(
+                $context,
+                $handler,
+                $fullMiddlewareStack
+            );
+
+            return $response instanceof ResponseInterface
+                ? $response
+                : $context->getResponse();
         } catch (HTTPException $e) {
             return $this->handleHTTPException($e, $request);
         } catch (\Exception $e) {
@@ -198,28 +226,28 @@ class Dumbo
         callable $handler,
         array $middleware
     ): ResponseInterface {
-        $next = function ($ctx) use ($handler) {
-            $result = $handler($ctx);
+        $next = function ($context) use ($handler) {
+            $result = $handler($context);
 
             if ($result instanceof ResponseInterface) {
                 return $result;
             } elseif ($result === null) {
-                return $ctx->getResponse();
+                return $context->getResponse();
             } else {
-                return $ctx->json($result);
+                return $context->json($result);
             }
         };
 
         foreach (array_reverse($middleware) as $mw) {
-            $next = function ($ctx) use ($mw, $next) {
-                $result = $mw($ctx, $next);
+            $next = function ($context) use ($mw, $next) {
+                $result = $mw($context, $next);
 
                 if ($result instanceof ResponseInterface) {
                     return $result;
                 } elseif ($result === null) {
-                    return $next($ctx);
+                    return $next($context);
                 } else {
-                    return $ctx->json($result);
+                    return $context->json($result);
                 }
             };
         }
@@ -291,9 +319,6 @@ class Dumbo
         \Exception $e,
         ServerRequestInterface $request
     ): ResponseInterface {
-        $context = new Context($request, [], "");
-        return $context->json(["error" => "Internal Server Error"], 500);
-
         if ($this->errorHandler) {
             $context = new Context($request, [], "");
             return call_user_func($this->errorHandler, $e, $context);
@@ -306,7 +331,6 @@ class Dumbo
     private function getFullMiddlewareStack(): array
     {
         $stack = $this->middleware;
-
         $current = $this;
 
         while ($current->parent !== null) {
@@ -315,5 +339,27 @@ class Dumbo
         }
 
         return $stack;
+    }
+
+    /**
+     * Get all applicable middleware for a given path
+     *
+     * @param string $path The request path
+     * @return array<callable> Array of middleware applicable to the given path
+     */
+    private function getMiddlewareForPath(string $path): array
+    {
+        $applicableMiddleware = $this->middleware;
+
+        foreach ($this->groupMiddleware as $groupPath => $groupMiddlewares) {
+            if (strpos($path, $groupPath) === 0) {
+                $applicableMiddleware = array_merge(
+                    $applicableMiddleware,
+                    $groupMiddlewares
+                );
+            }
+        }
+
+        return $applicableMiddleware;
     }
 }

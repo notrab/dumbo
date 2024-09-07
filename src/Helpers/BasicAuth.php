@@ -49,25 +49,25 @@ class BasicAuth
         string $password,
         string $failureMessage
     ): callable {
-        return function (Context $ctx, callable $next) use (
+        return function (Context $context, callable $next) use (
             $username,
             $password,
             $failureMessage
         ): ResponseInterface {
-            $authHeader = $ctx->req->header(self::HEADER_AUTHORIZATION);
+            $authHeader = $context->req->header(self::HEADER_AUTHORIZATION);
 
             if (
                 !$authHeader ||
                 !self::validateCredentials($authHeader, $username, $password)
             ) {
                 return self::unauthorizedResponse(
-                    $ctx,
+                    $context,
                     "Restricted Area",
                     $failureMessage
                 );
             }
 
-            return $next($ctx);
+            return $next($context);
         };
     }
 
@@ -92,14 +92,14 @@ class BasicAuth
         $realm = $options["realm"] ?? "Restricted Area";
 
         return function (
-            Context $ctx,
+            Context $context,
             callable $next
         ) use ($options, $realm): ResponseInterface {
-            $authHeader = $ctx->req->header(self::HEADER_AUTHORIZATION);
+            $authHeader = $context->req->header(self::HEADER_AUTHORIZATION);
 
             if (!$authHeader) {
                 return self::unauthorizedResponse(
-                    $ctx,
+                    $context,
                     $realm,
                     "Authorization required"
                 );
@@ -108,7 +108,7 @@ class BasicAuth
             $credentials = self::decodeCredentials($authHeader);
             if (!$credentials) {
                 return self::unauthorizedResponse(
-                    $ctx,
+                    $context,
                     $realm,
                     "Invalid credentials format"
                 );
@@ -117,8 +117,8 @@ class BasicAuth
             [$username, $password] = $credentials;
 
             if (isset($options["verifyUser"])) {
-                if ($options["verifyUser"]($username, $password, $ctx)) {
-                    return $next($ctx);
+                if ($options["verifyUser"]($username, $password, $context)) {
+                    return $next($context);
                 }
             } elseif (isset($options["users"])) {
                 foreach ($options["users"] as $user) {
@@ -126,13 +126,13 @@ class BasicAuth
                         $username === $user["username"] &&
                         $password === $user["password"]
                     ) {
-                        return $next($ctx);
+                        return $next($context);
                     }
                 }
             }
 
             return self::unauthorizedResponse(
-                $ctx,
+                $context,
                 $realm,
                 "Invalid credentials"
             );
@@ -140,11 +140,11 @@ class BasicAuth
     }
 
     private static function unauthorizedResponse(
-        Context $ctx,
+        Context $context,
         string $realm,
         string $error
     ): ResponseInterface {
-        return $ctx->text($error, self::STATUS_UNAUTHORIZED, [
+        return $context->text($error, self::STATUS_UNAUTHORIZED, [
             self::HEADER_WWW_AUTHENTICATE => sprintf(
                 'Basic realm="%s"',
                 $realm

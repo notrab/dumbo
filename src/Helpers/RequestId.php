@@ -27,21 +27,21 @@ class RequestId
         $generator = $options["generator"] ?? null;
 
         return function (
-            Context $ctx,
+            Context $context,
             callable $next
         ) use ($headerName, $limitLength, $generator): ResponseInterface {
-            $requestId = $ctx->req->header($headerName);
+            $requestId = $context->req->header($headerName);
 
             if (!$requestId) {
                 $requestId = $generator
-                    ? $generator($ctx)
+                    ? $generator($context)
                     : self::generateRequestId();
                 $requestId = substr($requestId, 0, $limitLength);
             }
 
-            $ctx->set("requestId", $requestId);
+            $context->set("requestId", $requestId);
 
-            $response = $next($ctx);
+            $response = $next($context);
 
             return $response->withHeader($headerName, $requestId);
         };

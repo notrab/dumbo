@@ -9,7 +9,7 @@ $app = new Dumbo();
 
 $app->use(
     BasicAuth::basicAuth([
-        "verifyUser" => function ($username, $password, $ctx) {
+        "verifyUser" => function ($username, $password, $context) {
             // You could call a database here...
             $validUsers = [
                 "admin" => "strongpassword",

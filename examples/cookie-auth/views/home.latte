@@ -1,0 +1,13 @@
+{layout 'layout.latte'}
+
+{block content}
+    <h1>Welcome to the Auth Example</h1>
+    {if $user}
+        <p>Hello, {$user['username']}!</p>
+        <a href="/settings">Settings</a> |
+        <a href="/logout">Logout</a>
+    {else}
+        <p>You are not logged in.</p>
+        <a href="/login">Login</a> | <a href="/register">Register</a>
+    {/if}
+{/block}

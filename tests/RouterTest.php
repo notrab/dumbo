@@ -18,8 +18,8 @@ class RouterTest extends TestCase
 
     public function testBasicRouting()
     {
-        $this->router->addRoute("GET", "/test", function (Context $ctx) {
-            return $ctx->text("Test Route");
+        $this->router->addRoute("GET", "/test", function (Context $context) {
+            return $context->text("Test Route");
         });
 
         $request = new ServerRequest("GET", "/test");
@@ -31,14 +31,16 @@ class RouterTest extends TestCase
 
     public function testNestedRoutes()
     {
-        $this->router->addRoute("GET", "/api/users", function (Context $ctx) {
-            return $ctx->text("Users List");
+        $this->router->addRoute("GET", "/api/users", function (
+            Context $context
+        ) {
+            return $context->text("Users List");
         });
 
         $this->router->addRoute("GET", "/api/users/:id", function (
-            Context $ctx
+            Context $context
         ) {
-            return $ctx->text("User Details");
+            return $context->text("User Details");
         });
 
         $request1 = new ServerRequest("GET", "/api/users");
@@ -57,16 +59,16 @@ class RouterTest extends TestCase
 
     public function testMiddlewareApplication()
     {
-        $middleware = function (Context $ctx, callable $next) {
-            $ctx->set("middlewareApplied", true);
-            return $next($ctx);
+        $middleware = function (Context $context, callable $next) {
+            $context->set("middlewareApplied", true);
+            return $next($context);
         };
 
         $this->router->addRoute(
             "GET",
             "/protected",
-            function (Context $ctx) {
-                return $ctx->text("Protected Route");
+            function (Context $context) {
+                return $context->text("Protected Route");
             },
             [$middleware]
         );
@@ -82,9 +84,9 @@ class RouterTest extends TestCase
     public function testPathPreparation()
     {
         $this->router->addRoute("GET", "/users/:id/posts/:postId", function (
-            Context $ctx
+            Context $context
         ) {
-            return $ctx->text("User Post");
+            return $context->text("User Post");
         });
 
         $request = new ServerRequest("GET", "/users/123/posts/456");
@@ -100,8 +102,10 @@ class RouterTest extends TestCase
 
     public function testMethodNotAllowed()
     {
-        $this->router->addRoute("GET", "/method-test", function (Context $ctx) {
-            return $ctx->text("GET Method");
+        $this->router->addRoute("GET", "/method-test", function (
+            Context $context
+        ) {
+            return $context->text("GET Method");
         });
 
         $request = new ServerRequest("POST", "/method-test");
@@ -120,21 +124,21 @@ class RouterTest extends TestCase
 
     public function testMultipleMiddleware()
     {
-        $middleware1 = function (Context $ctx, callable $next) {
-            $ctx->set("middleware1", true);
-            return $next($ctx);
+        $middleware1 = function (Context $context, callable $next) {
+            $context->set("middleware1", true);
+            return $next($context);
         };
 
-        $middleware2 = function (Context $ctx, callable $next) {
-            $ctx->set("middleware2", true);
-            return $next($ctx);
+        $middleware2 = function (Context $context, callable $next) {
+            $context->set("middleware2", true);
+            return $next($context);
         };
 
         $this->router->addRoute(
             "GET",
             "/multi-middleware",
-            function (Context $ctx) {
-                return $ctx->text("Multiple Middleware");
+            function (Context $context) {
+                return $context->text("Multiple Middleware");
             },
             [$middleware1, $middleware2]
         );

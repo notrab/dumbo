@@ -1,0 +1,22 @@
+{layout 'layout.latte'}
+
+{block content}
+   <h1>Login</h1>
+    {if isset($error)}
+        <p style="color: red;">{$error}</p>
+    {/if}
+    <form action="/login" method="post">
+        <input type="hidden" name="csrf_token" value="{$csrfToken}">
+        <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Login</button>
+    </form>
+    <p>Don't have an account? <a href="/register">Register</a></p>
+    <p><a href="/">Back to Home</a></p>
+{/block}
