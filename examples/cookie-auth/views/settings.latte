@@ -1,0 +1,53 @@
+{layout 'layout.latte'}
+
+{block content}
+    <h1>Settings</h1>
+    {if isset($error)}
+        <p style="color: red;">{$error}</p>
+    {/if}
+    {if isset($success)}
+        <p style="color: green;">{$success}</p>
+    {/if}
+    <form action="/settings" method="post">
+        <input type="hidden" name="csrf_token" value="{$csrfToken}">
+        <div>
+            <label for="username">New Username:</label>
+            <input type="text" id="username" name="username" value="{$user['username']}">
+        </div>
+        <div>
+            <label for="password">New Password:</label>
+            <input type="password" id="password" name="password">
+        </div>
+        <div>
+            <label for="current_password">Current Password:</label>
+            <input type="password" id="current_password" name="current_password" required>
+        </div>
+        <button type="submit">Update Settings</button>
+    </form>
+    <p><a href="/">Back to Home</a></p>
+
+    <h2>Active Sessions</h2>
+    <table border="1">
+        <tr>
+            <th>Device</th>
+            <th>IP Address</th>
+            <th>Expires At</th>
+            <th>Action</th>
+        </tr>
+        {foreach $sessions as $session}
+            <tr>
+                <td>{$session['user_agent']}</td>
+                <td>{$session['ip_address']}</td>
+                <td>{date('Y-m-d H:i:s', $session['expires_at'])}</td>
+                <td>
+                     <form action="/invalidate-session" method="post">
+                            <input type="hidden" name="csrf_token" value="{$csrfToken}">
+                        <input type="hidden" name="csrf_token" value="{$csrfToken}">
+                        <input type="hidden" name="session_id" value="{$session['id']}">
+                        <button type="submit">Invalidate</button>
+                    </form>
+                </td>
+            </tr>
+        {/foreach}
+    </table>
+{/block}

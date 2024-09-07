@@ -6,6 +6,9 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body>
-         {include content}
+        {if isset($flash_message)}
+            <p style="color: green;">{$flash_message}</p>
+        {/if}
+        {include content}
     </body>
 </html>
