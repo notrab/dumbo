@@ -29,14 +29,14 @@ class CacheMiddleware
                 return $next($ctx);
             }
 
-            $etag =  $request->header('If-None-Match') ?: self::generateEtag($ctx, $strictEtag);
-
+            $etag = self::generateEtag($ctx, $strictEtag);
             $lastModified = gmdate('D, d M Y H:i:s') . ' GMT';
             $cacheControlHeader = sprintf('%s, max-age=%d%s', $type, $maxAge, $mustRevalidate ? ', must-revalidate' : '');
 
+            $ifNoneMatch = $request->header('If-None-Match');
             $ifModifiedSince = $request->header('If-Modified-Since');
 
-            if ($etag === $request->header('If-None-Match') || ($ifModifiedSince && strtotime($ifModifiedSince) >= strtotime($lastModified))) {
+            if ($ifNoneMatch && $etag === $ifNoneMatch) {
                 return $ctx->getResponse()
                     ->withStatus(self::HTTP_NOT_MODIFIED)
                     ->withHeader('Cache-Control', $cacheControlHeader)
@@ -44,13 +44,21 @@ class CacheMiddleware
                     ->withHeader('Last-Modified', $lastModified);
             }
 
-            $nextResponse = $next($ctx);
-
-            if (!$nextResponse->hasHeader('Cache-Control')) {
-                $nextResponse = $nextResponse->withHeader('Cache-Control', $cacheControlHeader);
+            if ($ifModifiedSince && strtotime($ifModifiedSince) >= strtotime($lastModified)) {
+                return $ctx->getResponse()
+                    ->withStatus(self::HTTP_NOT_MODIFIED)
+                    ->withHeader('Cache-Control', $cacheControlHeader)
+                    ->withHeader('ETag', $etag)
+                    ->withHeader('Last-Modified', $lastModified);
             }
 
-            return $nextResponse
+            $response = $next($ctx);
+
+            if (!$response->hasHeader('Cache-Control')) {
+                $response = $response->withHeader('Cache-Control', $cacheControlHeader);
+            }
+
+            return $response
                 ->withHeader('ETag', $etag)
                 ->withHeader('Last-Modified', $lastModified);
         };
@@ -62,6 +70,6 @@ class CacheMiddleware
             ? $ctx->req->method() . $ctx->req->path() . serialize($ctx->req->query())
             : $ctx->req->path();
 
-        return sprintf('"W/%s"', md5($identifier));
+        return sprintf('W/"%s"', md5($identifier));
     }
 }
