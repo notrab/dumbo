@@ -1,0 +1,21 @@
+{layout 'layout.latte'}
+
+{block content}
+   <h1>Register</h1>
+    {if isset($error)}
+        <p style="color: red;">{$error}</p>
+    {/if}
+    <form action="/register" method="post">
+        <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Register</button>
+    </form>
+    <p>Already have an account? <a href="/login">Login</a></p>
+    <p><a href="/">Back to Home</a></p>
+{/block}
