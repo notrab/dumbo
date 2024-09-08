@@ -3,8 +3,7 @@
 use Dumbo\Dumbo;
 use Dumbo\Middleware\CacheMiddleware;
 
-require "vendor/autoload.php";
-
+require __DIR__ . "/vendor/autoload.php";
 
 $app = new Dumbo();
 
@@ -14,12 +13,15 @@ $app = new Dumbo();
  * meaning that only these routes will have cache control headers.
  */
 
-$app->use('/cached', CacheMiddleware::withHeaders(
-    type: "public",
-    mustRevalidate: true,
-    maxAge: 3600,
-    strictEtag: true
-));
+$app->use(
+    "/cached",
+    CacheMiddleware::withHeaders(
+        type: "public",
+        mustRevalidate: true,
+        maxAge: 3600,
+        strictEtag: true
+    )
+);
 
 $app->get("/cached/greet", function ($c) {
     sleep(5);
@@ -29,11 +31,11 @@ $app->get("/cached/greet", function ($c) {
     ]);
 });
 
-$app->get('/uncached/greet', function ($c) {
+$app->get("/uncached/greet", function ($c) {
     sleep(5);
 
     return $c->json([
-        'message' => "Uncached route!",
+        "message" => "Uncached route!",
     ]);
 });
 
