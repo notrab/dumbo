@@ -218,4 +218,5 @@ class RequestWrapper implements RequestWrapperInterface
     {
         return "/" . trim($uri, "/");
     }
+
 }
