@@ -1,0 +1,8 @@
+{layout 'layout.latte'}
+
+{block content}
+    <h1>Protected Page</h1>
+    <p>Welcome, {$user['username']}! This is a protected page.</p>
+    <p>Your user ID is: {$user['userId']}</p>
+    <p><a href="/">Back to Home</a></p>
+{/block}
