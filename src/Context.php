@@ -2,9 +2,11 @@
 
 namespace Dumbo;
 
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\ResponseInterface;
+use Closure;
+use Dumbo\Helpers\View;
 use GuzzleHttp\Psr7\Response;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 /**
  * Context class for handling request and response in the Dumbo framework
@@ -25,6 +27,11 @@ class Context
 
     /** @var array<string, mixed> Variables stored in the context */
     private $variables = [];
+
+    /**
+     * @var Closure|null
+     */
+    private Closure|null $viewBuilder = null;
 
     /**
      * Context constructor
@@ -177,4 +184,39 @@ class Context
     {
         return $this->response;
     }
+
+    /**
+     * Set the render closure for constructing views.
+     *
+     * @param Closure $closure The closure responsible for rendering the view.
+     * @return void
+     * @throws \RuntimeException If the render closure has already been set.
+     */
+    public function render(Closure $closure): void
+    {
+        if ($this->viewBuilder !== null) {
+            throw new \RuntimeException('Render closure has already been set.');
+        }
+
+        $this->viewBuilder = $closure;
+    }
+
+    /**
+     * Generate and return the view using the passed parameters.
+     *
+     * @param mixed ...$params The parameters to pass to the view renderer.
+     * @return mixed The rendered view content.
+     * @throws \RuntimeException If no render closure has been set.
+     */
+    public function view(...$params)
+    {
+        if ($this->viewBuilder === null) {
+            throw new \RuntimeException('No render closure has been set.');
+        }
+
+        return $this->html(
+            call_user_func_array($this->viewBuilder, $params)
+        );
+    }
+
 }

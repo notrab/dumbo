@@ -14,6 +14,7 @@ use GuzzleHttp\Psr7\ServerRequest;
  * @author Jamie Barton
  * @version 1.0.0
  *
+ * @method void all(string $path, callable(Context): (ResponseInterface|null) $handler) Add route handler for all methods
  * @method void get(string $path, callable(Context): (ResponseInterface|null) $handler) Add a GET route
  * @method void post(string $path, callable(Context): (ResponseInterface|null) $handler) Add a POST route
  * @method void put(string $path, callable(Context): (ResponseInterface|null) $handler) Add a PUT route
@@ -53,6 +54,7 @@ class Dumbo
     public function __call(string $method, array $arguments): void
     {
         $supportedMethods = [
+            "all",
             "get",
             "post",
             "put",
@@ -62,7 +64,22 @@ class Dumbo
         ];
 
         if (in_array(strtolower($method), $supportedMethods)) {
-            $this->router->addRoute(strtoupper($method), ...$arguments);
+            if ($method === "all") {
+                $httpMethods = [
+                    "GET",
+                    "POST",
+                    "PUT",
+                    "PATCH",
+                    "DELETE",
+                    "HEAD",
+                    "OPTIONS",
+                ];
+                foreach ($httpMethods as $httpMethod) {
+                    $this->router->addRoute($httpMethod, ...$arguments);
+                }
+            } else {
+                $this->router->addRoute(strtoupper($method), ...$arguments);
+            }
         } else {
             throw new \BadMethodCallException("METHOD $method does not exist.");
         }
