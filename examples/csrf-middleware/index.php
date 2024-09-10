@@ -3,33 +3,24 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
+use Dumbo\Middleware\CsrfMiddleware;
 
 $app = new Dumbo();
 
-$app->use(function ($context, $next) {
-    echo "middleware 1 start\n";
-    $response = $next($context);
-    echo "middleware 1 end\n";
-    return $response;
-});
+$app->use(CsrfMiddleware::csrf([
+    'origin' => 'http://localhost:8000'
+]));
 
-$app->use(function ($context, $next) {
-    echo "middleware 2 start\n";
-    $response = $next($context);
-    echo "middleware 2 end\n";
-    return $response;
-});
+$app->post('/api/greet', function ($c) {
+    $body = $c->req->body();
 
-$app->use(function ($context, $next) {
-    echo "middleware 3 start\n";
-    $response = $next($context);
-    echo "middleware 3 end\n";
-    return $response;
-});
+    if (!isset($body["name"])) {
+        return $c->json(["error" => "Name is required"], 400);
+    }
 
-$app->get("/", function ($context) {
-    echo "handler\n";
-    return $context->text("Hello!");
+    return $c->json([
+        'message' => 'Hello ' . $body["name"],
+    ]);
 });
 
 $app->run();

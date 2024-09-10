@@ -32,7 +32,7 @@ class CsrfMiddleware
             }
 
             if (self::isFormRequest($contentType) && !self::isAllowedOrigin($origin, $ctx, $options)) {
-                return $ctx->text('Forbidden', 403);
+                return $ctx->text('Forbidden ', 403);
             }
 
             return $next($ctx);
@@ -54,7 +54,7 @@ class CsrfMiddleware
         if ($origin === null) {
             return false;
         }
-        dd($origin);
+
         if (!isset($options['origin'])) {
             return $origin === self::getRequestOrigin($ctx);
         }

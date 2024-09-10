@@ -16,8 +16,14 @@ This example demonstrates how middleware executes in Dumbo.
    composer start
    ```
 
-3. Access the protected route:
+3. Try valid origin:
 
-   ```bash
-     curl http://localhost:8000
-   ```
+    ```bash
+    curl -X POST http://localhost:8000/api/greet -H "Origin: http://localhost:8000" -H "Content-Type: application/x-www-form-urlencoded"
+    ```
+
+4. Try invalid origin:
+
+    ```bash
+    curl -X POST http://localhost:8000/api/greet -d "name=Dumbo" -H "Origin: http://example.com" -H "Content-Type: application/x-www-form-urlencoded"
+    ```
