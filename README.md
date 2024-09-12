@@ -1,6 +1,6 @@
 # Dumbo
 
-A lightweight, friendly PHP framework for HTTP &mdash; inspired by Hono. [Join us on Discord](https://discord.gg/CYkq2A6G)
+A lightweight, friendly PHP framework for HTTP &mdash; inspired by Hono. [Join us on Discord](https://discord.gg/nAq2h9BfsU)
 
 ![Dumbo](/dumbo.jpeg)
 
