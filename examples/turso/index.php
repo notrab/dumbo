@@ -2,15 +2,14 @@
 
 require __DIR__ . "/vendor/autoload.php";
 
-use Darkterminal\TursoHttp\LibSQL;
+use Libsql\Libsql;
 use Dumbo\Dumbo;
 
-// Run: turso dev -p 8001
-$dsn = "http://127.0.0.1:8001";
+$libsql = new Libsql();
+$db = $libsql->openLocal("./test.db");
+$conn = $db->connect();
 
-$client = new LibSQL($dsn);
-
-$client->execute("
+$conn->execute("
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -20,16 +19,18 @@ $client->execute("
 
 $app = new Dumbo();
 
-$app->get("/users", function ($context) use ($client) {
-    $result = $client->query("SELECT * FROM users")->fetchArray(LibSQL::LIBSQL_ASSOC);
+$app->get("/users", function ($context) use ($conn) {
+    $result = $conn->query("SELECT * FROM users")->fetchArray();
 
     return $context->json($result);
 });
 
-$app->get("/users/:id", function ($context) use ($client) {
-    $id = $context->req->param("id");
+$app->get("/users/:id", function ($context) use ($conn) {
+    $id = intval($context->req->param("id"));
 
-    $result = $client->query("SELECT * FROM users WHERE id = ?", [$id])->fetchArray(LibSQL::LIBSQL_ASSOC);
+    $result = $conn->query("SELECT * FROM users WHERE id = ?", [
+        $id
+    ])->fetchArray();
 
     if (empty($result)) {
         return $context->json(["error" => "User not found"], 404);
@@ -38,22 +39,26 @@ $app->get("/users/:id", function ($context) use ($client) {
     return $context->json($result[0]);
 });
 
-$app->post("/users", function ($context) use ($client) {
+$app->post("/users", function ($context) use ($conn) {
     $body = $context->req->body();
 
     if (!isset($body["name"]) || !isset($body["email"])) {
         return $context->json(["error" => "Name and email are required"], 400);
     }
 
-    $result = $client->prepare("INSERT INTO users (name, email) VALUES (?, ?) RETURNING id")
-        ->query([$body["name"], $body["email"]])
-        ->fetchArray(LibSQL::LIBSQL_ASSOC);
+    $result = $conn->query(
+        "INSERT INTO users (name, email) VALUES (:name, :email) RETURNING id",
+        [
+            ":name"  => $body["name"],
+            ":email" => $body["email"],
+        ])
+        ->fetchArray();
 
     return $context->json(["id" => $result[0]["id"]], 201);
 });
 
-$app->put("/users/:id", function ($context) use ($client) {
-    $id = $context->req->param("id");
+$app->put("/users/:id", function ($context) use ($conn) {
+    $id = intval($context->req->param("id"));
     $body = $context->req->body();
 
     if (!isset($body["name"]) && !isset($body["email"])) {
@@ -74,11 +79,10 @@ $app->put("/users/:id", function ($context) use ($client) {
     }
 
     $params[] = $id;
-    $result = $client->prepare(
-        "UPDATE users SET " .
-        implode(", ", $setClause) .
-        " WHERE id = ? RETURNING *"
-    )->query($params)->fetchArray(LibSQL::LIBSQL_ASSOC);
+    $result = $conn->query(
+        "UPDATE users SET " . implode(", ", $setClause) . " WHERE id = ? RETURNING *",
+        $params
+    )->fetchArray();
 
     if (empty($result)) {
         return $context->json(["error" => "User not found"], 404);
@@ -87,12 +91,12 @@ $app->put("/users/:id", function ($context) use ($client) {
     return $context->json($result[0]);
 });
 
-$app->delete("/users/:id", function ($context) use ($client) {
-    $id = $context->req->param("id");
+$app->delete("/users/:id", function ($context) use ($conn) {
+    $id = intval($context->req->param("id"));
 
-    $result = $client->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
+    $changed = $conn->execute("DELETE FROM users WHERE id = ?", [$id]);
 
-    if (empty($result)) {
+    if ($changed == 0) {
         return $context->json(["error" => "User not found"], 404);
     }
 
