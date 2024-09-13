@@ -16,7 +16,7 @@ This example demonstrates how to return HTML with Dumbo.
    composer start
    ```
 
-3. Access the protected route:
+3. Access the route:
 
    ```bash
      curl http://localhost:8000
