@@ -308,9 +308,16 @@ class Dumbo
      */
     public function staticFiles(string $urlPath, string $directory): void
     {
-        $this->get($urlPath . "/:file+", function ($context) use ($directory) {
-            $filePath =
-                $directory . "/" . implode("/", $context->req->param("file"));
+        $this->get($urlPath . "{path:.*}", function ($context) use (
+            $directory,
+            $urlPath
+        ) {
+            $requestedPath = $context->req->param("path");
+            $filePath = $directory . "/" . $requestedPath;
+
+            if (empty($requestedPath) || is_dir($filePath)) {
+                $filePath = rtrim($filePath, "/") . "/index.html";
+            }
 
             $realFilePath = realpath($filePath);
             $realDirectory = realpath($directory);

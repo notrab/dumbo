@@ -6,11 +6,6 @@ use Dumbo\Dumbo;
 
 $app = new Dumbo();
 
-$app->staticFiles("/assets", __DIR__ . "/../assets");
-
-$app->get("/", function ($context) {
-    $content = file_get_contents(__DIR__ . "/views/home.php");
-    return $context->html($content);
-});
+$app->staticFiles("/", __DIR__ . "/assets");
 
 $app->run();
