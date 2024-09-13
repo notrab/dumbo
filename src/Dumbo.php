@@ -301,60 +301,6 @@ class Dumbo
     }
 
     /**
-     * Serve static files from a directory
-     *
-     * @param string $urlPath The URL path to serve the static files from
-     * @param string $directory The directory containing the static files
-     */
-    public function staticFiles(string $urlPath, string $directory): void
-    {
-        $this->get($urlPath . "{path:.*}", function ($context) use (
-            $directory,
-            $urlPath
-        ) {
-            $requestedPath = $context->req->param("path");
-            $filePath = $directory . "/" . $requestedPath;
-
-            if (empty($requestedPath) || is_dir($filePath)) {
-                $filePath = rtrim($filePath, "/") . "/index.html";
-            }
-
-            $realFilePath = realpath($filePath);
-            $realDirectory = realpath($directory);
-
-            if (
-                $realFilePath === false ||
-                strpos($realFilePath, $realDirectory) !== 0
-            ) {
-                return $context->text("File not found", 404);
-            }
-
-            if (file_exists($realFilePath) && is_file($realFilePath)) {
-                $mimeType = mime_content_type($realFilePath);
-                $fileContent = file_get_contents($realFilePath);
-
-                $response = $context
-                    ->getResponse()
-                    ->withHeader("Content-Type", $mimeType)
-                    ->withHeader("Cache-Control", "public, max-age=3600")
-                    ->withBody(\GuzzleHttp\Psr7\Utils::streamFor($fileContent));
-
-                $etag = md5($fileContent);
-                $response = $response->withHeader("ETag", $etag);
-
-                $ifNoneMatch = $context->req->header("If-None-Match");
-                if ($ifNoneMatch === $etag) {
-                    return $response->withStatus(304);
-                }
-
-                return $response;
-            } else {
-                return $context->text("File not found", 404);
-            }
-        });
-    }
-
-    /**
      * Handle HTTPException
      *
      * @param HTTPException $e The caught HTTPException
