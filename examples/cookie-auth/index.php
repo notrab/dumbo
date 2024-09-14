@@ -4,6 +4,7 @@ require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
 use Dumbo\Helpers\Cookie;
+use Dumbo\Middleware\CsrfMiddleware;
 use Latte\Engine as LatteEngine;
 use Darkterminal\TursoHttp\LibSQL;
 
@@ -61,7 +62,19 @@ $app->onError(function ($error, $c) {
     );
 });
 
-// You probably want to add a CSRF token to your forms
+$app->use(CsrfMiddleware::csrf([
+    'getToken' => function ($ctx) {
+        return Cookie::getCookie($ctx, 'csrf_token') ?? null;
+    },
+    'setToken' => function ($ctx, $token) {
+        Cookie::setCookie($ctx, 'csrf_token', $token, [
+            'httpOnly' => true,
+            'secure' => true,
+            'sameSite' => 'Lax',
+        ]);
+    },
+]));
+
 $app->use(function ($c, $next) use ($db) {
     $sessionId = Cookie::getSignedCookie(
         $c,
@@ -72,7 +85,7 @@ $app->use(function ($c, $next) use ($db) {
     $debugSessionId = $_COOKIE["debug_session"] ?? "Not set";
     error_log(
         "Middleware: Session ID from cookie: " .
-            ($sessionId ? $sessionId : "Not set")
+        ($sessionId ? $sessionId : "Not set")
     );
     error_log("Middleware: Debug Session ID: " . $debugSessionId);
 
@@ -95,7 +108,7 @@ $app->use(function ($c, $next) use ($db) {
             if (!empty($user)) {
                 error_log(
                     "Middleware: User found for session: " .
-                        $user[0]["username"]
+                    $user[0]["username"]
                 );
                 $c->set("user", $user[0]);
             } else {
@@ -120,13 +133,13 @@ $app->get("/", function ($c) use ($latte) {
     $flashMessage = $c->get("flash_message");
     error_log(
         "Home route: User " .
-            ($user
-                ? "is logged in as " . $user["username"]
-                : "is not logged in")
+        ($user
+            ? "is logged in as " . $user["username"]
+            : "is not logged in")
     );
     error_log(
         "Home route: Flash message: " .
-            ($flashMessage ? $flashMessage : "No flash message")
+        ($flashMessage ? $flashMessage : "No flash message")
     );
 
     $html = render($latte, "home", [
@@ -138,7 +151,11 @@ $app->get("/", function ($c) use ($latte) {
 });
 
 $app->get("/register", function ($c) use ($latte) {
-    $html = render($latte, "register");
+    $csrfToken = Cookie::getCookie($c, 'csrf_token');
+    $html = render($latte, "register", [
+        "csrf_token" => $csrfToken,
+
+    ]);
     return $c->html($html);
 });
 
@@ -172,8 +189,10 @@ $app->post("/register", function ($c) use ($db, $latte) {
 
 $app->get("/login", function ($c) use ($latte) {
     $flashMessage = $c->get("flash_message");
+    $csrfToken = Cookie::getCookie($c, 'csrf_token');
     $html = render($latte, "login", [
         "flash_message" => $flashMessage,
+        "csrf_token" => $csrfToken,
     ]);
     $c->set("flash_message", null); // Clear the flash message after displaying
 
@@ -237,9 +256,9 @@ $app->post("/login", function ($c) use ($db, $latte) {
 
             error_log(
                 "Session cookie set: " .
-                    SESSION_COOKIE_NAME .
-                    " = " .
-                    $sessionId
+                SESSION_COOKIE_NAME .
+                " = " .
+                $sessionId
             );
 
             $c->set("flash_message", "Login successful.");
