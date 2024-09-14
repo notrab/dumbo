@@ -211,6 +211,8 @@ class Dumbo
      */
     public function run(): void
     {
+        $this->router->buildDispatcher();
+
         $request = $this->createServerRequestFromGlobals();
         $response = $this->handle($request);
 

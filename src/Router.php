@@ -27,12 +27,9 @@ class Router
     /**
      * Constructor
      *
-     * Initializes the router and invokes the initial dispatcher.
+     * Initializes the router.
      */
-    public function __construct()
-    {
-        $this->rebuildDispatcher();
-    }
+    public function __construct() {}
 
     /**
      * Add a route to the router
@@ -54,7 +51,6 @@ class Router
             "handler" => $handler,
             "middleware" => $middleware,
         ];
-        $this->rebuildDispatcher();
     }
 
     /**
@@ -66,7 +62,6 @@ class Router
     public function addGroup(string $prefix, array $groupRoutes): void
     {
         $this->groups[$prefix] = $groupRoutes;
-        $this->rebuildDispatcher();
     }
 
     /**
@@ -78,7 +73,7 @@ class Router
     public function findRoute(ServerRequestInterface $request): ?array
     {
         if (!$this->dispatcher) {
-            return null;
+            $this->buildDispatcher();
         }
 
         $httpMethod = $request->getMethod();
@@ -130,11 +125,11 @@ class Router
     }
 
     /**
-     * Rebuild the FastRoute dispatcher
+     * Build the FastRoute dispatcher
      *
-     * This method is called whenever routes are added or modified.
+     * This method is called when the application run.
      */
-    private function rebuildDispatcher(): void
+    public function buildDispatcher(): void
     {
         $this->dispatcher = \FastRoute\simpleDispatcher(function (
             RouteCollector $r
