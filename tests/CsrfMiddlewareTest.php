@@ -2,145 +2,169 @@
 
 namespace Dumbo\Tests;
 
+use PHPUnit\Framework\TestCase;
 use Dumbo\Context;
 use Dumbo\Middleware\CsrfMiddleware;
+use GuzzleHttp\Psr7\ServerRequest;
 use GuzzleHttp\Psr7\Response;
-use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriInterface;
+use GuzzleHttp\Psr7\Utils;
 
 class CsrfMiddlewareTest extends TestCase
 {
-    private function createMockContext($method = 'GET', $headers = [], $path = '/'): Context
+    private array $tokenStorage = [];
+
+    protected function setUp(): void
     {
-        $request = $this->createMock(ServerRequestInterface::class);
-        $request->method('getMethod')->willReturn($method);
-
-        $uri = $this->createMock(UriInterface::class);
-        $uri->method('getPath')->willReturn($path);
-        $request->method('getUri')->willReturn($uri);
-
-        $request->method('getHeader')
-            ->willReturnCallback(function ($headerName) use ($headers) {
-                return $headers[$headerName] ?? [];
-            });
-
-        $request->method('getHeaders')->willReturn($headers);
-
-        return new Context($request, [], $path);
+        $this->tokenStorage = [];
     }
 
-    public function testAllowsSafeMethodsWithoutOrigin()
+    private function createContext($method, $body = [], $headers = []): Context
     {
-        $middleware = CsrfMiddleware::csrf();
-        $context = $this->createMockContext();
+        $jsonBody = json_encode($body);
+        $stream = Utils::streamFor($jsonBody);
+        $request = new ServerRequest($method, '/', $headers, $stream);
+        return new Context($request, [], '/');
+    }
 
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
+    private function getTokenCallback(): callable
+    {
+        return function ($ctx) {
+            return $this->tokenStorage['csrf_token'] ?? null;
         };
-
-        $response = $middleware($context, $next);
-
-        $this->assertEquals(200, $response->getStatusCode());
     }
 
-    public function testBlocksUnsafeMethodWithoutOrigin()
+    private function setTokenCallback(): callable
     {
-        $middleware = CsrfMiddleware::csrf();
-        $context = $this->createMockContext('POST', ['Content-Type' => ['application/x-www-form-urlencoded']]);
-
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
+        return function ($ctx, $token) {
+            $this->tokenStorage['csrf_token'] = $token;
         };
-
-        $response = $middleware($context, $next);
-
-        $this->assertEquals(403, $response->getStatusCode());
     }
 
-    public function testAllowsUnsafeMethodWithCorrectOrigin()
-    {
-        $middleware = CsrfMiddleware::csrf(['origin' => 'https://example.com']);
-        $context = $this->createMockContext('POST', [
-            'Content-Type' => ['application/x-www-form-urlencoded'],
-            'Origin' => ['https://example.com']
-        ]);
-
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
-        };
-
-        $response = $middleware($context, $next);
-
-        $this->assertEquals(200, $response->getStatusCode());
-    }
-
-    public function testBlocksUnsafeMethodWithIncorrectOrigin()
-    {
-        $middleware = CsrfMiddleware::csrf(['origin' => 'https://example.com']);
-        $context = $this->createMockContext('POST', [
-            'Content-Type' => ['application/x-www-form-urlencoded'],
-            'Origin' => ['https://malicious.com']
-        ]);
-
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
-        };
-
-        $response = $middleware($context, $next);
-
-        $this->assertEquals(403, $response->getStatusCode());
-    }
-
-    public function testAllowsUnsafeMethodWithCorrectOriginInArray()
-    {
-        $middleware = CsrfMiddleware::csrf(['origin' => ['https://example.com', 'https://subdomain.example.com']]);
-        $context = $this->createMockContext('POST', [
-            'Content-Type' => ['application/x-www-form-urlencoded'],
-            'Origin' => ['https://subdomain.example.com']
-        ]);
-
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
-        };
-
-        $response = $middleware($context, $next);
-
-        $this->assertEquals(200, $response->getStatusCode());
-    }
-
-    public function testAllowsUnsafeMethodWithCustomOriginFunction()
+    public function testSafeMethodGeneratesToken()
     {
         $middleware = CsrfMiddleware::csrf([
-            'origin' => function($origin) {
-                return str_contains($origin, '.example.com');
-            }
-        ]);
-        $context = $this->createMockContext('POST', [
-            'Content-Type' => ['application/x-www-form-urlencoded'],
-            'Origin' => ['https://custom.example.com']
+            'getToken' => $this->getTokenCallback(),
+            'setToken' => $this->setTokenCallback(),
+            'tokenLength' => 64,
         ]);
 
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
-        };
+        $ctx = $this->createContext('GET');
+        $nextCalled = false;
 
-        $response = $middleware($context, $next);
+        $middleware($ctx, function ($c) use (&$nextCalled) {
+            $nextCalled = true;
+            return new Response();
+        });
 
-        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertTrue($nextCalled);
+        $this->assertNotNull($this->tokenStorage['csrf_token']);
+        $this->assertEquals(64, strlen($this->tokenStorage['csrf_token']));
     }
 
-    public function testIgnoresNonFormRequests()
+    public function testUnsafeMethodWithValidToken()
     {
-        $middleware = CsrfMiddleware::csrf();
-        $context = $this->createMockContext('POST', ['Content-Type' => ['application/json']]);
+        $token = bin2hex(random_bytes(32));
+        $this->tokenStorage['csrf_token'] = $token;
 
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
-        };
+        $middleware = CsrfMiddleware::csrf([
+            'getToken' => $this->getTokenCallback(),
+            'setToken' => $this->setTokenCallback(),
+        ]);
 
-        $response = $middleware($context, $next);
+        $ctx = $this->createContext('POST', ['csrf_token' => $token], ['Content-Type' => 'application/json']);
+        $nextCalled = false;
 
-        $this->assertEquals(200, $response->getStatusCode());
+        $middleware($ctx, function ($c) use (&$nextCalled) {
+            $nextCalled = true;
+            return new Response();
+        });
+
+        $this->assertTrue($nextCalled);
+    }
+
+
+    public function testUnsafeMethodWithInvalidToken()
+    {
+        $this->tokenStorage['csrf_token'] = bin2hex(random_bytes(32));
+
+        $middleware = CsrfMiddleware::csrf([
+            'getToken' => $this->getTokenCallback(),
+            'setToken' => $this->setTokenCallback(),
+        ]);
+
+        $ctx = $this->createContext('POST', ['csrf_token' => 'invalid_token']);
+
+        $response = $middleware($ctx, function () {
+            $this->fail('Next middleware should not be called');
+        });
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(403, $response->getStatusCode());
+        $this->assertEquals('{"error":"Invalid CSRF token"}', (string) $response->getBody());
+    }
+
+    public function testUnsafeMethodWithMissingToken()
+    {
+        $this->tokenStorage['csrf_token'] = bin2hex(random_bytes(32));
+
+        $middleware = CsrfMiddleware::csrf([
+            'getToken' => $this->getTokenCallback(),
+            'setToken' => $this->setTokenCallback(),
+        ]);
+
+        $ctx = $this->createContext('POST');
+
+        $response = $middleware($ctx, function () {
+            $this->fail('Next middleware should not be called');
+        });
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(403, $response->getStatusCode());
+        $this->assertEquals('{"error":"Invalid CSRF token"}', (string) $response->getBody());
+    }
+
+    public function testCustomErrorHandler()
+    {
+        $this->tokenStorage['csrf_token'] = bin2hex(random_bytes(32));
+
+        $middleware = CsrfMiddleware::csrf([
+            'getToken' => $this->getTokenCallback(),
+            'setToken' => $this->setTokenCallback(),
+            'errorHandler' => function ($ctx) {
+                return $ctx->json(['error' => 'Custom error'], 400);
+            },
+        ]);
+
+        $ctx = $this->createContext('POST', ['csrf_token' => 'invalid_token']);
+
+        $response = $middleware($ctx, function () {
+            $this->fail('Next middleware should not be called');
+        });
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertEquals('{"error":"Custom error"}', (string) $response->getBody());
+    }
+
+    public function testUseHeader()
+    {
+        $token = bin2hex(random_bytes(32));
+        $this->tokenStorage['csrf_token'] = $token;
+
+        $middleware = CsrfMiddleware::csrf([
+            'getToken' => $this->getTokenCallback(),
+            'setToken' => $this->setTokenCallback(),
+            'useHeader' => true,
+        ]);
+
+        $ctx = $this->createContext('POST', [], ['X-CSRF-TOKEN' => $token, 'Content-Type' => 'application/json']);
+        $nextCalled = false;
+
+        $middleware($ctx, function ($c) use (&$nextCalled) {
+            $nextCalled = true;
+            return new Response();
+        });
+
+        $this->assertTrue($nextCalled);
     }
 }

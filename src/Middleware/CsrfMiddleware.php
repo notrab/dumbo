@@ -4,84 +4,100 @@ namespace Dumbo\Middleware;
 
 use Closure;
 use Dumbo\Context;
+use InvalidArgumentException;
+use Psr\Http\Message\ResponseInterface;
+
 
 class CsrfMiddleware
 {
-    const SAFE_METHODS = [
-        'GET',
-        'HEAD',
-        'OPTIONS',
-        'TRACE'
-    ];
+    private const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS', 'TRACE'];
+    private const TOKEN_LENGTH = 32;
+    private const TOKEN_NAME = 'csrf_token';
+    private const HEADER_NAME = 'X-CSRF-TOKEN';
 
-    const FORM_CONTENT_TYPES = [
-        'application/x-www-form-urlencoded',
-        'multipart/form-data',
-        'text/plain'
-    ];
-
+    /**
+     * @param array $options{tokenName: string, headerName: string, tokenLength: int, useHeader: bool, getToken: callable, setToken: callable, errorHandler: callable}
+     * @return Closure
+     */
     public static function csrf(array $options = []): Closure
     {
-        return function (Context $ctx, callable $next) use ($options) {
-            $method = $ctx->req->method();
-            $contentType = $ctx->req->header('Content-Type');
-            $origin = $ctx->req->header('Origin');
+        $tokenName = $options['tokenName'] ?? self::TOKEN_NAME;
+        $headerName = $options['headerName'] ?? self::HEADER_NAME;
+        $tokenLength = $options['tokenLength'] ?? self::TOKEN_LENGTH;
+        $useHeader = $options['useHeader'] ?? false;
+        $getToken = $options['getToken'] ?? null;
+        $setToken = $options['setToken'] ?? null;
+        $errorHandler = $options['errorHandler'] ?? null;
 
-            if (self::isSafeMethod($method)) {
-                return $next($ctx);
+        if (!is_callable($getToken) || !is_callable($setToken)) {
+            throw new InvalidArgumentException('getToken and setToken must be callable');
+        }
+
+        if ($errorHandler !== null && !is_callable($errorHandler)) {
+            throw new InvalidArgumentException('errorHandler must be callable');
+        }
+
+        return function (Context $ctx, callable $next) use ($tokenName, $headerName, $useHeader, $getToken, $setToken, $errorHandler, $tokenLength) {
+            if (self::isSafeMethod($ctx->req->method())) {
+                return self::handleSafeMethod($ctx, $next, $tokenName, $headerName, $useHeader, $getToken, $setToken, $tokenLength);
             }
 
-            if (self::isFormRequest($contentType) && !self::isAllowedOrigin($origin, $ctx, $options)) {
-                return $ctx->text('Forbidden ', 403);
+
+            if (!self::validateToken($ctx, $tokenName, $headerName, $useHeader, $getToken)) {
+                return self::handleError($ctx, $errorHandler);
             }
 
             return $next($ctx);
         };
     }
 
-    private static function isSafeMethod(?string $method): bool
+    private static function isSafeMethod(string $method): bool
     {
-        return !($method == null) && in_array(strtoupper($method), self::SAFE_METHODS);
+        return in_array(strtoupper($method), self::SAFE_METHODS, true);
     }
 
-    private static function isFormRequest(string $contentType): bool
+    private static function handleSafeMethod(Context $ctx, callable $next, string $tokenName, string $headerName, bool $useHeader, callable $getToken, callable $setToken, int $tokenLength): mixed
     {
-        return in_array($contentType, self::FORM_CONTENT_TYPES);
+        $token = $getToken($ctx);
+
+        if (!$token) {
+            $token = self::generateToken($tokenLength);
+            $setToken($ctx, $token);
+        }
+
+        if ($useHeader) {
+            $ctx->header($headerName, $token);
+        }
+
+        return $next($ctx);
     }
 
-    private static function isAllowedOrigin(?string $origin, Context $ctx, array $options): bool
+    private static function validateToken(Context $ctx, string $tokenName, string $headerName, bool $useHeader, callable $getToken): bool
     {
-        if ($origin === null) {
+        $storedToken = $getToken($ctx);
+
+        if (!$storedToken) {
             return false;
         }
 
-        if (!isset($options['origin'])) {
-            return $origin === self::getRequestOrigin($ctx);
-        }
+        $receivedToken = $useHeader ? $ctx->req->header($headerName) : $ctx->req->body()[$tokenName];
 
-        $allowedOrigins = $options['origin'];
-
-        if (is_string($allowedOrigins)) {
-            return $origin === $allowedOrigins;
-        }
-
-        if (is_array($allowedOrigins)) {
-            return in_array($origin, $allowedOrigins);
-        }
-
-        if (is_callable($allowedOrigins)) {
-            return $allowedOrigins($origin, $ctx);
-        }
-
-        return false;
+        return $receivedToken !== null && hash_equals($storedToken, $receivedToken);
     }
 
-    private static function getRequestOrigin(Context $ctx): string
+    private static function generateToken(int $length): string
     {
-        $url = $ctx->req->routePath();
-        $parsedUrl = parse_url($url);
-        dd( $parsedUrl['scheme'] . '://' . $parsedUrl['host']);
-        return $parsedUrl['scheme'] . '://' . $parsedUrl['host'];
+        return bin2hex(random_bytes($length / 2));
     }
 
+    private static function handleError(Context $ctx, ?callable $errorHandler): ResponseInterface
+    {
+        if ($errorHandler) {
+            return $errorHandler($ctx);
+        }
+
+        return $ctx->json([
+            'error' => 'Invalid CSRF token',
+        ], 403);
+    }
 }
