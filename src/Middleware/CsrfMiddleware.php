@@ -16,39 +16,59 @@ class CsrfMiddleware
     private const HEADER_NAME = 'X-CSRF-TOKEN';
 
     /**
-     * @param array $options{tokenName: string, headerName: string, tokenLength: int, useHeader: bool, getToken: callable, setToken: callable, errorHandler: callable}
+     * @param array $options
      * @return Closure
      */
     public static function csrf(array $options = []): Closure
     {
-        $tokenName = $options['tokenName'] ?? self::TOKEN_NAME;
-        $headerName = $options['headerName'] ?? self::HEADER_NAME;
-        $tokenLength = $options['tokenLength'] ?? self::TOKEN_LENGTH;
-        $useHeader = $options['useHeader'] ?? false;
-        $getToken = $options['getToken'] ?? null;
-        $setToken = $options['setToken'] ?? null;
-        $errorHandler = $options['errorHandler'] ?? null;
+        $options = self::mergeOptions($options);
 
-        if (!is_callable($getToken) || !is_callable($setToken)) {
+        self::validateOptions($options);
+
+        if (!is_callable($options['getToken']) || !is_callable($options['setToken'])) {
             throw new InvalidArgumentException('getToken and setToken must be callable');
         }
 
-        if ($errorHandler !== null && !is_callable($errorHandler)) {
+        if ($options['errorHandler'] !== null && !is_callable($options['errorHandler'])) {
             throw new InvalidArgumentException('errorHandler must be callable');
         }
 
-        return function (Context $ctx, callable $next) use ($tokenName, $headerName, $useHeader, $getToken, $setToken, $errorHandler, $tokenLength) {
+        return function (Context $ctx, callable $next) use ($options) {
             if (self::isSafeMethod($ctx->req->method())) {
-                return self::handleSafeMethod($ctx, $next, $tokenName, $headerName, $useHeader, $getToken, $setToken, $tokenLength);
+                return self::handleSafeMethod($ctx, $next, $options);
             }
 
 
-            if (!self::validateToken($ctx, $tokenName, $headerName, $useHeader, $getToken)) {
-                return self::handleError($ctx, $errorHandler);
+            if (!self::validateToken($ctx, $options)) {
+                return self::handleError($ctx, $options['errorHandler']);
             }
 
             return $next($ctx);
         };
+    }
+
+    private static function mergeOptions(array $options): array
+    {
+        return array_merge([
+            'tokenName' => self::TOKEN_NAME,
+            'headerName' => self::HEADER_NAME,
+            'tokenLength' => self::TOKEN_LENGTH,
+            'useHeader' => false,
+            'getToken' => null,
+            'setToken' => null,
+            'errorHandler' => null
+        ], $options);
+    }
+
+    private static function validateOptions(array $options): void
+    {
+        if (!is_callable($options['getToken']) || !is_callable($options['setToken'])) {
+            throw new InvalidArgumentException('getToken and setToken must be callable');
+        }
+
+        if ($options['errorHandler'] !== null && !is_callable($options['errorHandler'])) {
+            throw new InvalidArgumentException('errorHandler must be callable');
+        }
     }
 
     private static function isSafeMethod(string $method): bool
@@ -56,31 +76,31 @@ class CsrfMiddleware
         return in_array(strtoupper($method), self::SAFE_METHODS, true);
     }
 
-    private static function handleSafeMethod(Context $ctx, callable $next, string $tokenName, string $headerName, bool $useHeader, callable $getToken, callable $setToken, int $tokenLength): mixed
+    private static function handleSafeMethod(Context $ctx, callable $next, array $options): mixed
     {
-        $token = $getToken($ctx);
+        $token = $options['getToken']($ctx);
 
         if (!$token) {
-            $token = self::generateToken($tokenLength);
-            $setToken($ctx, $token);
+            $token = self::generateToken($options['tokenLength']);
+            $options['setToken']($ctx, $token);
         }
 
-        if ($useHeader) {
-            $ctx->header($headerName, $token);
+        if ($options['useHeader']) {
+            $ctx->header($options['headerName'], $token);
         }
 
         return $next($ctx);
     }
 
-    private static function validateToken(Context $ctx, string $tokenName, string $headerName, bool $useHeader, callable $getToken): bool
+    private static function validateToken(Context $ctx, array $options): bool
     {
-        $storedToken = $getToken($ctx);
+        $storedToken = $options['getToken']($ctx);
 
         if (!$storedToken) {
             return false;
         }
 
-        $receivedToken = $useHeader ? $ctx->req->header($headerName) : $ctx->req->body()[$tokenName];
+        $receivedToken = $options['useHeader'] ? $ctx->req->header($options['headerName']) : $ctx->req->body()[$options['tokenName']];
 
         return $receivedToken !== null && hash_equals($storedToken, $receivedToken);
     }
