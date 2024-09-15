@@ -62,18 +62,20 @@ $app->onError(function ($error, $c) {
     );
 });
 
-$app->use(CsrfMiddleware::csrf([
-    'getToken' => function ($ctx) {
-        return Cookie::getCookie($ctx, 'csrf_token') ?? null;
-    },
-    'setToken' => function ($ctx, $token) {
-        Cookie::setCookie($ctx, 'csrf_token', $token, [
-            'httpOnly' => true,
-            'secure' => true,
-            'sameSite' => 'Lax',
-        ]);
-    },
-]));
+$app->use(
+    CsrfMiddleware::csrf([
+        "getToken" => function ($ctx) {
+            return Cookie::getCookie($ctx, "csrf_token") ?? null;
+        },
+        "setToken" => function ($ctx, $token) {
+            Cookie::setCookie($ctx, "csrf_token", $token, [
+                "httpOnly" => true,
+                "secure" => true,
+                "sameSite" => "Lax",
+            ]);
+        },
+    ])
+);
 
 $app->use(function ($c, $next) use ($db) {
     $sessionId = Cookie::getSignedCookie(
@@ -85,7 +87,7 @@ $app->use(function ($c, $next) use ($db) {
     $debugSessionId = $_COOKIE["debug_session"] ?? "Not set";
     error_log(
         "Middleware: Session ID from cookie: " .
-        ($sessionId ? $sessionId : "Not set")
+            ($sessionId ? $sessionId : "Not set")
     );
     error_log("Middleware: Debug Session ID: " . $debugSessionId);
 
@@ -108,7 +110,7 @@ $app->use(function ($c, $next) use ($db) {
             if (!empty($user)) {
                 error_log(
                     "Middleware: User found for session: " .
-                    $user[0]["username"]
+                        $user[0]["username"]
                 );
                 $c->set("user", $user[0]);
             } else {
@@ -133,28 +135,27 @@ $app->get("/", function ($c) use ($latte) {
     $flashMessage = $c->get("flash_message");
     error_log(
         "Home route: User " .
-        ($user
-            ? "is logged in as " . $user["username"]
-            : "is not logged in")
+            ($user
+                ? "is logged in as " . $user["username"]
+                : "is not logged in")
     );
     error_log(
         "Home route: Flash message: " .
-        ($flashMessage ? $flashMessage : "No flash message")
+            ($flashMessage ? $flashMessage : "No flash message")
     );
 
     $html = render($latte, "home", [
         "user" => $user,
         "flash_message" => $flashMessage,
     ]);
-    $c->set("flash_message", null); // Clear the flash message after displaying
+    $c->set("flash_message", null);
     return $c->html($html);
 });
 
 $app->get("/register", function ($c) use ($latte) {
-    $csrfToken = Cookie::getCookie($c, 'csrf_token');
+    $csrfToken = Cookie::getCookie($c, "csrf_token");
     $html = render($latte, "register", [
         "csrf_token" => $csrfToken,
-
     ]);
     return $c->html($html);
 });
@@ -189,7 +190,7 @@ $app->post("/register", function ($c) use ($db, $latte) {
 
 $app->get("/login", function ($c) use ($latte) {
     $flashMessage = $c->get("flash_message");
-    $csrfToken = Cookie::getCookie($c, 'csrf_token');
+    $csrfToken = Cookie::getCookie($c, "csrf_token");
     $html = render($latte, "login", [
         "flash_message" => $flashMessage,
         "csrf_token" => $csrfToken,
@@ -256,9 +257,9 @@ $app->post("/login", function ($c) use ($db, $latte) {
 
             error_log(
                 "Session cookie set: " .
-                SESSION_COOKIE_NAME .
-                " = " .
-                $sessionId
+                    SESSION_COOKIE_NAME .
+                    " = " .
+                    $sessionId
             );
 
             $c->set("flash_message", "Login successful.");
@@ -309,6 +310,8 @@ $app->get("/settings", function ($c) use ($db, $latte) {
         return $c->redirect("/login");
     }
 
+    $csrfToken = Cookie::getCookie($c, "csrf_token");
+
     $sessions = $db
         ->query(
             "SELECT id, user_agent, ip_address, expires_at FROM sessions WHERE user_id = ? AND expires_at > ?",
@@ -319,6 +322,7 @@ $app->get("/settings", function ($c) use ($db, $latte) {
     $html = render($latte, "settings", [
         "user" => $user,
         "sessions" => $sessions,
+        "csrf_token" => $csrfToken,
     ]);
 
     return $c->html($html);
