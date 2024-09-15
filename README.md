@@ -1,8 +1,24 @@
-# Dumbo
+<p align="center">
+  <img src="dumbo.jpeg" alt="Dumbo" width="600"/>
+  <h1 align="center">Dumbo</h1>
+</p>
 
-A lightweight, friendly PHP framework for HTTP &mdash; inspired by Hono. [Join us on Discord](https://discord.gg/nAq2h9BfsU)
+<p align="center">
+  A lightweight, friendly PHP framework for HTTP &mdash; Inspired by Hono.
+</p>
 
-![Dumbo](/dumbo.jpeg)
+<p align="center">
+  <a href="https://discord.gg/nAq2h9BfsU">
+    <img src="https://img.shields.io/discord/1278637768918171709?color=8A2BE2" alt="Discord" />
+  </a>
+  <img src="https://img.shields.io/github/contributors/notrab/dumbo?color=8A2BE2" alt="Contributors" />
+  <a href="">
+    <img src="https://img.shields.io/packagist/dt/notrab/dumbo?color=8A2BE2" alt="Total downloads" />
+  </a>
+  <a href="/examples">
+    <img src="https://img.shields.io/badge/browse-examples-8A2BE2" alt="Examples" />
+  </a>
+</p>
 
 ## Install
 
