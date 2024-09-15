@@ -1,6 +1,6 @@
-# Context Example
+# HTMX Example
 
-This example demonstrates how to pass a render closure to context and generate a view using the latte template engine.
+This example demonstrates how to use htmx with Blade and Dumbo.
 
 ## Running the Example
 
@@ -16,7 +16,7 @@ This example demonstrates how to pass a render closure to context and generate a
    composer start
    ```
 
-3. Access the demo route:
+3. Access the demo:
 
    ```bash
      curl http://localhost:8000
