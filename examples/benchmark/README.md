@@ -1,6 +1,6 @@
-# JSON Example
+# Benchmarks Example
 
-This example demonstrates how to return JSON with Dumbo.
+This example has some basic benchmarks for Dumbo.
 
 ## Running the Example
 
