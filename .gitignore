@@ -6,3 +6,4 @@ composer.lock
 .fleet
 .vscode
 cache
+file.db
