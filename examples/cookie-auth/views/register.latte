@@ -6,7 +6,7 @@
         <p style="color: red;">{$error}</p>
     {/if}
     <form action="/register" method="post">
-        <input type="hidden" name="csrf_token" value="{$csrfToken}">
+        <input type="hidden" name="csrf_token" value="{$csrf_token}">
         <div>
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required>
