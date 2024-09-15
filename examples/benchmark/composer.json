@@ -1,0 +1,18 @@
+{
+  "require": {
+    "notrab/dumbo": "@dev",
+    "guzzlehttp/guzzle": "^7.0"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../"
+    }
+  ],
+  "scripts": {
+    "start": [
+      "Composer\\Config::disableProcessTimeout",
+      "php -S localhost:8000 -t ."
+    ]
+  }
+}
