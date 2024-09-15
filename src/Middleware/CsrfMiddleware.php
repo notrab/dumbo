@@ -89,6 +89,10 @@ class CsrfMiddleware
             $ctx->header($options['headerName'], $token);
         }
 
+        if ($ctx->get($options['tokenName']) === null) {
+            $ctx->set($options['tokenName'], $token);
+        }
+
         return $next($ctx);
     }
 

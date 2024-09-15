@@ -153,7 +153,7 @@ $app->get("/", function ($c) use ($latte) {
 });
 
 $app->get("/register", function ($c) use ($latte) {
-    $csrfToken = Cookie::getCookie($c, "csrf_token");
+    $csrfToken = $c->get("csrf_token");
     $html = render($latte, "register", [
         "csrf_token" => $csrfToken,
     ]);
@@ -190,7 +190,7 @@ $app->post("/register", function ($c) use ($db, $latte) {
 
 $app->get("/login", function ($c) use ($latte) {
     $flashMessage = $c->get("flash_message");
-    $csrfToken = Cookie::getCookie($c, "csrf_token");
+    $csrfToken = $c->get("csrf_token");
     $html = render($latte, "login", [
         "flash_message" => $flashMessage,
         "csrf_token" => $csrfToken,
@@ -310,8 +310,7 @@ $app->get("/settings", function ($c) use ($db, $latte) {
         return $c->redirect("/login");
     }
 
-    $csrfToken = Cookie::getCookie($c, "csrf_token");
-
+    $csrfToken = $c->get("csrf_token");
     $sessions = $db
         ->query(
             "SELECT id, user_agent, ip_address, expires_at FROM sessions WHERE user_id = ? AND expires_at > ?",
