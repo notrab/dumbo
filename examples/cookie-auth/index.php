@@ -4,6 +4,7 @@ require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
 use Dumbo\Helpers\Cookie;
+use Dumbo\Middleware\CsrfMiddleware;
 use Latte\Engine as LatteEngine;
 use Darkterminal\TursoHttp\LibSQL;
 
@@ -61,7 +62,21 @@ $app->onError(function ($error, $c) {
     );
 });
 
-// You probably want to add a CSRF token to your forms
+$app->use(
+    CsrfMiddleware::csrf([
+        "getToken" => function ($ctx) {
+            return Cookie::getCookie($ctx, "csrf_token") ?? null;
+        },
+        "setToken" => function ($ctx, $token) {
+            Cookie::setCookie($ctx, "csrf_token", $token, [
+                "httpOnly" => true,
+                "secure" => true,
+                "sameSite" => "Lax",
+            ]);
+        },
+    ])
+);
+
 $app->use(function ($c, $next) use ($db) {
     $sessionId = Cookie::getSignedCookie(
         $c,
@@ -133,12 +148,15 @@ $app->get("/", function ($c) use ($latte) {
         "user" => $user,
         "flash_message" => $flashMessage,
     ]);
-    $c->set("flash_message", null); // Clear the flash message after displaying
+    $c->set("flash_message", null);
     return $c->html($html);
 });
 
 $app->get("/register", function ($c) use ($latte) {
-    $html = render($latte, "register");
+    $csrfToken = $c->get("csrf_token");
+    $html = render($latte, "register", [
+        "csrf_token" => $csrfToken,
+    ]);
     return $c->html($html);
 });
 
@@ -172,8 +190,10 @@ $app->post("/register", function ($c) use ($db, $latte) {
 
 $app->get("/login", function ($c) use ($latte) {
     $flashMessage = $c->get("flash_message");
+    $csrfToken = $c->get("csrf_token");
     $html = render($latte, "login", [
         "flash_message" => $flashMessage,
+        "csrf_token" => $csrfToken,
     ]);
     $c->set("flash_message", null); // Clear the flash message after displaying
 
@@ -290,6 +310,7 @@ $app->get("/settings", function ($c) use ($db, $latte) {
         return $c->redirect("/login");
     }
 
+    $csrfToken = $c->get("csrf_token");
     $sessions = $db
         ->query(
             "SELECT id, user_agent, ip_address, expires_at FROM sessions WHERE user_id = ? AND expires_at > ?",
@@ -300,6 +321,7 @@ $app->get("/settings", function ($c) use ($db, $latte) {
     $html = render($latte, "settings", [
         "user" => $user,
         "sessions" => $sessions,
+        "csrf_token" => $csrfToken,
     ]);
 
     return $c->html($html);
