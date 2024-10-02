@@ -3,10 +3,11 @@ FROM dunglas/frankenphp:builder-php8.3-alpine
 
 # Set the server name, replace "your-domain-name.example.com" with your actual domain
 # For HTTP-only setups, use ":80"
-ENV SERVER_NAME=:80
+# For PaaS services that have a configured proxy such as fly.io, use ":8080"
+ENV SERVER_NAME=:8080
 
 # Enable PHP production settings for optimized performance and security
-# RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 # Set the working directory for the application
 WORKDIR /app
