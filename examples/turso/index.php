@@ -2,11 +2,11 @@
 
 require __DIR__ . "/vendor/autoload.php";
 
-use Libsql\Libsql;
 use Dumbo\Dumbo;
+use Libsql\Database;
 
-$libsql = new Libsql();
-$db = $libsql->openLocal("./test.db");
+$db = new Database(path: "file.db");
+
 $conn = $db->connect();
 
 $conn->execute("
@@ -28,9 +28,9 @@ $app->get("/users", function ($context) use ($conn) {
 $app->get("/users/:id", function ($context) use ($conn) {
     $id = intval($context->req->param("id"));
 
-    $result = $conn->query("SELECT * FROM users WHERE id = ?", [
-        $id
-    ])->fetchArray();
+    $result = $conn
+        ->query("SELECT * FROM users WHERE id = ?", [$id])
+        ->fetchArray();
 
     if (empty($result)) {
         return $context->json(["error" => "User not found"], 404);
@@ -46,12 +46,14 @@ $app->post("/users", function ($context) use ($conn) {
         return $context->json(["error" => "Name and email are required"], 400);
     }
 
-    $result = $conn->query(
-        "INSERT INTO users (name, email) VALUES (:name, :email) RETURNING id",
-        [
-            ":name"  => $body["name"],
-            ":email" => $body["email"],
-        ])
+    $result = $conn
+        ->query(
+            "INSERT INTO users (name, email) VALUES (:name, :email) RETURNING id",
+            [
+                ":name" => $body["name"],
+                ":email" => $body["email"],
+            ]
+        )
         ->fetchArray();
 
     return $context->json(["id" => $result[0]["id"]], 201);
@@ -79,10 +81,14 @@ $app->put("/users/:id", function ($context) use ($conn) {
     }
 
     $params[] = $id;
-    $result = $conn->query(
-        "UPDATE users SET " . implode(", ", $setClause) . " WHERE id = ? RETURNING *",
-        $params
-    )->fetchArray();
+    $result = $conn
+        ->query(
+            "UPDATE users SET " .
+                implode(", ", $setClause) .
+                " WHERE id = ? RETURNING *",
+            $params
+        )
+        ->fetchArray();
 
     if (empty($result)) {
         return $context->json(["error" => "User not found"], 404);
