@@ -4,12 +4,12 @@ require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
 use Jenssegers\Blade\Blade;
-use Libsql\Libsql;
+use Libsql\Database;
 
 $app = new Dumbo();
 
-$libsql = new Libsql();
-$db = $libsql->openLocal("./file.db");
+$db = new Database(path: "file.db");
+
 $conn = $db->connect();
 
 $conn->execute("
