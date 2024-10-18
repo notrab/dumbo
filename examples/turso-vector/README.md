@@ -1,6 +1,6 @@
-# HTMX Example
+# Turso Vector Example
 
-This example demonstrates how to use htmx with Blade and Dumbo.
+This example demonstrates how to use Turso's vector similarity search
 
 ## Running the Example
 
