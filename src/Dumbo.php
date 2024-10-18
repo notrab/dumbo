@@ -39,9 +39,32 @@ class Dumbo
 
     private $errorHandler;
 
+    /**
+     * Production environment constant
+     */
+    public const ENV_PRODUCTION = "production";
+
+    /**
+     * Development environment constant
+     */
+    public const ENV_DEVELOPMENT = "development";
+
+    /**
+     * Testing environment constant
+     */
+    public const ENV_TESTING = "testing";
+
+    /**
+     * Current environment
+     *
+     * @var string
+     */
+    private string $environment;
+
     public function __construct()
     {
         $this->router = new Router();
+        $this->detectEnvironment();
     }
 
     /**
@@ -169,6 +192,8 @@ class Dumbo
                 $route ? $route["routePath"] : ""
             );
 
+            $this->setEnvironmentOnContext($context);
+
             $fullMiddlewareStack = array_merge(
                 $this->getMiddlewareForPath($context->req->path()),
                 $route ? $route["middleware"] : []
@@ -208,15 +233,88 @@ class Dumbo
 
     /**
      * Run the application
+     *
+     * This method handles the incoming request, processes it through the router,
+     * and sends the response. It also includes error handling based on the
+     * current environment.
      */
     public function run(): void
     {
         $this->router->buildDispatcher();
 
-        $request = $this->createServerRequestFromGlobals();
-        $response = $this->handle($request);
+        try {
+            $request = $this->createServerRequestFromGlobals();
+            $response = $this->handle($request);
+            $this->send($response);
+        } catch (\Throwable $error) {
+            if ($this->isDevelopment()) {
+                $errorPage = $this->generateErrorPage($error);
+                http_response_code(500);
+                echo $errorPage;
+            } else {
+                http_response_code(500);
+                echo "An internal server error occurred.";
+            }
+        }
+    }
 
-        $this->send($response);
+    /**
+     * Get the current environment
+     *
+     * @return string The current environment
+     */
+    public function getEnvironment(): string
+    {
+        return $this->environment;
+    }
+
+    /**
+     * Set the environment
+     *
+     * @param string $env The environment to set
+     */
+    public function setEnvironment(string $env): void
+    {
+        if (
+            in_array($env, [
+                self::ENV_PRODUCTION,
+                self::ENV_DEVELOPMENT,
+                self::ENV_TESTING,
+            ])
+        ) {
+            $this->environment = $env;
+            $this->detectEnvironment();
+        }
+    }
+
+    /**
+     * Check if the current environment is development
+     *
+     * @return bool True if in development environment, false otherwise
+     */
+    public function isDevelopment(): bool
+    {
+        return $this->environment === self::ENV_DEVELOPMENT;
+    }
+
+    /**
+     * Check if the current environment is production
+     *
+     * @return bool True if in production environment, false otherwise
+     */
+    public function isProduction(): bool
+    {
+        return $this->environment === self::ENV_PRODUCTION;
+    }
+
+    /**
+     * Check if the current environment is testing
+     *
+     * @return bool True if in testing environment, false otherwise
+     */
+    public function isTesting(): bool
+    {
+        return $this->environment === self::ENV_TESTING;
     }
 
     /**
@@ -330,6 +428,10 @@ class Dumbo
     /**
      * Handle generic exceptions
      *
+     * This method is responsible for handling exceptions that are not caught
+     * elsewhere in the application. It provides different responses based on
+     * the current environment.
+     *
      * @param \Exception $e The caught exception
      * @param ServerRequestInterface $request The original request
      * @return ResponseInterface The response
@@ -343,10 +445,24 @@ class Dumbo
             return call_user_func($this->errorHandler, $e, $context);
         }
 
+        if ($this->isDevelopment()) {
+            $errorPage = $this->generateErrorPage($e);
+            return new Response(
+                500,
+                ["Content-Type" => "text/html"],
+                $errorPage
+            );
+        }
+
         $context = new Context($request, [], "");
         return $context->json(["error" => "Internal Server Error"], 500);
     }
 
+    /**
+     * Get the full middleware stack including middleware from parent applications
+     *
+     * @return array<array-key,callable> The complete middleware stack
+     */
     private function getFullMiddlewareStack(): array
     {
         $stack = $this->middleware;
@@ -380,5 +496,77 @@ class Dumbo
         }
 
         return $applicableMiddleware;
+    }
+
+    /**
+     * Detect and set the current environment
+     *
+     * This method checks for the DUMBO_ENV environment variable and sets
+     * the appropriate environment. It also configures error reporting
+     * based on the detected environment.
+     */
+    private function detectEnvironment(): void
+    {
+        $env =
+            $_SERVER["DUMBO_ENV"] ??
+            (getenv("DUMBO_ENV") ?? self::ENV_DEVELOPMENT);
+        $this->environment = in_array($env, [
+            self::ENV_PRODUCTION,
+            self::ENV_DEVELOPMENT,
+            self::ENV_TESTING,
+        ])
+            ? $env
+            : self::ENV_DEVELOPMENT;
+
+        if ($this->environment === self::ENV_PRODUCTION) {
+            error_reporting(0);
+            ini_set("display_errors", "0");
+        } else {
+            error_reporting(E_ALL);
+            ini_set("display_errors", "1");
+        }
+    }
+
+    private function setEnvironmentOnContext(Context $context): void
+    {
+        $context->set("environment", [
+            "current" => $this->getEnvironment(),
+            "isDevelopment" => $this->isDevelopment(),
+            "isProduction" => $this->isProduction(),
+            "isTesting" => $this->isTesting(),
+        ]);
+    }
+
+    private function generateErrorPage(\Throwable $error): string
+    {
+        $title = get_class($error);
+        $message = $error->getMessage();
+        $file = $error->getFile();
+        $line = $error->getLine();
+        $trace = $error->getTraceAsString();
+
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error: {$title}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px; }
+        h1 { color: #8A2BE2; }
+        pre { background-color: #f4f4f4; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>{$title}</h1>
+    <p><strong>Message:</strong> {$message}</p>
+    <p><strong>File:</strong> {$file}</p>
+    <p><strong>Line:</strong> {$line}</p>
+    <h2>Stack Trace:</h2>
+    <pre>{$trace}</pre>
+</body>
+</html>
+HTML;
     }
 }
