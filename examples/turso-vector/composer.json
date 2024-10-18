@@ -1,0 +1,20 @@
+{
+  "require": {
+    "notrab/dumbo": "@dev",
+    "jenssegers/blade": "^2.0",
+    "illuminate/view": "11.7.0",
+    "turso/libsql": "@dev"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../"
+    }
+  ],
+  "scripts": {
+    "start": [
+      "Composer\\Config::disableProcessTimeout",
+      "php -d \"ffi.enable=1\" -S localhost:8000 -t ."
+    ]
+  }
+}
