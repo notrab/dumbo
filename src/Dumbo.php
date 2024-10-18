@@ -501,15 +501,19 @@ class Dumbo
     /**
      * Detect and set the current environment
      *
-     * This method checks for the DUMBO_ENV environment variable and sets
-     * the appropriate environment. It also configures error reporting
-     * based on the detected environment.
+     * @param array $serverVars Array to use instead of $_SERVER (for testing)
+     * @param callable|null $getenvFunc Function to use instead of getenv (for testing)
      */
-    private function detectEnvironment(): void
-    {
+    public function detectEnvironment(
+        array $serverVars = null,
+        callable $getenvFunc = null
+    ): void {
+        $serverVars = $serverVars ?? $_SERVER;
+        $getenvFunc = $getenvFunc ?? "getenv";
+
         $env =
-            $_SERVER["DUMBO_ENV"] ??
-            (getenv("DUMBO_ENV") ?? self::ENV_DEVELOPMENT);
+            $serverVars["DUMBO_ENV"] ??
+            ($getenvFunc("DUMBO_ENV") ?? self::ENV_DEVELOPMENT);
         $this->environment = in_array($env, [
             self::ENV_PRODUCTION,
             self::ENV_DEVELOPMENT,
