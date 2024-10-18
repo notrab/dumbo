@@ -195,7 +195,7 @@ class Context
     public function render(Closure $closure): void
     {
         if ($this->viewBuilder !== null) {
-            throw new \RuntimeException('Render closure has already been set.');
+            throw new \RuntimeException("Render closure has already been set.");
         }
 
         $this->viewBuilder = $closure;
@@ -211,12 +211,9 @@ class Context
     public function view(...$params)
     {
         if ($this->viewBuilder === null) {
-            throw new \RuntimeException('No render closure has been set.');
+            throw new \RuntimeException("No render closure has been set.");
         }
 
-        return $this->html(
-            call_user_func_array($this->viewBuilder, $params)
-        );
+        return $this->html(call_user_func_array($this->viewBuilder, $params));
     }
-
 }

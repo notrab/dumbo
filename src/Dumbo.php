@@ -192,6 +192,8 @@ class Dumbo
                 $route ? $route["routePath"] : ""
             );
 
+            $this->setEnvironmentOnContext($context);
+
             $fullMiddlewareStack = array_merge(
                 $this->getMiddlewareForPath($context->req->path()),
                 $route ? $route["middleware"] : []
@@ -507,22 +509,32 @@ class Dumbo
     {
         $env =
             $_SERVER["DUMBO_ENV"] ??
-            (getenv("DUMBO_ENV") ?? self::ENV_PRODUCTION);
+            (getenv("DUMBO_ENV") ?? self::ENV_DEVELOPMENT);
         $this->environment = in_array($env, [
             self::ENV_PRODUCTION,
             self::ENV_DEVELOPMENT,
             self::ENV_TESTING,
         ])
             ? $env
-            : self::ENV_PRODUCTION;
+            : self::ENV_DEVELOPMENT;
 
-        if ($this->environment === self::ENV_DEVELOPMENT) {
-            error_reporting(E_ALL);
-            ini_set("display_errors", "1");
-        } else {
+        if ($this->environment === self::ENV_PRODUCTION) {
             error_reporting(0);
             ini_set("display_errors", "0");
+        } else {
+            error_reporting(E_ALL);
+            ini_set("display_errors", "1");
         }
+    }
+
+    private function setEnvironmentOnContext(Context $context): void
+    {
+        $context->set("environment", [
+            "current" => $this->getEnvironment(),
+            "isDevelopment" => $this->isDevelopment(),
+            "isProduction" => $this->isProduction(),
+            "isTesting" => $this->isTesting(),
+        ]);
     }
 
     private function generateErrorPage(\Throwable $error): string
