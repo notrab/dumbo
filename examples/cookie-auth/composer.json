@@ -2,7 +2,7 @@
   "require": {
     "notrab/dumbo": "@dev",
     "latte/latte": "^3.0",
-    "darkterminal/turso-client-http": "^2.9"
+    "turso/libsql": "@dev"
   },
   "repositories": [
     {
@@ -13,7 +13,7 @@
   "scripts": {
     "start": [
       "Composer\\Config::disableProcessTimeout",
-      "php -S localhost:8000 -t ."
+      "php -d \"ffi.enable=1\" -S localhost:8000 -t ."
     ]
   },
   "prefer-stable": false

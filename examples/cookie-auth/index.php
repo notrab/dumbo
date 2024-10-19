@@ -4,39 +4,35 @@ require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
 use Dumbo\Helpers\Cookie;
-use Dumbo\Middleware\CsrfMiddleware;
 use Latte\Engine as LatteEngine;
-use Darkterminal\TursoHttp\LibSQL;
+use Libsql\Database;
 
 $app = new Dumbo();
 $latte = new LatteEngine();
 
-$dsn = "http://127.0.0.1:8001";
-$db = new LibSQL($dsn);
+$db = new Database(path: "file.db");
+$conn = $db->connect();
 
 $latte->setAutoRefresh(true);
 $latte->setTempDirectory(null);
 
 const COOKIE_SECRET = "somesecretkey";
-
 const SESSION_COOKIE_NAME = "dumbo_session_id";
 
-$db->execute("
+$conn->executeBatch("
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL UNIQUE,
         password TEXT NOT NULL
-    )
-");
+    );
 
-$db->execute("
     CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
         user_id INTEGER NOT NULL,
         expires_at INTEGER NOT NULL,
         user_agent TEXT,
         ip_address TEXT
-    )
+    );
 ");
 
 function render($latte, $view, $params = [])
@@ -44,9 +40,9 @@ function render($latte, $view, $params = [])
     return $latte->renderToString(__DIR__ . "/views/$view.latte", $params);
 }
 
-function invalidateAllUserSessions($userId, $db)
+function invalidateAllUserSessions($userId, $conn)
 {
-    $db->prepare("DELETE FROM sessions WHERE user_id = ?")->execute([$userId]);
+    $conn->execute("DELETE FROM sessions WHERE user_id = ?", [$userId]);
 }
 
 $app->onError(function ($error, $c) {
@@ -62,65 +58,28 @@ $app->onError(function ($error, $c) {
     );
 });
 
-$app->use(
-    CsrfMiddleware::csrf([
-        "getToken" => function ($ctx) {
-            return Cookie::get($ctx, "csrf_token") ?? null;
-        },
-        "setToken" => function ($ctx, $token) {
-            Cookie::set($ctx, "csrf_token", $token, [
-                "httpOnly" => true,
-                "secure" => true,
-                "sameSite" => "Lax",
-            ]);
-        },
-    ])
-);
-
-$app->use(function ($c, $next) use ($db) {
+$app->use(function ($c, $next) use ($conn) {
     $sessionId = Cookie::getSigned($c, COOKIE_SECRET, SESSION_COOKIE_NAME);
 
-    $debugSessionId = $_COOKIE["debug_session"] ?? "Not set";
-    error_log(
-        "Middleware: Session ID from cookie: " .
-            ($sessionId ? $sessionId : "Not set")
-    );
-    error_log("Middleware: Debug Session ID: " . $debugSessionId);
-
     if ($sessionId) {
-        $result = $db
+        $result = $conn
             ->query("SELECT * FROM sessions WHERE id = ? AND expires_at > ?", [
                 $sessionId,
                 time(),
             ])
-            ->fetchArray(LibSQL::LIBSQL_ASSOC);
+            ->fetchArray();
 
         if (!empty($result)) {
-            error_log("Middleware: Valid session found for ID: " . $sessionId);
-            $user = $db
+            $user = $conn
                 ->query("SELECT * FROM users WHERE id = ?", [
                     $result[0]["user_id"],
                 ])
-                ->fetchArray(LibSQL::LIBSQL_ASSOC);
+                ->fetchArray();
 
             if (!empty($user)) {
-                error_log(
-                    "Middleware: User found for session: " .
-                        $user[0]["username"]
-                );
                 $c->set("user", $user[0]);
-            } else {
-                error_log(
-                    "Middleware: No user found for session ID: " . $sessionId
-                );
             }
-        } else {
-            error_log(
-                "Middleware: No valid session found for ID: " . $sessionId
-            );
         }
-    } else {
-        error_log("Middleware: No session cookie found");
     }
 
     return $next($c);
@@ -149,14 +108,11 @@ $app->get("/", function ($c) use ($latte) {
 });
 
 $app->get("/register", function ($c) use ($latte) {
-    $csrfToken = $c->get("csrf_token");
-    $html = render($latte, "register", [
-        "csrf_token" => $csrfToken,
-    ]);
+    $html = render($latte, "register");
     return $c->html($html);
 });
 
-$app->post("/register", function ($c) use ($db, $latte) {
+$app->post("/register", function ($c) use ($conn, $latte) {
     $body = $c->req->body();
     $username = $body["username"] ?? "";
     $password = $body["password"] ?? "";
@@ -170,15 +126,20 @@ $app->post("/register", function ($c) use ($db, $latte) {
 
     try {
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-        $db->prepare(
-            "INSERT INTO users (username, password) VALUES (?, ?)"
-        )->execute([$username, $hashedPassword]);
+        $result = $conn
+            ->query(
+                "INSERT INTO users (username, password) VALUES (?, ?) RETURNING id",
+                [$username, $hashedPassword]
+            )
+            ->fetchArray();
 
         $c->set("flash_message", "Registration successful. Please log in.");
         return $c->redirect("/login");
     } catch (Exception $e) {
+        $errorMessage = "Registration failed: " . $e->getMessage();
+        error_log($errorMessage);
         $html = render($latte, "register", [
-            "error" => "Username already exists",
+            "error" => $errorMessage,
         ]);
         return $c->html($html);
     }
@@ -186,26 +147,25 @@ $app->post("/register", function ($c) use ($db, $latte) {
 
 $app->get("/login", function ($c) use ($latte) {
     $flashMessage = $c->get("flash_message");
-    $csrfToken = $c->get("csrf_token");
+
     $html = render($latte, "login", [
         "flash_message" => $flashMessage,
-        "csrf_token" => $csrfToken,
     ]);
-    $c->set("flash_message", null); // Clear the flash message after displaying
+    $c->set("flash_message", null);
 
     return $c->html($html);
 });
 
-$app->post("/login", function ($c) use ($db, $latte) {
+$app->post("/login", function ($c) use ($conn, $latte) {
     $body = $c->req->body();
     $username = $body["username"] ?? "";
     $password = $body["password"] ?? "";
 
     error_log("Login attempt for username: " . $username);
 
-    $result = $db
+    $result = $conn
         ->query("SELECT * FROM users WHERE username = ?", [$username])
-        ->fetchArray(LibSQL::LIBSQL_ASSOC);
+        ->fetchArray();
 
     if (!empty($result) && password_verify($password, $result[0]["password"])) {
         $sessionId = bin2hex(random_bytes(16));
@@ -214,27 +174,15 @@ $app->post("/login", function ($c) use ($db, $latte) {
         $ipAddress = $_SERVER["REMOTE_ADDR"];
 
         try {
-            $db->prepare(
-                "INSERT INTO sessions (id, user_id, expires_at, user_agent, ip_address) VALUES (?, ?, ?, ?, ?)"
-            )->execute([
-                $sessionId,
-                $result[0]["id"],
-                $expiresAt,
-                $userAgent,
-                $ipAddress,
-            ]);
-
-            error_log("Session created: " . $sessionId);
-
-            // Set a debug cookie
-            setcookie(
-                "debug_session",
-                $sessionId,
-                time() + 3600,
-                "/",
-                "",
-                true,
-                false
+            $conn->query(
+                "INSERT INTO sessions (id, user_id, expires_at, user_agent, ip_address) VALUES (?, ?, ?, ?, ?)",
+                [
+                    $sessionId,
+                    $result[0]["id"],
+                    $expiresAt,
+                    $userAgent,
+                    $ipAddress,
+                ]
             );
 
             Cookie::setSigned(
@@ -251,25 +199,16 @@ $app->post("/login", function ($c) use ($db, $latte) {
                 ]
             );
 
-            error_log(
-                "Session cookie set: " .
-                    SESSION_COOKIE_NAME .
-                    " = " .
-                    $sessionId
-            );
-
             $c->set("flash_message", "Login successful.");
-            error_log("Login successful for user: " . $username);
+
             return $c->redirect("/");
         } catch (Exception $e) {
-            error_log("Login error: " . $e->getMessage());
             $html = render($latte, "login", [
                 "error" => "An error occurred during login. Please try again.",
             ]);
             return $c->html($html);
         }
     } else {
-        error_log("Login failed for username: " . $username);
         $html = render($latte, "login", [
             "error" => "Invalid username or password",
         ]);
@@ -277,13 +216,11 @@ $app->post("/login", function ($c) use ($db, $latte) {
     }
 });
 
-$app->get("/logout", function ($c) use ($db) {
+$app->get("/logout", function ($c) use ($conn) {
     $sessionId = Cookie::getSigned($c, COOKIE_SECRET, SESSION_COOKIE_NAME);
 
     if ($sessionId) {
-        $db->prepare("DELETE FROM sessions WHERE id = ?")->execute([
-            $sessionId,
-        ]);
+        $conn->execute("DELETE FROM sessions WHERE id = ?", [$sessionId]);
     }
 
     Cookie::delete($c, SESSION_COOKIE_NAME, [
@@ -296,30 +233,28 @@ $app->get("/logout", function ($c) use ($db) {
     return $c->redirect("/");
 });
 
-$app->get("/settings", function ($c) use ($db, $latte) {
+$app->get("/settings", function ($c) use ($conn, $latte) {
     $user = $c->get("user");
     if (!$user) {
         return $c->redirect("/login");
     }
 
-    $csrfToken = $c->get("csrf_token");
-    $sessions = $db
+    $sessions = $conn
         ->query(
             "SELECT id, user_agent, ip_address, expires_at FROM sessions WHERE user_id = ? AND expires_at > ?",
             [$user["id"], time()]
         )
-        ->fetchArray(LibSQL::LIBSQL_ASSOC);
+        ->fetchArray();
 
     $html = render($latte, "settings", [
         "user" => $user,
         "sessions" => $sessions,
-        "csrf_token" => $csrfToken,
     ]);
 
     return $c->html($html);
 });
 
-$app->post("/settings", function ($c) use ($db, $latte) {
+$app->post("/settings", function ($c) use ($conn, $latte) {
     $user = $c->get("user");
     if (!$user) {
         return $c->redirect("/login");
@@ -330,9 +265,9 @@ $app->post("/settings", function ($c) use ($db, $latte) {
     $newPassword = $body["password"] ?? "";
     $currentPassword = $body["current_password"] ?? "";
 
-    $result = $db
+    $result = $conn
         ->query("SELECT * FROM users WHERE id = ?", [$user["id"]])
-        ->fetchArray(LibSQL::LIBSQL_ASSOC);
+        ->fetchArray();
     if (
         empty($result) ||
         !password_verify($currentPassword, $result[0]["password"])
@@ -359,27 +294,31 @@ $app->post("/settings", function ($c) use ($db, $latte) {
 
     if (!empty($updateFields)) {
         $updateParams[] = $user["id"];
-        $db->prepare(
-            "UPDATE users SET " . implode(", ", $updateFields) . " WHERE id = ?"
-        )->execute($updateParams);
+        $query =
+            "UPDATE users SET " .
+            implode(", ", $updateFields) .
+            " WHERE id = ? RETURNING *";
+        $updatedUser = $conn->query($query, $updateParams)->fetchArray();
 
-        if (!empty($newPassword)) {
-            invalidateAllUserSessions($user["id"], $db);
-            $c->set("flash_message", "Password changed. Please log in again.");
-            return $c->redirect("/login");
+        if (!empty($updatedUser)) {
+            if (!empty($newPassword)) {
+                invalidateAllUserSessions($user["id"], $conn);
+                $c->set(
+                    "flash_message",
+                    "Password changed. Please log in again."
+                );
+                return $c->redirect("/login");
+            }
+
+            $c->set("user", $updatedUser[0]);
+            $c->set("flash_message", "Settings updated successfully.");
         }
-
-        $user = $db
-            ->query("SELECT * FROM users WHERE id = ?", [$user["id"]])
-            ->fetchArray(LibSQL::LIBSQL_ASSOC)[0];
-        $c->set("user", $user);
-        $c->set("flash_message", "Settings updated successfully.");
     }
 
     return $c->redirect("/settings");
 });
 
-$app->post("/invalidate-session", function ($c) use ($db) {
+$app->post("/invalidate-session", function ($c) use ($conn) {
     $user = $c->get("user");
     if (!$user) {
         return $c->redirect("/login");
@@ -391,17 +330,28 @@ $app->post("/invalidate-session", function ($c) use ($db) {
         return $c->redirect("/settings");
     }
 
-    $result = $db
+    $result = $conn
         ->query("SELECT id FROM sessions WHERE id = ? AND user_id = ?", [
             $sessionToInvalidate,
             $user["id"],
         ])
-        ->fetchArray(LibSQL::LIBSQL_ASSOC);
+        ->fetchArray();
 
     if (!empty($result)) {
-        $db->prepare("DELETE FROM sessions WHERE id = ?")->execute([
+        $conn->execute("DELETE FROM sessions WHERE id = ?", [
             $sessionToInvalidate,
         ]);
+
+        $currentSessionId = Cookie::getSigned(
+            $c,
+            COOKIE_SECRET,
+            SESSION_COOKIE_NAME
+        );
+        if ($sessionToInvalidate === $currentSessionId) {
+            Cookie::delete($c, SESSION_COOKIE_NAME);
+            return $c->redirect("/login");
+        }
+
         $c->set("flash_message", "Session invalidated successfully");
     } else {
         $c->set("flash_message", "Invalid session");

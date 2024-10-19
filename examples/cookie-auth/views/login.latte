@@ -6,7 +6,6 @@
         <p style="color: red;">{$error}</p>
     {/if}
     <form action="/login" method="post">
-        <input type="hidden" name="csrf_token" value="{$csrf_token}">
         <div>
             <label for="username">Username:</label>
             <input type="text" id="username" name="username" required>
@@ -16,7 +15,6 @@
             <input type="password" id="password" name="password" required>
         </div>
         <button type="submit">Login</button>
-        <input type="hidden" name="csrf_token" value="{$csrf_token}">
     </form>
     <p>Don't have an account? <a href="/register">Register</a></p>
     <p><a href="/">Back to Home</a></p>

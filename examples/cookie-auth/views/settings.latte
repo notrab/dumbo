@@ -9,7 +9,6 @@
         <p style="color: green;">{$success}</p>
     {/if}
     <form action="/settings" method="post">
-        <input type="hidden" name="csrf_token" value="{$csrf_token}">
         <div>
             <label for="username">New Username:</label>
             <input type="text" id="username" name="username" value="{$user['username']}">
@@ -41,7 +40,6 @@
                 <td>{date('Y-m-d H:i:s', $session['expires_at'])}</td>
                 <td>
                      <form action="/invalidate-session" method="post">
-                        <input type="hidden" name="csrf_token" value="{$csrf_token}">
                         <input type="hidden" name="session_id" value="{$session['id']}">
                         <button type="submit">Invalidate</button>
                     </form>
