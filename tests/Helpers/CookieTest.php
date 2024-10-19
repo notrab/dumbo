@@ -34,36 +34,30 @@ class CookieTest extends TestCase
     {
         $this->setRequestCookie("test_cookie=value; other_cookie=other_value");
 
-        $this->assertTrue(Cookie::hasCookie($this->context, "test_cookie"));
-        $this->assertFalse(
-            Cookie::hasCookie($this->context, "non_existent_cookie")
-        );
+        $this->assertTrue(Cookie::has($this->context, "test_cookie"));
+        $this->assertFalse(Cookie::has($this->context, "non_existent_cookie"));
     }
 
-    public function testGetCookie()
+    public function testGet()
     {
         $this->setRequestCookie("test_cookie=value; other_cookie=other_value");
 
         $this->assertEquals(
             "value",
-            Cookie::getCookie($this->context, "test_cookie")
+            Cookie::get($this->context, "test_cookie")
         );
-        $this->assertNull(
-            Cookie::getCookie($this->context, "non_existent_cookie")
-        );
+        $this->assertNull(Cookie::get($this->context, "non_existent_cookie"));
     }
 
     public function testSetCookie()
     {
-        Cookie::setCookie($this->context, "test_cookie", "new_value");
+        Cookie::set($this->context, "test_cookie", "new_value");
 
-        $setCookieHeaders = $this->context
-            ->getResponse()
-            ->getHeader("Set-Cookie");
-        $this->assertCount(1, $setCookieHeaders);
+        $setHeaders = $this->context->getResponse()->getHeader("Set-Cookie");
+        $this->assertCount(1, $setHeaders);
         $this->assertStringContainsString(
             "test_cookie=new_value",
-            $setCookieHeaders[0]
+            $setHeaders[0]
         );
     }
 
@@ -71,15 +65,13 @@ class CookieTest extends TestCase
     {
         $this->setRequestCookie("test_cookie=value; other_cookie=other_value");
 
-        $deletedValue = Cookie::deleteCookie($this->context, "test_cookie");
+        $deletedValue = Cookie::delete($this->context, "test_cookie");
 
         $this->assertEquals("value", $deletedValue);
-        $setCookieHeaders = $this->context
-            ->getResponse()
-            ->getHeader("Set-Cookie");
-        $this->assertCount(1, $setCookieHeaders);
-        $this->assertStringContainsString("test_cookie=", $setCookieHeaders[0]);
-        $this->assertStringContainsString("Expires=", $setCookieHeaders[0]);
+        $setHeaders = $this->context->getResponse()->getHeader("Set-Cookie");
+        $this->assertCount(1, $setHeaders);
+        $this->assertStringContainsString("test_cookie=", $setHeaders[0]);
+        $this->assertStringContainsString("Expires=", $setHeaders[0]);
     }
 
     public function testGetSignedCookie()
@@ -93,7 +85,7 @@ class CookieTest extends TestCase
 
         $this->assertEquals(
             $value,
-            Cookie::getSignedCookie($this->context, $secret, "signed_cookie")
+            Cookie::getSigned($this->context, $secret, "signed_cookie")
         );
     }
 
@@ -103,29 +95,25 @@ class CookieTest extends TestCase
         $name = "signed_cookie";
         $value = "test_value";
 
-        Cookie::setSignedCookie($this->context, $name, $value, $secret);
+        Cookie::setSigned($this->context, $name, $value, $secret);
 
-        $setCookieHeaders = $this->context
-            ->getResponse()
-            ->getHeader("Set-Cookie");
-        $this->assertCount(1, $setCookieHeaders);
-        $this->assertStringContainsString("$name=", $setCookieHeaders[0]);
+        $setHeaders = $this->context->getResponse()->getHeader("Set-Cookie");
+        $this->assertCount(1, $setHeaders);
+        $this->assertStringContainsString("$name=", $setHeaders[0]);
     }
 
     public function testRefreshCookie()
     {
         $this->setRequestCookie("test_cookie=old_value");
 
-        $refreshed = Cookie::refreshCookie($this->context, "test_cookie");
+        $refreshed = Cookie::refresh($this->context, "test_cookie");
 
         $this->assertTrue($refreshed);
-        $setCookieHeaders = $this->context
-            ->getResponse()
-            ->getHeader("Set-Cookie");
-        $this->assertCount(1, $setCookieHeaders);
+        $setHeaders = $this->context->getResponse()->getHeader("Set-Cookie");
+        $this->assertCount(1, $setHeaders);
         $this->assertStringContainsString(
             "test_cookie=old_value",
-            $setCookieHeaders[0]
+            $setHeaders[0]
         );
     }
 
@@ -133,20 +121,12 @@ class CookieTest extends TestCase
     {
         $this->setRequestCookie("cookie1=value1; cookie2=value2");
 
-        Cookie::clearAllCookies($this->context);
+        Cookie::clearAll($this->context);
 
-        $setCookieHeaders = $this->context
-            ->getResponse()
-            ->getHeader("Set-Cookie");
-        $this->assertCount(2, $setCookieHeaders);
-        $this->assertStringContainsString(
-            "cookie1=; Expires=",
-            $setCookieHeaders[0]
-        );
-        $this->assertStringContainsString(
-            "cookie2=; Expires=",
-            $setCookieHeaders[1]
-        );
+        $setHeaders = $this->context->getResponse()->getHeader("Set-Cookie");
+        $this->assertCount(2, $setHeaders);
+        $this->assertStringContainsString("cookie1=; Expires=", $setHeaders[0]);
+        $this->assertStringContainsString("cookie2=; Expires=", $setHeaders[1]);
     }
 }
 

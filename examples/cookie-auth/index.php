@@ -65,10 +65,10 @@ $app->onError(function ($error, $c) {
 $app->use(
     CsrfMiddleware::csrf([
         "getToken" => function ($ctx) {
-            return Cookie::getCookie($ctx, "csrf_token") ?? null;
+            return Cookie::get($ctx, "csrf_token") ?? null;
         },
         "setToken" => function ($ctx, $token) {
-            Cookie::setCookie($ctx, "csrf_token", $token, [
+            Cookie::set($ctx, "csrf_token", $token, [
                 "httpOnly" => true,
                 "secure" => true,
                 "sameSite" => "Lax",
@@ -78,11 +78,7 @@ $app->use(
 );
 
 $app->use(function ($c, $next) use ($db) {
-    $sessionId = Cookie::getSignedCookie(
-        $c,
-        COOKIE_SECRET,
-        SESSION_COOKIE_NAME
-    );
+    $sessionId = Cookie::getSigned($c, COOKIE_SECRET, SESSION_COOKIE_NAME);
 
     $debugSessionId = $_COOKIE["debug_session"] ?? "Not set";
     error_log(
@@ -241,7 +237,7 @@ $app->post("/login", function ($c) use ($db, $latte) {
                 false
             );
 
-            Cookie::setSignedCookie(
+            Cookie::setSigned(
                 $c,
                 SESSION_COOKIE_NAME,
                 $sessionId,
@@ -282,11 +278,7 @@ $app->post("/login", function ($c) use ($db, $latte) {
 });
 
 $app->get("/logout", function ($c) use ($db) {
-    $sessionId = Cookie::getSignedCookie(
-        $c,
-        COOKIE_SECRET,
-        SESSION_COOKIE_NAME
-    );
+    $sessionId = Cookie::getSigned($c, COOKIE_SECRET, SESSION_COOKIE_NAME);
 
     if ($sessionId) {
         $db->prepare("DELETE FROM sessions WHERE id = ?")->execute([
@@ -294,7 +286,7 @@ $app->get("/logout", function ($c) use ($db) {
         ]);
     }
 
-    Cookie::deleteCookie($c, SESSION_COOKIE_NAME, [
+    Cookie::delete($c, SESSION_COOKIE_NAME, [
         "httpOnly" => true,
         "secure" => true,
         "path" => "/",

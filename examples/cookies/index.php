@@ -11,13 +11,13 @@ $app->get("/cookie", function ($c) {
     $name = $c->req->query("name");
 
     if ($name) {
-        $cookieValue = Cookie::getCookie($c, $name);
+        $cookieValue = Cookie::get($c, $name);
         return $c->json(["cookie" => $cookieValue]);
     }
 
-    $allCookies = Cookie::getCookie($c);
+    $allCookies = Cookie::get($c);
 
-    Cookie::setCookie($c, "delicious_cookie", "matcha", [
+    Cookie::set($c, "delicious_cookie", "matcha", [
         "path" => "/",
         "secure" => true,
         "httpOnly" => true,
@@ -27,7 +27,7 @@ $app->get("/cookie", function ($c) {
 
     return $c->json([
         "allCookies" => $allCookies,
-        "setCookie" => "delicious_cookie=matcha",
+        "set" => "delicious_cookie=matcha",
     ]);
 });
 
@@ -37,7 +37,7 @@ $app->get("/delete-cookie", function ($c) {
         return $c->json(["error" => "Cookie name is required"], 400);
     }
 
-    $deletedValue = Cookie::deleteCookie($c, $name);
+    $deletedValue = Cookie::delete($c, $name);
     return $c->json(["deletedCookie" => $deletedValue]);
 });
 
@@ -46,13 +46,13 @@ $app->get("/signed-cookie", function ($c) {
     $name = $c->req->query("name");
 
     if ($name) {
-        $signedCookieValue = Cookie::getSignedCookie($c, $secret, $name);
+        $signedCookieValue = Cookie::getSigned($c, $secret, $name);
         return $c->json(["signedCookie" => $signedCookieValue]);
     }
 
-    $allSignedCookies = Cookie::getSignedCookie($c, $secret);
+    $allSignedCookies = Cookie::getSigned($c, $secret);
 
-    Cookie::setSignedCookie($c, "great_cookie", "blueberry", $secret, [
+    Cookie::setSigned($c, "great_cookie", "blueberry", $secret, [
         "path" => "/",
         "secure" => true,
         "httpOnly" => true,
@@ -61,7 +61,7 @@ $app->get("/signed-cookie", function ($c) {
 
     return $c->json([
         "allSignedCookies" => $allSignedCookies,
-        "setSignedCookie" => "great_cookie=blueberry (signed)",
+        "setSigned" => "great_cookie=blueberry (signed)",
     ]);
 });
 
@@ -71,7 +71,7 @@ $app->get("/delete-signed-cookie", function ($c) {
         return $c->json(["error" => "Cookie name is required"], 400);
     }
 
-    $deletedValue = Cookie::deleteCookie($c, $name);
+    $deletedValue = Cookie::delete($c, $name);
     return $c->json(["deletedSignedCookie" => $deletedValue]);
 });
 

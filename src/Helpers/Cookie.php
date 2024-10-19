@@ -22,13 +22,13 @@ class Cookie
      * @param string $prefix Optional prefix for the cookie name
      * @return bool True if the cookie exists (and optionally matches the value), false otherwise
      */
-    public static function hasCookie(
+    public static function has(
         Context $context,
         string $name,
         ?string $value = null,
         string $prefix = ""
     ): bool {
-        $cookies = self::parseCookies($context->req->header("Cookie") ?? "");
+        $cookies = self::parse($context->req->header("Cookie") ?? "");
         $fullName = self::getPrefixedName($name, $prefix);
         $cookieValue = $cookies[$fullName] ?? null;
 
@@ -44,12 +44,12 @@ class Cookie
      * @param string|null $prefix Optional prefix for the cookie name (e.g., "secure" or "host")
      * @return array|string|null An array of all cookies, the value of a specific cookie, or null if not found
      */
-    public static function getCookie(
+    public static function get(
         Context $context,
         ?string $name = null,
         ?string $prefix = null
     ): array|string|null {
-        $cookies = self::parseCookies($context->req->header("Cookie") ?? "");
+        $cookies = self::parse($context->req->header("Cookie") ?? "");
 
         if ($name === null) {
             return $cookies;
@@ -68,13 +68,13 @@ class Cookie
      * @param string $value The value of the cookie
      * @param array $options Additional options for the cookie (e.g., 'expires', 'path', 'domain', etc.)
      */
-    public static function setCookie(
+    public static function set(
         Context $context,
         string $name,
         string $value,
         array $options = []
     ): void {
-        $cookieString = self::buildCookieString($name, $value, $options);
+        $cookieString = self::buildString($name, $value, $options);
         $context->header("Set-Cookie", $cookieString);
     }
 
@@ -86,13 +86,13 @@ class Cookie
      * @param array $options Additional options for the cookie deletion (e.g., 'path', 'domain')
      * @return string|null The value of the deleted cookie, or null if it didn't exist
      */
-    public static function deleteCookie(
+    public static function delete(
         Context $context,
         string $name,
         array $options = []
     ): ?string {
         $prefix = $options["prefix"] ?? "";
-        $value = self::getCookie($context, $name, $prefix);
+        $value = self::get($context, $name, $prefix);
 
         if ($value === null) {
             return null;
@@ -100,7 +100,7 @@ class Cookie
 
         $options["expires"] = 1;
         $options["path"] = $options["path"] ?? "/";
-        self::setCookie($context, $name, "", $options);
+        self::set($context, $name, "", $options);
 
         return $value;
     }
@@ -114,19 +114,19 @@ class Cookie
      * @param string|null $prefix Optional prefix for the cookie name
      * @return mixed The value of the signed cookie, an array of all signed cookies, or null/false if verification fails
      */
-    public static function getSignedCookie(
+    public static function getSigned(
         Context $context,
         string $secret,
         ?string $name = null,
         ?string $prefix = null
     ): mixed {
-        $value = self::getCookie($context, $name, $prefix);
+        $value = self::get($context, $name, $prefix);
 
         if ($value === null) {
             return null;
         }
 
-        return self::verifySignedCookie($value, $secret);
+        return self::verifySigned($value, $secret);
     }
 
     /**
@@ -138,7 +138,7 @@ class Cookie
      * @param string $secret The secret key used for signing
      * @param array $options Additional options for the cookie
      */
-    public static function setSignedCookie(
+    public static function setSigned(
         Context $context,
         string $name,
         string $value,
@@ -148,7 +148,7 @@ class Cookie
         $signature = self::sign($value, $secret);
         $signedValue = $value . "." . $signature;
 
-        self::setCookie($context, $name, $signedValue, $options);
+        self::set($context, $name, $signedValue, $options);
     }
 
     /**
@@ -159,19 +159,19 @@ class Cookie
      * @param array $options Additional options for the cookie
      * @return bool True if the cookie was refreshed, false if it doesn't exist
      */
-    public static function refreshCookie(
+    public static function refresh(
         Context $context,
         string $name,
         array $options = []
     ): bool {
         $prefix = $options["prefix"] ?? "";
-        $value = self::getCookie($context, $name, $prefix);
+        $value = self::get($context, $name, $prefix);
 
         if ($value === null) {
             return false;
         }
 
-        self::setCookie($context, $name, $value, $options);
+        self::set($context, $name, $value, $options);
 
         return true;
     }
@@ -181,9 +181,9 @@ class Cookie
      *
      * @param Context $context The context object for setting the response header
      */
-    public static function clearAllCookies(Context $context): void
+    public static function clearAll(Context $context): void
     {
-        $cookies = self::getCookie($context);
+        $cookies = self::get($context);
 
         foreach ($cookies as $name => $value) {
             $context->header(
@@ -199,7 +199,7 @@ class Cookie
      * @param string $cookieString The raw cookie string from the HTTP header
      * @return array An associative array of cookie names and values
      */
-    private static function parseCookies(string $cookieString): array
+    private static function parse(string $cookieString): array
     {
         $cookies = [];
         if (empty($cookieString)) {
@@ -226,7 +226,7 @@ class Cookie
      * @param array $options Additional options for the cookie
      * @return string The formatted cookie string
      */
-    private static function buildCookieString(
+    private static function buildString(
         string $name,
         string $value,
         array $options
@@ -308,7 +308,7 @@ class Cookie
      * @param string $secret The secret key used for signing
      * @return string|false The verified cookie value, or false if verification fails
      */
-    private static function verifySignedCookie(
+    private static function verifySigned(
         string $value,
         string $secret
     ): string|false {

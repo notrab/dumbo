@@ -17,7 +17,7 @@ const JWT_SECRET = "your_jwt_secret_key";
 const JWT_COOKIE_NAME = "jwt_token";
 
 $app->use(function ($context, $next) {
-    $token = Cookie::getCookie($context, JWT_COOKIE_NAME);
+    $token = Cookie::get($context, JWT_COOKIE_NAME);
 
     if ($token) {
         try {
@@ -51,7 +51,7 @@ $app->post("/login", function ($context) use ($users) {
 
     $token = JWT::sign($payload, JWT_SECRET);
 
-    Cookie::setCookie($context, JWT_COOKIE_NAME, $token, [
+    Cookie::set($context, JWT_COOKIE_NAME, $token, [
         "httpOnly" => true,
         "secure" => true,
         "maxAge" => 3600,
@@ -76,7 +76,7 @@ $app->get("/protected", function ($context) {
 });
 
 $app->post("/logout", function ($context) {
-    Cookie::deleteCookie($context, JWT_COOKIE_NAME);
+    Cookie::delete($context, JWT_COOKIE_NAME);
 
     return $context->json(["message" => "Logout successful"]);
 });

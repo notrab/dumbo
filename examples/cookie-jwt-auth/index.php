@@ -61,7 +61,7 @@ function verifyJWT($jwt)
 }
 
 $app->use(function ($c, $next) {
-    $jwt = Cookie::getCookie($c, COOKIE_NAME);
+    $jwt = Cookie::get($c, COOKIE_NAME);
     if ($jwt) {
         $payload = verifyJWT($jwt);
         if ($payload) {
@@ -71,7 +71,7 @@ $app->use(function ($c, $next) {
             if (time() > $payload["exp"] - 300) {
                 // Refresh if less than 5 minutes left
                 $newJwt = createJWT($payload["userId"], $payload["username"]);
-                Cookie::setCookie($c, COOKIE_NAME, $newJwt, [
+                Cookie::set($c, COOKIE_NAME, $newJwt, [
                     "httpOnly" => true,
                     "secure" => true,
                     "path" => "/",
@@ -80,7 +80,7 @@ $app->use(function ($c, $next) {
                 ]);
             }
         } else {
-            Cookie::deleteCookie($c, COOKIE_NAME);
+            Cookie::delete($c, COOKIE_NAME);
         }
     }
     return $next($c);
@@ -142,7 +142,7 @@ $app->post("/login", function ($c) use ($db, $latte) {
 
     if (!empty($result) && password_verify($password, $result[0]["password"])) {
         $jwt = createJWT($result[0]["id"], $result[0]["username"]);
-        Cookie::setCookie($c, COOKIE_NAME, $jwt, [
+        Cookie::set($c, COOKIE_NAME, $jwt, [
             "httpOnly" => true,
             "secure" => true,
             "path" => "/",
@@ -159,7 +159,7 @@ $app->post("/login", function ($c) use ($db, $latte) {
 });
 
 $app->get("/logout", function ($c) {
-    Cookie::deleteCookie($c, COOKIE_NAME);
+    Cookie::delete($c, COOKIE_NAME);
     return $c->redirect("/");
 });
 
