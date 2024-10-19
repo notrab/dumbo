@@ -98,7 +98,7 @@ Dumbo is open-sourced software licensed under the [MIT license](LICENSE).
 
 <a href="https://github.com/notrab/dumbo/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22">
   <picture>
-    <img src="https://img.shields.io/github/issues-search/notrab/dumbo?label=good%20first%20issue&query=label%3A%22good%20first%20issue%22%20&color=8A2BE2" alt="good first issue" />
+    <img src="https://img.shields.io/github/issues-search/notrab/dumbo?query=is%3Aopen%20is%3Aissue%20label%3A%22good%20first%20issue%22%20&color=8A2BE2" alt="good first issue" />
   </picture>
 </a>
 
