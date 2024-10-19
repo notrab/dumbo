@@ -14,6 +14,29 @@ class Cookie
     public const PREFIX_HOST = "host";
 
     /**
+     * Check if a cookie exists
+     *
+     * @param Context $context The context object containing request information
+     * @param string $name The name of the cookie to check
+     * @param string|null $value Optional value to check against
+     * @param string $prefix Optional prefix for the cookie name
+     * @return bool True if the cookie exists (and optionally matches the value), false otherwise
+     */
+    public static function hasCookie(
+        Context $context,
+        string $name,
+        ?string $value = null,
+        string $prefix = ""
+    ): bool {
+        $cookies = self::parseCookies($context->req->header("Cookie") ?? "");
+        $fullName = self::getPrefixedName($name, $prefix);
+        $cookieValue = $cookies[$fullName] ?? null;
+
+        return $cookieValue !== null &&
+            ($value === null || $cookieValue === $value);
+    }
+
+    /**
      * Get all cookies or a specific cookie.
      *
      * @param Context $context The context object containing request information
@@ -26,19 +49,15 @@ class Cookie
         ?string $name = null,
         ?string $prefix = null
     ): array|string|null {
-        $cookies = $context->req->header("Cookie");
-        if (!$cookies) {
-            return $name ? null : [];
-        }
-
-        $parsedCookies = self::parseCookies($cookies);
+        $cookies = self::parseCookies($context->req->header("Cookie") ?? "");
 
         if ($name === null) {
-            return $parsedCookies;
+            return $cookies;
         }
 
         $fullName = self::getPrefixedName($name, $prefix);
-        return $parsedCookies[$fullName] ?? null;
+
+        return $cookies[$fullName] ?? null;
     }
 
     /**
@@ -72,9 +91,17 @@ class Cookie
         string $name,
         array $options = []
     ): ?string {
-        $value = self::getCookie($context, $name);
+        $prefix = $options["prefix"] ?? "";
+        $value = self::getCookie($context, $name, $prefix);
+
+        if ($value === null) {
+            return null;
+        }
+
         $options["expires"] = 1;
+        $options["path"] = $options["path"] ?? "/";
         self::setCookie($context, $name, "", $options);
+
         return $value;
     }
 
@@ -93,25 +120,8 @@ class Cookie
         ?string $name = null,
         ?string $prefix = null
     ): mixed {
-        if ($name === null) {
-            $allCookies = self::getCookie($context);
-            $signedCookies = [];
-
-            foreach ($allCookies as $cookieName => $cookieValue) {
-                $verifiedValue = self::verifySignedCookie(
-                    $cookieValue,
-                    $secret
-                );
-
-                if ($verifiedValue !== false) {
-                    $signedCookies[$cookieName] = $verifiedValue;
-                }
-            }
-
-            return $signedCookies;
-        }
-
         $value = self::getCookie($context, $name, $prefix);
+
         if ($value === null) {
             return null;
         }
@@ -137,7 +147,50 @@ class Cookie
     ): void {
         $signature = self::sign($value, $secret);
         $signedValue = $value . "." . $signature;
+
         self::setCookie($context, $name, $signedValue, $options);
+    }
+
+    /**
+     * Refresh a cookie's expiration time if it exists.
+     *
+     * @param Context $context The context object for setting the response header
+     * @param string $name The name of the cookie to refresh
+     * @param array $options Additional options for the cookie
+     * @return bool True if the cookie was refreshed, false if it doesn't exist
+     */
+    public static function refreshCookie(
+        Context $context,
+        string $name,
+        array $options = []
+    ): bool {
+        $prefix = $options["prefix"] ?? "";
+        $value = self::getCookie($context, $name, $prefix);
+
+        if ($value === null) {
+            return false;
+        }
+
+        self::setCookie($context, $name, $value, $options);
+
+        return true;
+    }
+
+    /**
+     * Clear all cookies.
+     *
+     * @param Context $context The context object for setting the response header
+     */
+    public static function clearAllCookies(Context $context): void
+    {
+        $cookies = self::getCookie($context);
+
+        foreach ($cookies as $name => $value) {
+            $context->header(
+                "Set-Cookie",
+                $name . "=; Expires=Thu, 01 Jan 1970 00:00:01 GMT"
+            );
+        }
     }
 
     /**
@@ -149,13 +202,19 @@ class Cookie
     private static function parseCookies(string $cookieString): array
     {
         $cookies = [];
+        if (empty($cookieString)) {
+            return $cookies;
+        }
+
         $pairs = explode("; ", $cookieString);
+
         foreach ($pairs as $pair) {
             $parts = explode("=", $pair, 2);
             if (count($parts) === 2) {
                 $cookies[urldecode($parts[0])] = urldecode($parts[1]);
             }
         }
+
         return $cookies;
     }
 
@@ -208,10 +267,6 @@ class Cookie
             $parts[] = "SameSite=" . $options["sameSite"];
         }
 
-        if (isset($options["partitioned"]) && $options["partitioned"]) {
-            $parts[] = "Partitioned";
-        }
-
         return implode("; ", $parts);
     }
 
@@ -258,11 +313,13 @@ class Cookie
         string $secret
     ): string|false {
         $parts = explode(".", $value, 2);
+
         if (count($parts) !== 2) {
             return false;
         }
 
         list($value, $signature) = $parts;
+
         $expectedSignature = self::sign($value, $secret);
 
         if (!hash_equals($signature, $expectedSignature)) {
