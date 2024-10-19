@@ -9,16 +9,38 @@
 
 <p align="center">
   <a href="https://discord.gg/nAq2h9BfsU">
-    <img src="https://img.shields.io/discord/1278637768918171709?color=8A2BE2" alt="Discord" />
+    <picture>
+      <img src="https://img.shields.io/discord/1278637768918171709?color=8A2BE2" alt="Discord" />
+    </picture>
   </a>
-  <img src="https://img.shields.io/github/contributors/notrab/dumbo?color=8A2BE2" alt="Contributors" />
-  <a href="">
-    <img src="https://img.shields.io/packagist/dt/notrab/dumbo?color=8A2BE2" alt="Total downloads" />
+  <picture>
+    <img src="https://img.shields.io/github/contributors/notrab/dumbo?color=8A2BE2" alt="Contributors" />
+  </picture>
+  <a href="https://packagist.org/packages/notrab/dumbo">
+    <picture>
+      <img src="https://img.shields.io/packagist/dt/notrab/dumbo?color=8A2BE2" alt="Total downloads" />
+    </picture>
   </a>
   <a href="/examples">
     <img src="https://img.shields.io/badge/browse-examples-8A2BE2" alt="Examples" />
   </a>
 </p>
+
+## Features
+
+- 🚀 Lightweight and fast
+- 🧩 Middleware support
+- 🛣️ Flexible routing with parameters
+- 🔒 Built-in security features (CSRF, JWT)
+- 🍪 Cookie management
+- 📅 Date helpers
+- 🔍 Request ID for tracing
+- 📁 Static file serving
+- 🔐 Basic and Bearer authentication
+- 📝 Logging support
+- 🗃️ HTTP caching
+- 🔄 CORS support
+- 🧬 Environment-based configuration
 
 ## Install
 
@@ -33,12 +55,32 @@ Here's a basic example of how it works!
 ```php
 <?php
 
+require __DIR__ . '/vendor/autoload.php';
+
 use Dumbo\Dumbo;
 
 $app = new Dumbo();
 
-$app->get("/", function ($context) {
-    return $context->json(["message" => "Hello, Dumbo!"]);
+$app->use(function ($context, $next) {
+    $context->set('message', 'Hello from middleware!');
+    return $next($context);
+});
+
+$app->get('/', function ($context) {
+    return $context->json([
+        'message' => $context->get('message'),
+        'timestamp' => time()
+    ]);
+});
+
+$app->get('/users/:id', function ($context) {
+    $id = $context->req->param('id');
+    return $context->json(['userId' => $id]);
+});
+
+$app->post('/users', function ($context) {
+    $body = $context->req->body();
+    return $context->json($body, 201);
 });
 
 $app->run();
@@ -46,7 +88,23 @@ $app->run();
 
 See the [examples](/examples) directory for more quickstarts.
 
-## Routing
+## License
+
+Dumbo is open-sourced software licensed under the [MIT license](LICENSE).
+
+## Contributors
+
+![Contributors](https://contrib.nn.ci/api?repo=notrab/dumbo)
+
+<a href="https://github.com/notrab/dumbo/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22">
+  <picture>
+    <img src="https://img.shields.io/github/issues-search/notrab/dumbo?label=good%20first%20issue&query=label%3A%22good%20first%20issue%22%20&color=8A2BE2" alt="good first issue" />
+  </picture>
+</a>
+
+## Documentation
+
+### Routing
 
 ```php
 <?php
@@ -57,7 +115,7 @@ $app->put('/users/:id', function($context) { /* ... */ });
 $app->delete('/users/:id', function($context) { /* ... */ });
 ```
 
-### Params
+#### Params
 
 ```php
 <?php
@@ -69,7 +127,7 @@ $app->get('/users/:id', function($context) {
 });
 ```
 
-### Nested
+#### Nested
 
 ```php
 <?php
@@ -84,7 +142,7 @@ $app->route('/prefix', $nestedApp);
 
 ```
 
-## Context
+### Context
 
 ```php
 <?php
