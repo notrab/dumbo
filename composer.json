@@ -1,15 +1,26 @@
 {
   "name": "notrab/dumbo",
   "description": "A lightweight, friendly PHP framework for HTTP.",
+  "version": "1.0.0",
   "type": "library",
   "license": "MIT",
   "homepage": "https://github.com/notrab/dumbo",
+  "keywords": [
+    "framework",
+    "http",
+    "hono",
+    "router"
+  ],
   "authors": [
     {
       "name": "Jamie Barton",
       "email": "jamie@notrab.dev"
     }
   ],
+  "support": {
+    "issues": "https://github.com/notrab/dumbo/issues",
+    "source": "https://github.com/notrab/dumbo"
+  },
   "require": {
     "php": ">=8.3",
     "psr/http-message": "^2.0",
@@ -36,6 +47,6 @@
   "scripts": {
     "test": "vendor/bin/phpunit tests"
   },
-  "minimum-stability": "dev",
+  "minimum-stability": "stable",
   "prefer-stable": true
 }
