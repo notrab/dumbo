@@ -1,7 +1,6 @@
 {
   "name": "notrab/dumbo",
   "description": "A lightweight, friendly PHP framework for HTTP.",
-  "version": "1.0.0",
   "type": "library",
   "license": "MIT",
   "homepage": "https://github.com/notrab/dumbo",
@@ -45,7 +44,10 @@
     }
   },
   "scripts": {
-    "test": "vendor/bin/phpunit tests"
+    "test": "vendor/bin/phpunit tests",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish"
   },
   "minimum-stability": "stable",
   "prefer-stable": true

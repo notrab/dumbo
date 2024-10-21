@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+
+      - name: Install Dependencies
+        run: composer install --no-progress --no-suggest --prefer-dist
+
+      - name: Create Release Pull Request or Publish to Packagist
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          commit: "chore(release): version packages"
+          title: "chore(release): version packages"
+          publish: composer run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
