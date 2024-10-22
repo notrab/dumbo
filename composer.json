@@ -44,10 +44,7 @@
     }
   },
   "scripts": {
-    "test": "vendor/bin/phpunit tests",
-    "changeset": "changeset",
-    "version": "changeset version",
-    "release": "changeset publish"
+    "test": "vendor/bin/phpunit tests"
   },
   "minimum-stability": "stable",
   "prefer-stable": true

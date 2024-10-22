@@ -27,13 +27,20 @@ jobs:
       - name: Install Dependencies
         run: composer install --no-progress --no-suggest --prefer-dist
 
-      - name: Create Release Pull Request or Publish to Packagist
-        id: changesets
-        uses: changesets/action@v1
+      - name: Run Tests
+        run: vendor/bin/phpunit
+
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.1
         with:
-          commit: "chore(release): version packages"
-          title: "chore(release): version packages"
-          publish: composer run release
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+        with:
+          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          release_name: Release ${{ steps.tag_version.outputs.new_tag }}
+          body: ${{ steps.tag_version.outputs.changelog }}
