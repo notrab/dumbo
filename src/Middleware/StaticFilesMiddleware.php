@@ -1,10 +1,10 @@
 <?php
 
-namespace Dumbo\Helpers;
+namespace Dumbo\Middleware;
 
 use Dumbo\Context;
 
-class StaticFiles
+class StaticFilesMiddleware
 {
     /**
      * Create a handler for serving static files
