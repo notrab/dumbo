@@ -1,14 +1,14 @@
 <?php
 
-namespace Dumbo\Tests\Helpers;
+namespace Dumbo\Tests\Middleware;
 
 use PHPUnit\Framework\TestCase;
-use Dumbo\Helpers\BearerAuth;
+use Dumbo\Middleware\BearerAuthMiddleware;
 use Dumbo\Context;
 use Psr\Http\Message\ServerRequestInterface;
 use GuzzleHttp\Psr7\Response;
 
-class BearerAuthTest extends TestCase
+class BearerAuthMiddlewareTest extends TestCase
 {
     private function createMockContext($authHeader = null): Context
     {
@@ -23,7 +23,7 @@ class BearerAuthTest extends TestCase
 
     public function testSimpleBearerAuthSuccess()
     {
-        $middleware = BearerAuth::bearerAuth("valid-token");
+        $middleware = BearerAuthMiddleware::bearerAuth("valid-token");
         $context = $this->createMockContext("Bearer valid-token");
 
         $called = false;
@@ -40,7 +40,7 @@ class BearerAuthTest extends TestCase
 
     public function testSimpleBearerAuthFailure()
     {
-        $middleware = BearerAuth::bearerAuth("valid-token");
+        $middleware = BearerAuthMiddleware::bearerAuth("valid-token");
         $context = $this->createMockContext("Bearer invalid-token");
 
         $next = function ($context) {
@@ -58,7 +58,7 @@ class BearerAuthTest extends TestCase
 
     public function testAdvancedBearerAuthWithTokensSuccess()
     {
-        $middleware = BearerAuth::bearerAuth([
+        $middleware = BearerAuthMiddleware::bearerAuth([
             "tokens" => ["token1", "token2"],
         ]);
         $context = $this->createMockContext("Bearer token2");
@@ -77,7 +77,7 @@ class BearerAuthTest extends TestCase
 
     public function testAdvancedBearerAuthWithVerifyTokenSuccess()
     {
-        $middleware = BearerAuth::bearerAuth([
+        $middleware = BearerAuthMiddleware::bearerAuth([
             "verifyToken" => function ($token) {
                 return $token === "valid-token";
             },
@@ -98,7 +98,7 @@ class BearerAuthTest extends TestCase
 
     public function testAdvancedBearerAuthFailure()
     {
-        $middleware = BearerAuth::bearerAuth([
+        $middleware = BearerAuthMiddleware::bearerAuth([
             "tokens" => ["token1", "token2"],
         ]);
         $context = $this->createMockContext("Bearer invalid-token");
@@ -118,7 +118,7 @@ class BearerAuthTest extends TestCase
 
     public function testMissingAuthorizationHeader()
     {
-        $middleware = BearerAuth::bearerAuth("valid-token");
+        $middleware = BearerAuthMiddleware::bearerAuth("valid-token");
         $context = $this->createMockContext();
 
         $next = function ($context) {
@@ -136,7 +136,7 @@ class BearerAuthTest extends TestCase
 
     public function testInvalidAuthorizationHeaderFormat()
     {
-        $middleware = BearerAuth::bearerAuth("valid-token");
+        $middleware = BearerAuthMiddleware::bearerAuth("valid-token");
         $context = $this->createMockContext("InvalidFormat token");
 
         $next = function ($context) {
@@ -154,7 +154,7 @@ class BearerAuthTest extends TestCase
 
     public function testCustomRealm()
     {
-        $middleware = BearerAuth::bearerAuth([
+        $middleware = BearerAuthMiddleware::bearerAuth([
             "tokens" => ["valid-token"],
             "realm" => "Custom Realm",
         ]);

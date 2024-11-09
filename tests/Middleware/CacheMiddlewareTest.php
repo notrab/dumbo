@@ -1,6 +1,6 @@
 <?php
 
-namespace Dumbo\Tests;
+namespace Dumbo\Tests\Middleware;
 
 use Dumbo\Context;
 use Dumbo\Middleware\CacheMiddleware;

@@ -7,7 +7,6 @@ use Dumbo\Context;
 use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 
-
 class CsrfMiddleware
 {
     private const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS', 'TRACE'];

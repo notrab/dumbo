@@ -3,8 +3,8 @@
 namespace Dumbo\Tests\Helpers;
 
 use Dumbo\Helpers\JWT;
+use Exception;
 use PHPUnit\Framework\TestCase;
-use Firebase\JWT\ExpiredException;
 
 class JWTTest extends TestCase
 {
@@ -35,7 +35,7 @@ class JWTTest extends TestCase
 
         $token = JWT::sign($payload, self::SECRET, self::ALG);
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage("Expired token");
         JWT::verify($token, self::SECRET, self::ALG);
     }
@@ -46,7 +46,7 @@ class JWTTest extends TestCase
 
         $token = JWT::sign($payload, self::SECRET, self::ALG);
 
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage("Invalid token");
         JWT::verify($token, "wrong_secret", self::ALG);
     }
@@ -74,7 +74,7 @@ class JWTTest extends TestCase
 
     public function testInvalidTokenFormat()
     {
-        $this->expectException(\Exception::class);
+        $this->expectException(Exception::class);
         $this->expectExceptionMessage("Invalid token format");
         JWT::decode("invalid.token");
     }

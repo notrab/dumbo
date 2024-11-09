@@ -3,7 +3,6 @@
 namespace Dumbo;
 
 use Closure;
-use Dumbo\Helpers\View;
 use GuzzleHttp\Psr7\Response;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;

@@ -3,7 +3,6 @@
 namespace Dumbo\Helpers;
 
 use Dumbo\Context;
-use Psr\Http\Message\ResponseInterface;
 
 class StaticFiles
 {
