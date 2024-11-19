@@ -1,11 +1,11 @@
 <?php
 
-namespace Dumbo\Helpers;
+namespace Dumbo\Middleware;
 
 use Dumbo\Context;
 use Psr\Http\Message\ResponseInterface;
 
-class RequestId
+class RequestIdMiddleware
 {
     private const DEFAULT_HEADER_NAME = "X-Request-Id";
     private const DEFAULT_LIMIT_LENGTH = 255;

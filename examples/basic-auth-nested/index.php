@@ -3,12 +3,12 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\BasicAuth;
+use Dumbo\Middleware\BasicAuthMiddleware;
 
 $app = new Dumbo();
 $api = new Dumbo();
 
-$api->use(BasicAuth::basicAuth("user:password"));
+$api->use(BasicAuthMiddleware::basicAuth("user:password"));
 
 $api->get("/", function ($context) {
     return $context->html("<h1>Welcome to the protected area!</h1>");

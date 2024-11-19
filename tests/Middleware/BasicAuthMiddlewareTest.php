@@ -1,14 +1,14 @@
 <?php
 
-namespace Dumbo\Tests\Helpers;
+namespace Dumbo\Tests\Middleware;
 
 use PHPUnit\Framework\TestCase;
-use Dumbo\Helpers\BasicAuth;
+use Dumbo\Middleware\BasicAuthMiddleware;
 use Dumbo\Context;
 use Psr\Http\Message\ServerRequestInterface;
 use GuzzleHttp\Psr7\Response;
 
-class BasicAuthTest extends TestCase
+class BasicAuthMiddlewareTest extends TestCase
 {
     private function createMockContext($authHeader = null): Context
     {
@@ -23,7 +23,7 @@ class BasicAuthTest extends TestCase
 
     public function testSimpleBasicAuthSuccess()
     {
-        $middleware = BasicAuth::basicAuth("user:password");
+        $middleware = BasicAuthMiddleware::basicAuth("user:password");
         $context = $this->createMockContext(
             "Basic " . base64_encode("user:password")
         );
@@ -42,7 +42,7 @@ class BasicAuthTest extends TestCase
 
     public function testSimpleBasicAuthFailure()
     {
-        $middleware = BasicAuth::basicAuth("user:password");
+        $middleware = BasicAuthMiddleware::basicAuth("user:password");
         $context = $this->createMockContext(
             "Basic " . base64_encode("wrong:credentials")
         );
@@ -62,7 +62,7 @@ class BasicAuthTest extends TestCase
 
     public function testAdvancedBasicAuthWithUsersSuccess()
     {
-        $middleware = BasicAuth::basicAuth([
+        $middleware = BasicAuthMiddleware::basicAuth([
             "users" => [
                 ["username" => "alice", "password" => "pass123"],
                 ["username" => "bob", "password" => "secret"],
@@ -86,7 +86,7 @@ class BasicAuthTest extends TestCase
 
     public function testAdvancedBasicAuthWithVerifyUserSuccess()
     {
-        $middleware = BasicAuth::basicAuth([
+        $middleware = BasicAuthMiddleware::basicAuth([
             "verifyUser" => function ($username, $password) {
                 return $username === "admin" && $password === "secret";
             },
@@ -109,7 +109,7 @@ class BasicAuthTest extends TestCase
 
     public function testAdvancedBasicAuthFailure()
     {
-        $middleware = BasicAuth::basicAuth([
+        $middleware = BasicAuthMiddleware::basicAuth([
             "users" => [["username" => "alice", "password" => "pass123"]],
         ]);
         $context = $this->createMockContext(

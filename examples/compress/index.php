@@ -3,12 +3,12 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\Compress;
+use Dumbo\Middleware\CompressMiddleware;
 
 $app = new Dumbo();
 
 $app->use(
-    Compress::compress([
+    CompressMiddleware::compress([
         "threshold" => 1024, // Minimum size to compress (bytes)
         "encoding" => "gzip", // Preferred encoding (gzip or deflate)
     ])

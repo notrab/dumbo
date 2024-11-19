@@ -3,15 +3,15 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\BodyLimit;
+use Dumbo\Middleware\BodyLimitMiddleware;
 
 $app = new Dumbo();
 
 // Limit the body size to 1MB
-$app->use(BodyLimit::limit(1024 * 1024));
+$app->use(BodyLimitMiddleware::limit(1024 * 1024));
 
 // Or apply it with custom response
-// $app->use(BodyLimit::limit(1024 * 1024, function($context) {
+// $app->use(BodyLimitMiddleware::limit(1024 * 1024, function($context) {
 //     return $context->json(['error' => 'Body too large'], 413);
 // }));
 

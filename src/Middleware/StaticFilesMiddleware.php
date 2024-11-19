@@ -1,11 +1,10 @@
 <?php
 
-namespace Dumbo\Helpers;
+namespace Dumbo\Middleware;
 
 use Dumbo\Context;
-use Psr\Http\Message\ResponseInterface;
 
-class StaticFiles
+class StaticFilesMiddleware
 {
     /**
      * Create a handler for serving static files

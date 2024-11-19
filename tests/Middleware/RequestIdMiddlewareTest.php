@@ -1,20 +1,20 @@
 <?php
 
-namespace Dumbo\Tests\Helpers;
+namespace Dumbo\Tests\Middleware;
 
 use PHPUnit\Framework\TestCase;
 use Dumbo\Dumbo;
-use Dumbo\Helpers\RequestId;
+use Dumbo\Middleware\RequestIdMiddleware;
 use GuzzleHttp\Psr7\ServerRequest;
 
-class RequestIdTest extends TestCase
+class RequestIdMiddlewareTest extends TestCase
 {
     public function testRequestIdMiddleware()
     {
         $app = new Dumbo();
 
         $app->use(
-            RequestId::requestId([
+            RequestIdMiddleware::requestId([
                 "headerName" => "X-Custom-Request-Id",
                 "limitLength" => 128,
                 "generator" => function ($context) {
@@ -48,7 +48,7 @@ class RequestIdTest extends TestCase
         $app = new Dumbo();
 
         $app->use(
-            RequestId::requestId([
+            RequestIdMiddleware::requestId([
                 "headerName" => "X-Custom-Request-Id",
             ])
         );

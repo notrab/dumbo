@@ -3,7 +3,7 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\Logger;
+use Dumbo\Middleware\LoggerMiddleware;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Logger as MonologLogger;
 use Monolog\Handler\StreamHandler;
@@ -19,7 +19,7 @@ $formatter = new LineFormatter(
 $handler->setFormatter($formatter);
 $logger->pushHandler($handler);
 
-$app->use(Logger::logger($logger));
+$app->use(LoggerMiddleware::logger($logger));
 
 $app->get("/", function ($context) {
     return $context->html("<h1>We've just logged something on the console!</h1>");

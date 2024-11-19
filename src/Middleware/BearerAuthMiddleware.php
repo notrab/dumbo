@@ -1,11 +1,11 @@
 <?php
 
-namespace Dumbo\Helpers;
+namespace Dumbo\Middleware;
 
 use Dumbo\Context;
 use Psr\Http\Message\ResponseInterface;
 
-class BearerAuth
+class BearerAuthMiddleware
 {
     private const STATUS_UNAUTHORIZED = 401;
     private const HEADER_AUTHORIZATION = "Authorization";
