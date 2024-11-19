@@ -1,4 +1,4 @@
-# Context Example
+# Smarty Example
 
 This example demonstrates how to pass a render closure to context and generate a view using the smarty template engine.
 
