@@ -5,6 +5,7 @@ composer.lock
 .idea
 .fleet
 .vscode
+.devcontainer
 cache
 file.db
 .phpunit.result.cache

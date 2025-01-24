@@ -3,12 +3,12 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\BasicAuth;
+use Dumbo\Middleware\BasicAuthMiddleware;
 
 $app = new Dumbo();
 
 $app->use(
-    BasicAuth::basicAuth([
+    BasicAuthMiddleware::basicAuth([
         "users" => [
             ["username" => "user1", "password" => "pass1"],
             ["username" => "user2", "password" => "pass2"],

@@ -1,12 +1,12 @@
 <?php
 
-namespace Dumbo\Helpers;
+namespace Dumbo\Middleware;
 
 use Dumbo\Context;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 
-class Logger
+class LoggerMiddleware
 {
     public const LOG_PREFIX_INCOMING = "-->";
     public const LOG_PREFIX_OUTGOING = "<--";

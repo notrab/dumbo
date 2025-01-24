@@ -1,12 +1,12 @@
 <?php
 
-namespace Dumbo\Helpers;
+namespace Dumbo\Middleware;
 
 use Dumbo\Context;
 use Dumbo\HTTPException;
 use Psr\Http\Message\ResponseInterface;
 
-class BodyLimit
+class BodyLimitMiddleware
 {
     /**
      * Create a middleware that limits the size of the request body

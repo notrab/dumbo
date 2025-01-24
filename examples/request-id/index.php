@@ -3,15 +3,15 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\RequestId;
+use Dumbo\Middleware\RequestIdMiddleware;
 
 $app = new Dumbo();
 
-$app->use(RequestId::requestId());
+$app->use(RequestIdMiddleware::requestId());
 
 // Or apply it with custom options
 // $app->use(
-//     RequestId::requestId([
+//     RequestIdMiddleware::requestId([
 //         "headerName" => "X-Custom-Request-Id",
 //         "limitLength" => 128,
 //         "generator" => function ($context) {
