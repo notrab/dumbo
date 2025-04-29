@@ -74,7 +74,7 @@ class Context
     /**
      * Send a JSON response
      *
-     * @param mixed $data The data to be JSON encoded (optional)
+     * @param mixed $data The data to be JSON encoded
      * @param int $status The HTTP status code
      * @param array $headers Additional headers
      * @return ResponseInterface The response object
@@ -84,18 +84,7 @@ class Context
         int $status = 200,
         array $headers = []
     ): ResponseInterface {
-        $this->response = $this->response
-            ->withStatus($status)
-            ->withHeader("Content-Type", "application/json");
-
-        foreach ($headers as $name => $value) {
-            $this->response = $this->response->withHeader($name, $value);
-        }
-
-        $jsonData = $data !== null ? json_encode($data) : "null";
-        $this->response->getBody()->write($jsonData);
-
-        return $this->response;
+        return $this->send($data, "application/json", $status, $headers);
     }
 
     /**
@@ -107,20 +96,11 @@ class Context
      * @return ResponseInterface The response object
      */
     public function text(
-        string $data,
+        string $text,
         int $status = 200,
         array $headers = []
     ): ResponseInterface {
-        $this->response = $this->response
-            ->withStatus($status)
-            ->withHeader("Content-Type", "text/plain");
-
-        foreach ($headers as $name => $value) {
-            $this->response = $this->response->withHeader($name, $value);
-        }
-
-        $this->response->getBody()->write($data);
-        return $this->response;
+        return $this->send($text, "text/plain", $status, $headers);
     }
 
     /**
@@ -132,20 +112,11 @@ class Context
      * @return ResponseInterface The response object
      */
     public function html(
-        string $data,
+        string $html,
         int $status = 200,
         array $headers = []
     ): ResponseInterface {
-        $this->response = $this->response
-            ->withStatus($status)
-            ->withHeader("Content-Type", "text/html");
-
-        foreach ($headers as $name => $value) {
-            $this->response = $this->response->withHeader($name, $value);
-        }
-
-        $this->response->getBody()->write($data);
-        return $this->response;
+        return $this->send($html, "text/html", $status, $headers);
     }
 
     /**
@@ -215,5 +186,39 @@ class Context
         }
 
         return $this->html(call_user_func_array($this->viewBuilder, $params));
+    }
+
+    /**
+     * Send a response with full control over the output
+     *
+     * @param mixed $body The response body
+     * @param string $contentType The content type header value
+     * @param int $status The HTTP status code
+     * @param array $headers Additional headers
+     * @return ResponseInterface The response object
+     */
+    public function send(
+        mixed $body = "",
+        string $contentType = "text/plain",
+        int $status = 200,
+        array $headers = []
+    ): ResponseInterface {
+        $this->response = $this->response
+            ->withStatus($status)
+            ->withHeader("Content-Type", $contentType);
+
+        foreach ($headers as $name => $value) {
+            $this->response = $this->response->withHeader($name, $value);
+        }
+
+        if (is_string($body) || is_numeric($body)) {
+            $this->response->getBody()->write((string) $body);
+        } elseif (is_array($body) || is_object($body)) {
+            $this->response->getBody()->write(json_encode($body));
+        } elseif ($body instanceof \Psr\Http\Message\StreamInterface) {
+            $this->response = $this->response->withBody($body);
+        }
+
+        return $this->response;
     }
 }
