@@ -7,7 +7,6 @@ use Dumbo\Context;
 use InvalidArgumentException;
 use Psr\Http\Message\ResponseInterface;
 
-
 class CsrfMiddleware
 {
     private const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS', 'TRACE'];
@@ -24,14 +23,6 @@ class CsrfMiddleware
         $options = self::mergeOptions($options);
 
         self::validateOptions($options);
-
-        if (!is_callable($options['getToken']) || !is_callable($options['setToken'])) {
-            throw new InvalidArgumentException('getToken and setToken must be callable');
-        }
-
-        if ($options['errorHandler'] !== null && !is_callable($options['errorHandler'])) {
-            throw new InvalidArgumentException('errorHandler must be callable');
-        }
 
         return function (Context $ctx, callable $next) use ($options) {
             if (self::isSafeMethod($ctx->req->method())) {
@@ -104,14 +95,16 @@ class CsrfMiddleware
             return false;
         }
 
-        $receivedToken = $options['useHeader'] ? $ctx->req->header($options['headerName']) : $ctx->req->body()[$options['tokenName']];
+        $receivedToken = $options['useHeader']
+            ? $ctx->req->header($options['headerName'])
+            : $ctx->req->body()[$options['tokenName']] ?? null;
 
-        return $receivedToken !== null && hash_equals($storedToken, $receivedToken);
+        return is_string($receivedToken) && hash_equals($storedToken, $receivedToken);
     }
 
     private static function generateToken(int $length): string
     {
-        return bin2hex(random_bytes($length / 2));
+        return bin2hex(random_bytes(max(1, intdiv($length, 2))));
     }
 
     private static function handleError(Context $ctx, ?callable $errorHandler): ResponseInterface
