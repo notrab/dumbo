@@ -5,23 +5,6 @@ namespace Dumbo;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
- * Interface for the RequestWrapper class
- */
-#[\Attribute]
-interface RequestWrapperInterface
-{
-    public function param(string $name): ?string;
-    public function queries(string $name): array|string;
-    public function query(?string $name = null): array|string|null;
-    public function body(): array;
-    public function method(): string;
-    public function headers(?string $name = null): array;
-    public function header(string $name): ?string;
-    public function path(): string;
-    public function routePath(): string;
-}
-
-/**
  * RequestWrapper class for handling HTTP request details in the Dumbo framework
  */
 class RequestWrapper implements RequestWrapperInterface
@@ -79,7 +62,9 @@ class RequestWrapper implements RequestWrapperInterface
         $body = (string) $this->request->getBody();
 
         if (str_contains($contentType, "application/json")) {
-            return json_decode($body, true) ?? [];
+            $decoded = json_decode($body, true);
+
+            return is_array($decoded) ? $decoded : [];
         }
 
         if (str_contains($contentType, "application/x-www-form-urlencoded")) {
@@ -91,21 +76,6 @@ class RequestWrapper implements RequestWrapperInterface
         }
 
         return $this->request->getParsedBody() ?? [];
-    }
-
-    /**
-     * Parse form URL encoded data
-     *
-     * @param string $body The raw request body
-     * @return array The parsed data
-     */
-    private function parseFormUrlEncoded(string $body): array
-    {
-        $data = [];
-
-        parse_str($body, $data);
-
-        return $data;
     }
 
     /**
@@ -159,7 +129,6 @@ class RequestWrapper implements RequestWrapperInterface
      *
      * @return array The parsed body
      */
-
     public function body(): array
     {
         return $this->parsedBody;
@@ -203,6 +172,11 @@ class RequestWrapper implements RequestWrapperInterface
         return !empty($headers) ? $headers[0] : null;
     }
 
+    /**
+     * Get the uploaded files
+     *
+     * @return array The uploaded files
+     */
     public function getUploadedFiles(): array
     {
         return $this->request->getUploadedFiles();

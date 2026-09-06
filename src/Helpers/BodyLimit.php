@@ -17,7 +17,7 @@ class BodyLimit
      */
     public static function limit(
         int $maxSize,
-        callable $onError = null
+        ?callable $onError = null
     ): callable {
         return function (Context $context, callable $next) use (
             $maxSize,
@@ -49,7 +49,7 @@ class BodyLimit
     private static function handleError(
         Context $context,
         int $maxSize,
-        callable $onError = null
+        ?callable $onError = null
     ): ResponseInterface {
         if ($onError !== null) {
             return $onError($context, $maxSize);

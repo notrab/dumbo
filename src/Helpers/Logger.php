@@ -107,7 +107,10 @@ class Logger
     private function getElapsedTime(float $start): string
     {
         $delta = (microtime(true) - $start) * 1000;
-        return $delta < 1000 ? $delta . "ms" : round($delta / 1000, 3) . "s";
+
+        return $delta < 1000
+            ? round($delta, 2) . "ms"
+            : round($delta / 1000, 3) . "s";
     }
 
     /**

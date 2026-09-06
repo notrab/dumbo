@@ -25,13 +25,6 @@ class Router
     private array $groups = [];
 
     /**
-     * Constructor
-     *
-     * Initializes the router.
-     */
-    public function __construct() {}
-
-    /**
      * Add a route to the router
      *
      * @param string $method The HTTP method for the route
