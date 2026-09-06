@@ -75,7 +75,7 @@ class Cookie
         array $options = []
     ): void {
         $cookieString = self::buildString($name, $value, $options);
-        $context->header("Set-Cookie", $cookieString);
+        $context->header("Set-Cookie", $cookieString, true);
     }
 
     /**
@@ -120,6 +120,19 @@ class Cookie
         ?string $name = null,
         ?string $prefix = null
     ): mixed {
+        if ($name === null) {
+            $signed = [];
+
+            foreach (self::get($context) as $cookieName => $cookieValue) {
+                $signed[$cookieName] = self::verifySigned(
+                    $cookieValue,
+                    $secret
+                );
+            }
+
+            return $signed;
+        }
+
         $value = self::get($context, $name, $prefix);
 
         if ($value === null) {
@@ -185,10 +198,12 @@ class Cookie
     {
         $cookies = self::get($context);
 
-        foreach ($cookies as $name => $value) {
+        foreach (array_keys($cookies) as $name) {
             $context->header(
                 "Set-Cookie",
-                $name . "=; Expires=Thu, 01 Jan 1970 00:00:01 GMT"
+                urlencode($name) .
+                    "=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT",
+                true
             );
         }
     }
@@ -206,12 +221,12 @@ class Cookie
             return $cookies;
         }
 
-        $pairs = explode("; ", $cookieString);
+        $pairs = explode(";", $cookieString);
 
         foreach ($pairs as $pair) {
-            $parts = explode("=", $pair, 2);
+            $parts = explode("=", trim($pair), 2);
             if (count($parts) === 2) {
-                $cookies[urldecode($parts[0])] = urldecode($parts[1]);
+                $cookies[urldecode(trim($parts[0]))] = urldecode($parts[1]);
             }
         }
 
@@ -312,13 +327,14 @@ class Cookie
         string $value,
         string $secret
     ): string|false {
-        $parts = explode(".", $value, 2);
+        $separator = strrpos($value, ".");
 
-        if (count($parts) !== 2) {
+        if ($separator === false) {
             return false;
         }
 
-        list($value, $signature) = $parts;
+        $signature = substr($value, $separator + 1);
+        $value = substr($value, 0, $separator);
 
         $expectedSignature = self::sign($value, $secret);
 

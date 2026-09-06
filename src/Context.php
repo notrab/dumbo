@@ -3,9 +3,9 @@
 namespace Dumbo;
 
 use Closure;
-use Dumbo\Helpers\View;
 use GuzzleHttp\Psr7\Response;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 /**
@@ -128,9 +128,11 @@ class Context
      */
     public function redirect(string $url, int $status = 302): ResponseInterface
     {
-        return $this->response
+        $this->response = $this->response
             ->withStatus($status)
             ->withHeader("Location", $url);
+
+        return $this->response;
     }
 
     /**
@@ -138,11 +140,19 @@ class Context
      *
      * @param string $name The header name
      * @param string $value The header value
+     * @param bool $append Append to the header rather than replacing it,
+     *                     for headers that may be sent more than once
      * @return self
      */
-    public function header(string $name, string $value): self
-    {
-        $this->response = $this->response->withHeader($name, $value);
+    public function header(
+        string $name,
+        string $value,
+        bool $append = false
+    ): self {
+        $this->response = $append
+            ? $this->response->withAddedHeader($name, $value)
+            : $this->response->withHeader($name, $value);
+
         return $this;
     }
 
@@ -211,12 +221,12 @@ class Context
             $this->response = $this->response->withHeader($name, $value);
         }
 
-        if (is_string($body) || is_numeric($body)) {
+        if ($body instanceof StreamInterface) {
+            $this->response = $this->response->withBody($body);
+        } elseif (is_string($body) || is_numeric($body)) {
             $this->response->getBody()->write((string) $body);
         } elseif (is_array($body) || is_object($body)) {
-            $this->response->getBody()->write(json_encode($body));
-        } elseif ($body instanceof \Psr\Http\Message\StreamInterface) {
-            $this->response = $this->response->withBody($body);
+            $this->response->getBody()->write((string) json_encode($body));
         }
 
         return $this->response;
