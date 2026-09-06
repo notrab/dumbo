@@ -31,30 +31,43 @@ class StaticFiles
 
             if (
                 $realFilePath === false ||
-                strpos($realFilePath, $realDirectory) !== 0
+                $realDirectory === false ||
+                !str_starts_with(
+                    $realFilePath,
+                    rtrim($realDirectory, DIRECTORY_SEPARATOR) .
+                        DIRECTORY_SEPARATOR
+                )
             ) {
                 return $context->text("File not found", 404);
             }
 
-            if (file_exists($realFilePath) && is_file($realFilePath)) {
-                $mimeType = mime_content_type($realFilePath);
+            if (is_file($realFilePath)) {
                 $fileContent = file_get_contents($realFilePath);
+
+                if ($fileContent === false) {
+                    return $context->text("File not found", 404);
+                }
+
+                $mimeType =
+                    mime_content_type($realFilePath) ?:
+                    "application/octet-stream";
+
+                $etag = sprintf('"%s"', md5($fileContent));
 
                 $response = $context
                     ->getResponse()
                     ->withHeader("Content-Type", $mimeType)
                     ->withHeader("Cache-Control", "public, max-age=3600")
-                    ->withBody(\GuzzleHttp\Psr7\Utils::streamFor($fileContent));
-
-                $etag = md5($fileContent);
-                $response = $response->withHeader("ETag", $etag);
+                    ->withHeader("ETag", $etag);
 
                 $ifNoneMatch = $context->req->header("If-None-Match");
-                if ($ifNoneMatch === $etag) {
+                if ($ifNoneMatch !== null && trim($ifNoneMatch) === $etag) {
                     return $response->withStatus(304);
                 }
 
-                return $response;
+                return $response->withBody(
+                    \GuzzleHttp\Psr7\Utils::streamFor($fileContent)
+                );
             }
 
             return $context->text("File not found", 404);
