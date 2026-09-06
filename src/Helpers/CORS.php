@@ -10,7 +10,7 @@ class CORS
     /**
      * Configure CORS headers.
      *
-     * @param array $$options optional - The CORS options
+     * @param array $options optional - The CORS options
      * @return callable The middleware function for handling CORS.
      */
     public static function cors(array $options = []): callable
@@ -124,41 +124,12 @@ class CORS
                 );
             }
 
+            if ($corsOptions["origin"] !== "*") {
+                $response = $response->withAddedHeader("Vary", "Origin");
+            }
+
             return $response;
         };
-    }
-
-    /**
-     * Handle preflight requests
-     *
-     * @param ResponseInterface $response The current response
-     * @param array $options CORS configuration options
-     * @return ResponseInterface The updated response
-     */
-    private static function handlePreflightRequest(
-        ResponseInterface $response,
-        array $options
-    ): ResponseInterface {
-        $response = $response->withHeader(
-            "Access-Control-Allow-Methods",
-            implode(", ", $options["allow_methods"])
-        );
-
-        if (!empty($options["allow_headers"])) {
-            $response = $response->withHeader(
-                "Access-Control-Allow-Headers",
-                implode(", ", $options["allow_headers"])
-            );
-        }
-
-        if (isset($options["max_age"])) {
-            $response = $response->withHeader(
-                "Access-Control-Max-Age",
-                (string) $options["max_age"]
-            );
-        }
-
-        return $response;
     }
 
     /**
