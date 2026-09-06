@@ -40,6 +40,8 @@
 - 📝 Logging support
 - 🗃️ HTTP caching
 - 🔄 CORS support
+- 🗜️ Response compression
+- 📦 Request body size limits
 - 🧬 Environment-based configuration
 
 ## Install
@@ -142,7 +144,7 @@ $app->route('/prefix', $nestedApp);
 <?php
 
 $app->get('/', function($context) {
-    $pathname = $context->req->pathname();
+    $path = $context->req->path();
     $routePath = $context->req->routePath();
     $queryParam = $context->req->query('param');
     $tags = $context->req->queries('tags');
@@ -176,23 +178,30 @@ $app->use(function($context, $next) {
 
 ### Custom context
 
+Share values across middleware and handlers with `$context->set()` and
+`$context->get()`.
+
 ```php
 <?php
 
 $app = new Dumbo();
 
-// Set configuration values
-$app->set('DB_URL', 'mysql://user:pass@localhost/mydb');
-$app->set('API_KEY', 'your-secret-key');
-$app->set('DEBUG', true);
+// Available to every route
+$app->use(function ($context, $next) {
+    $context->set('DB_URL', 'mysql://user:pass@localhost/mydb');
+    $context->set('API_KEY', 'your-secret-key');
 
-// Get configuration values
-$dbUrl = $app->get('DB_URL');
-$apiKey = $app->get('API_KEY');
-$debug = $app->get('DEBUG');
+    return $next($context);
+});
 
-// Use configuration in your routes
-$app->get('/api/data', function(Context $context) {
+// Or only to routes under a given prefix
+$app->use('/api', function ($context, $next) {
+    $context->set('DEBUG', true);
+
+    return $next($context);
+});
+
+$app->get('/api/data', function ($context) {
     $apiKey = $context->get('API_KEY');
 
     // Use $apiKey in your logic...
