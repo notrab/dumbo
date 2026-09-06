@@ -78,4 +78,23 @@ class JWTTest extends TestCase
         $this->expectExceptionMessage("Invalid token format");
         JWT::decode("invalid.token");
     }
+
+    public function testDecodeHandlesBase64UrlEncodedSegments()
+    {
+        $payload = ["sub" => "a~b?c>d", "data" => "ÿÿÿ>>>???"];
+        $token = JWT::sign($payload, "secret");
+
+        $decoded = JWT::decode($token);
+
+        $this->assertEquals($payload, $decoded["payload"]);
+        $this->assertEquals("JWT", $decoded["header"]["typ"]);
+    }
+
+    public function testDecodeRejectsAMalformedToken()
+    {
+        $this->expectException(\Exception::class);
+
+        JWT::decode("not.a.token");
+    }
 }
+

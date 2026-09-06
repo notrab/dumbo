@@ -55,17 +55,42 @@ class JWT
     public static function decode(string $token): array
     {
         $parts = explode(".", $token);
-        if (count($parts) != 3) {
+        if (count($parts) !== 3) {
             throw new \Exception("Invalid token format");
         }
 
-        $header = json_decode(base64_decode($parts[0]), true);
-        $payload = json_decode(base64_decode($parts[1]), true);
-
         return [
-            "header" => $header,
-            "payload" => $payload,
+            "header" => self::decodeSegment($parts[0]),
+            "payload" => self::decodeSegment($parts[1]),
         ];
+    }
+
+    /**
+     * Decode a single base64url encoded JWT segment.
+     *
+     * @param string $segment The encoded segment
+     * @return array The decoded segment
+     * @throws \Exception If the segment cannot be decoded
+     */
+    private static function decodeSegment(string $segment): array
+    {
+        $decoded = base64_decode(
+            strtr($segment, "-_", "+/") .
+                str_repeat("=", (4 - (strlen($segment) % 4)) % 4),
+            true
+        );
+
+        if ($decoded === false) {
+            throw new \Exception("Invalid token encoding");
+        }
+
+        $data = json_decode($decoded, true);
+
+        if (!is_array($data)) {
+            throw new \Exception("Invalid token payload");
+        }
+
+        return $data;
     }
 
     /**
