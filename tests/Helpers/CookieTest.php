@@ -6,20 +6,16 @@ use PHPUnit\Framework\TestCase;
 use Dumbo\Helpers\Cookie;
 use Dumbo\Context;
 use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\ResponseInterface;
-use GuzzleHttp\Psr7\Response;
 
 class CookieTest extends TestCase
 {
     private $context;
     private $request;
-    private $response;
 
     protected function setUp(): void
     {
         $this->request = $this->createMock(ServerRequestInterface::class);
-        $this->response = new Response();
-        $this->context = new TestContext($this->request, $this->response);
+        $this->context = new Context($this->request, [], "");
     }
 
     private function setRequestCookie(string $cookieString): void
@@ -125,31 +121,58 @@ class CookieTest extends TestCase
 
         $setHeaders = $this->context->getResponse()->getHeader("Set-Cookie");
         $this->assertCount(2, $setHeaders);
-        $this->assertStringContainsString("cookie1=; Expires=", $setHeaders[0]);
-        $this->assertStringContainsString("cookie2=; Expires=", $setHeaders[1]);
-    }
-}
-
-class TestContext extends Context
-{
-    private $response;
-
-    public function __construct(
-        ServerRequestInterface $request,
-        ResponseInterface $response
-    ) {
-        parent::__construct($request, [], "");
-        $this->response = $response;
+        $this->assertStringContainsString(
+            "cookie1=; Path=/; Expires=",
+            $setHeaders[0]
+        );
+        $this->assertStringContainsString(
+            "cookie2=; Path=/; Expires=",
+            $setHeaders[1]
+        );
     }
 
-    public function getResponse(): ResponseInterface
+    public function testSetKeepsEveryCookie()
     {
-        return $this->response;
+        Cookie::set($this->context, "first", "1");
+        Cookie::set($this->context, "second", "2");
+
+        $setHeaders = $this->context->getResponse()->getHeader("Set-Cookie");
+
+        $this->assertCount(2, $setHeaders);
+        $this->assertStringContainsString("first=1", $setHeaders[0]);
+        $this->assertStringContainsString("second=2", $setHeaders[1]);
     }
 
-    public function header(string $name, string $value): self
+    public function testParsesCookiesWithoutSpaceAfterSeparator()
     {
-        $this->response = $this->response->withAddedHeader($name, $value);
-        return $this;
+        $this->setRequestCookie("first=1;second=2");
+
+        $this->assertEquals(
+            ["first" => "1", "second" => "2"],
+            Cookie::get($this->context)
+        );
+    }
+
+    public function testGetSignedCookieWithASeparatorInTheValue()
+    {
+        $secret = "test_secret";
+        $value = "user.name";
+        $signedValue = $value . "." . hash_hmac("sha256", $value, $secret);
+
+        $this->setRequestCookie("signed_cookie=$signedValue");
+
+        $this->assertEquals(
+            $value,
+            Cookie::getSigned($this->context, $secret, "signed_cookie")
+        );
+    }
+
+    public function testGetSignedCookieRejectsATamperedValue()
+    {
+        $this->setRequestCookie("signed_cookie=value.not-a-signature");
+
+        $this->assertFalse(
+            Cookie::getSigned($this->context, "test_secret", "signed_cookie")
+        );
     }
 }

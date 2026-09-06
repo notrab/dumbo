@@ -16,7 +16,7 @@ class HTTPException extends \Exception
         string $message = "",
         string $errorCode = "",
         array $errorDetails = [],
-        ResponseInterface $customResponse = null
+        ?ResponseInterface $customResponse = null
     ) {
         parent::__construct($message, $statusCode);
         $this->statusCode = $statusCode;

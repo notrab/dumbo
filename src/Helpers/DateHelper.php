@@ -39,16 +39,23 @@ class DateHelper
     ): string {
         $timezones = DateTimeZone::listIdentifiers($what, $country);
 
-        $select = '<select name="timezone" class="' . $class . '">';
+        $escape = static fn(string $value): string => htmlspecialchars(
+            $value,
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            "UTF-8"
+        );
+
+        $select =
+            '<select name="timezone" class="' . $escape($class) . '">';
         foreach ($timezones as $timezone) {
             $selected = $timezone === $default ? " selected" : "";
             $select .=
                 '<option value="' .
-                $timezone .
+                $escape($timezone) .
                 '"' .
                 $selected .
                 ">" .
-                $timezone .
+                $escape($timezone) .
                 "</option>";
         }
         $select .= "</select>";
@@ -62,12 +69,20 @@ class DateHelper
      * @param string $format
      * @param int|string $time
      * @return string
+     * @throws \InvalidArgumentException If the time cannot be parsed
      */
     public static function format(string $format, $time = "now"): string
     {
         if (is_string($time)) {
             $time = strtotime($time);
+
+            if ($time === false) {
+                throw new \InvalidArgumentException(
+                    "Unable to parse the given time"
+                );
+            }
         }
+
         return date($format, $time);
     }
 

@@ -50,9 +50,7 @@ class Compress
             $allowedEncodings,
             $encoding
         ) {
-            $next($context);
-
-            $response = $context->getResponse();
+            $response = $next($context);
             $contentLength = $response->getHeaderLine("Content-Length");
 
             if (
@@ -67,8 +65,9 @@ class Compress
 
             $acceptedEncodings = array_map(
                 "trim",
-                explode(",", $context->req->header("Accept-Encoding"))
+                explode(",", $context->req->header("Accept-Encoding") ?? "")
             );
+
             if (!$encoding) {
                 foreach ($allowedEncodings as $enc) {
                     if (in_array($enc, $acceptedEncodings)) {
@@ -86,12 +85,11 @@ class Compress
                 $response->getBody(),
                 $encoding
             );
-            $response = $response
+            return $response
                 ->withBody($compressedBody)
                 ->withoutHeader("Content-Length")
-                ->withHeader("Content-Encoding", $encoding);
-
-            return $response;
+                ->withHeader("Content-Encoding", $encoding)
+                ->withAddedHeader("Vary", "Accept-Encoding");
         };
     }
 
@@ -104,7 +102,8 @@ class Compress
     private static function shouldCompress(ResponseInterface $response): bool
     {
         $type = $response->getHeaderLine("Content-Type");
-        return preg_match(self::STR_REGEX, $type);
+
+        return preg_match(self::STR_REGEX, $type) === 1;
     }
 
     /**
@@ -117,27 +116,29 @@ class Compress
     private static function shouldTransform(ResponseInterface $response): bool
     {
         $cacheControl = $response->getHeaderLine("Cache-Control");
-        return !preg_match(
+        return preg_match(
             '/(?:^|,)\s*?no-transform\s*?(?:,|$)/i',
             $cacheControl
-        );
+        ) !== 1;
     }
 
     /**
      * Perform the actual compression of the response body using the specified encoding
      *
-     * @param string $body The response body to compress
+     * @param StreamInterface $body The response body to compress
      * @param string $encoding The encoding to use for compression
      *
-     * @return string|StreamInterface The compressed response body
+     * @return StreamInterface The compressed response body
      */
     private static function performCompression(
-        string $body,
+        StreamInterface $body,
         string $encoding
     ): StreamInterface {
+        $contents = (string) $body;
+
         return match ($encoding) {
-            "deflate" => Utils::streamFor(gzdeflate($body)),
-            "gzip" => Utils::streamFor(gzencode($body)),
+            "deflate" => Utils::streamFor(gzdeflate($contents)),
+            "gzip" => Utils::streamFor(gzencode($contents)),
             default => $body,
         };
     }

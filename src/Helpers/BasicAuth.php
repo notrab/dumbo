@@ -123,8 +123,8 @@ class BasicAuth
             } elseif (isset($options["users"])) {
                 foreach ($options["users"] as $user) {
                     if (
-                        $username === $user["username"] &&
-                        $password === $user["password"]
+                        hash_equals($user["username"], $username) &&
+                        hash_equals($user["password"], $password)
                     ) {
                         return $next($context);
                     }
@@ -158,9 +158,10 @@ class BasicAuth
         string $password
     ): bool {
         $credentials = self::decodeCredentials($authHeader);
-        return $credentials &&
-            $credentials[0] === $username &&
-            $credentials[1] === $password;
+
+        return $credentials !== null &&
+            hash_equals($username, $credentials[0]) &&
+            hash_equals($password, $credentials[1]);
     }
 
     private static function decodeCredentials(string $authHeader): ?array
