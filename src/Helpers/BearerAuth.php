@@ -62,7 +62,7 @@ class BearerAuth
                 );
             }
 
-            if ($parts[1] !== $token) {
+            if (!hash_equals($token, $parts[1])) {
                 return $context->json(
                     ["error" => $failureMessage],
                     self::STATUS_UNAUTHORIZED
@@ -120,8 +120,10 @@ class BearerAuth
                     return $next($context);
                 }
             } elseif (isset($options["tokens"])) {
-                if (in_array($token, $options["tokens"], true)) {
-                    return $next($context);
+                foreach ($options["tokens"] as $validToken) {
+                    if (hash_equals($validToken, $token)) {
+                        return $next($context);
+                    }
                 }
             }
 
