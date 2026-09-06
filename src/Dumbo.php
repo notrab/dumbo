@@ -55,6 +55,15 @@ class Dumbo
     public const ENV_TESTING = "testing";
 
     /**
+     * Every environment Dumbo recognises
+     */
+    private const ENVIRONMENTS = [
+        self::ENV_PRODUCTION,
+        self::ENV_DEVELOPMENT,
+        self::ENV_TESTING,
+    ];
+
+    /**
      * Current environment
      *
      * @var string
@@ -201,10 +210,7 @@ class Dumbo
 
             if ($route) {
                 $fullMiddlewareStack = array_unique(
-                    array_merge(
-                        $fullMiddlewareStack,
-                        $route["middleware"] ?? []
-                    ),
+                    $fullMiddlewareStack,
                     SORT_REGULAR
                 );
 
@@ -275,15 +281,9 @@ class Dumbo
      */
     public function setEnvironment(string $env): void
     {
-        if (
-            in_array($env, [
-                self::ENV_PRODUCTION,
-                self::ENV_DEVELOPMENT,
-                self::ENV_TESTING,
-            ])
-        ) {
+        if (in_array($env, self::ENVIRONMENTS, true)) {
             $this->environment = $env;
-            $this->detectEnvironment();
+            $this->applyEnvironmentErrorReporting();
         }
     }
 
@@ -382,8 +382,11 @@ class Dumbo
         http_response_code($response->getStatusCode());
 
         foreach ($response->getHeaders() as $name => $values) {
+            $replace = true;
+
             foreach ($values as $value) {
-                header("$name: $value", false);
+                header("$name: $value", $replace);
+                $replace = false;
             }
         }
 
@@ -459,24 +462,6 @@ class Dumbo
     }
 
     /**
-     * Get the full middleware stack including middleware from parent applications
-     *
-     * @return array<array-key,callable> The complete middleware stack
-     */
-    private function getFullMiddlewareStack(): array
-    {
-        $stack = $this->middleware;
-        $current = $this;
-
-        while ($current->parent !== null) {
-            $stack = array_merge($current->parent->middleware, $stack);
-            $current = $current->parent;
-        }
-
-        return $stack;
-    }
-
-    /**
      * Get all applicable middleware for a given path
      *
      * @param string $path The request path
@@ -505,24 +490,29 @@ class Dumbo
      * @param callable|null $getenvFunc Function to use instead of getenv (for testing)
      */
     public function detectEnvironment(
-        array $serverVars = null,
-        callable $getenvFunc = null
+        ?array $serverVars = null,
+        ?callable $getenvFunc = null
     ): void {
         $serverVars = $serverVars ?? $_SERVER;
         $getenvFunc = $getenvFunc ?? "getenv";
 
         $env =
-            $serverVars["DUMBO_ENV"] ??
-            ($getenvFunc("DUMBO_ENV") ?? self::ENV_DEVELOPMENT);
-        $this->environment = in_array($env, [
-            self::ENV_PRODUCTION,
-            self::ENV_DEVELOPMENT,
-            self::ENV_TESTING,
-        ])
+            ($serverVars["DUMBO_ENV"] ?? null) ?:
+            ($getenvFunc("DUMBO_ENV") ?: self::ENV_DEVELOPMENT);
+
+        $this->environment = in_array($env, self::ENVIRONMENTS, true)
             ? $env
             : self::ENV_DEVELOPMENT;
 
-        if ($this->environment === self::ENV_PRODUCTION) {
+        $this->applyEnvironmentErrorReporting();
+    }
+
+    /**
+     * Apply the error reporting configuration for the current environment
+     */
+    private function applyEnvironmentErrorReporting(): void
+    {
+        if ($this->isProduction()) {
             error_reporting(0);
             ini_set("display_errors", "0");
         } else {
@@ -543,11 +533,17 @@ class Dumbo
 
     private function generateErrorPage(\Throwable $error): string
     {
-        $title = get_class($error);
-        $message = $error->getMessage();
-        $file = $error->getFile();
+        $escape = static fn(string $value): string => htmlspecialchars(
+            $value,
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            "UTF-8"
+        );
+
+        $title = $escape(get_class($error));
+        $message = $escape($error->getMessage());
+        $file = $escape($error->getFile());
         $line = $error->getLine();
-        $trace = $error->getTraceAsString();
+        $trace = $escape($error->getTraceAsString());
 
         return <<<HTML
 <!DOCTYPE html>
