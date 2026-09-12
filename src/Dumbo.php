@@ -193,7 +193,8 @@ class Dumbo
         }
 
         try {
-            $route = $this->router->findRoute($request);
+            $dispatch = $this->router->dispatch($request);
+            $route = $dispatch["route"];
 
             $context = new Context(
                 $request,
@@ -215,6 +216,16 @@ class Dumbo
                 );
 
                 $handler = $route["handler"];
+            } elseif ($dispatch["allowedMethods"] !== []) {
+                $allowed = implode(", ", $dispatch["allowedMethods"]);
+
+                $handler = function () use ($allowed) {
+                    return new Response(
+                        405,
+                        ["Allow" => $allowed],
+                        "405 Method Not Allowed"
+                    );
+                };
             } else {
                 $handler = function () {
                     return new Response(404, [], "404 Not Found");

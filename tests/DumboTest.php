@@ -1,7 +1,9 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
+use Dumbo\Context;
 use Dumbo\Dumbo;
+use GuzzleHttp\Psr7\ServerRequest;
 
 class DumboTest extends TestCase
 {
@@ -76,5 +78,60 @@ class DumboTest extends TestCase
         $app->detectEnvironment(["DUMBO_ENV" => "development"]);
         $this->assertEquals(E_ALL, error_reporting());
         $this->assertEquals("1", ini_get("display_errors"));
+    }
+
+    public function testMethodNotAllowedReturns405WithAllowHeader()
+    {
+        $app = new Dumbo();
+        $app->get("/users", fn(Context $context) => $context->text("users"));
+        $app->post("/users", fn(Context $context) => $context->text("created"));
+
+        $response = $app->handle(new ServerRequest("DELETE", "/users"));
+
+        $this->assertEquals(405, $response->getStatusCode());
+        $this->assertEquals("GET, POST", $response->getHeaderLine("Allow"));
+        $this->assertEquals(
+            "405 Method Not Allowed",
+            (string) $response->getBody()
+        );
+    }
+
+    public function testUnknownPathStillReturns404()
+    {
+        $app = new Dumbo();
+        $app->get("/users", fn(Context $context) => $context->text("users"));
+
+        $response = $app->handle(new ServerRequest("GET", "/nope"));
+
+        $this->assertEquals(404, $response->getStatusCode());
+        $this->assertFalse($response->hasHeader("Allow"));
+        $this->assertEquals("404 Not Found", (string) $response->getBody());
+    }
+
+    public function testHeadRequestFallsBackToGetRoute()
+    {
+        $app = new Dumbo();
+        $app->get("/users", fn(Context $context) => $context->text("users"));
+
+        $response = $app->handle(new ServerRequest("HEAD", "/users"));
+
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+
+    public function testMiddlewareRunsForMethodNotAllowed()
+    {
+        $app = new Dumbo();
+        $app->use(
+            fn(Context $context, callable $next) => $next($context)->withHeader(
+                "X-Middleware",
+                "ran"
+            )
+        );
+        $app->get("/users", fn(Context $context) => $context->text("users"));
+
+        $response = $app->handle(new ServerRequest("DELETE", "/users"));
+
+        $this->assertEquals(405, $response->getStatusCode());
+        $this->assertEquals("ran", $response->getHeaderLine("X-Middleware"));
     }
 }
