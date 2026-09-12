@@ -58,12 +58,15 @@ class Router
     }
 
     /**
-     * Find a matching route for the given request
+     * Dispatch the given request against the registered routes
+     *
+     * When the path is registered but not for the request method, the route is
+     * null and the methods that path does accept are returned instead.
      *
      * @param ServerRequestInterface $request The incoming HTTP request
-     * @return array|null The matched route information or null if no match found
+     * @return array{route: array|null, allowedMethods: array<string>} The dispatch result
      */
-    public function findRoute(ServerRequestInterface $request): ?array
+    public function dispatch(ServerRequestInterface $request): array
     {
         if (!$this->dispatcher) {
             $this->buildDispatcher();
@@ -79,14 +82,34 @@ class Router
             $vars = $routeInfo[2];
 
             return [
-                "handler" => $handler["handler"],
-                "params" => $vars,
-                "routePath" => $handler["path"],
-                "middleware" => $handler["middleware"] ?? [],
+                "route" => [
+                    "handler" => $handler["handler"],
+                    "params" => $vars,
+                    "routePath" => $handler["path"],
+                    "middleware" => $handler["middleware"] ?? [],
+                ],
+                "allowedMethods" => [],
             ];
         }
 
-        return null;
+        return [
+            "route" => null,
+            "allowedMethods" =>
+                $routeInfo[0] === Dispatcher::METHOD_NOT_ALLOWED
+                    ? array_values(array_unique($routeInfo[1]))
+                    : [],
+        ];
+    }
+
+    /**
+     * Find a matching route for the given request
+     *
+     * @param ServerRequestInterface $request The incoming HTTP request
+     * @return array|null The matched route information or null if no match found
+     */
+    public function findRoute(ServerRequestInterface $request): ?array
+    {
+        return $this->dispatch($request)["route"];
     }
 
     /**

@@ -122,6 +122,51 @@ class RouterTest extends TestCase
         $this->assertNull($route);
     }
 
+    public function testDispatchReportsAllowedMethodsForMethodMismatch()
+    {
+        $handler = function (Context $context) {
+            return $context->text("Users");
+        };
+
+        $this->router->addRoute("GET", "/users", $handler);
+        $this->router->addRoute("POST", "/users", $handler);
+
+        $dispatch = $this->router->dispatch(
+            new ServerRequest("DELETE", "/users")
+        );
+
+        $this->assertNull($dispatch["route"]);
+        $this->assertEquals(["GET", "POST"], $dispatch["allowedMethods"]);
+    }
+
+    public function testDispatchReportsNoAllowedMethodsForUnknownPath()
+    {
+        $dispatch = $this->router->dispatch(
+            new ServerRequest("GET", "/non-existent-route")
+        );
+
+        $this->assertNull($dispatch["route"]);
+        $this->assertEquals([], $dispatch["allowedMethods"]);
+    }
+
+    public function testDispatchReturnsMatchedRoute()
+    {
+        $this->router->addRoute("GET", "/users/:id", function (
+            Context $context
+        ) {
+            return $context->text("User");
+        });
+
+        $dispatch = $this->router->dispatch(
+            new ServerRequest("GET", "/users/123")
+        );
+
+        $this->assertNotNull($dispatch["route"]);
+        $this->assertEquals("/users/:id", $dispatch["route"]["routePath"]);
+        $this->assertEquals(["id" => "123"], $dispatch["route"]["params"]);
+        $this->assertEquals([], $dispatch["allowedMethods"]);
+    }
+
     public function testMultipleMiddleware()
     {
         $middleware1 = function (Context $context, callable $next) {
