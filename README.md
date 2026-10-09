@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="dumbo.jpeg" alt="Dumbo" width="600"/>
+  <img src=".github/dumbo.jpeg" alt="Dumbo" width="600"/>
   <h1 align="center">Dumbo</h1>
 </p>
 

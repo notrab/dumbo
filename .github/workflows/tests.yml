@@ -58,9 +58,31 @@ jobs:
           php-version: "8.3"
           coverage: none
 
-      - name: Install dependencies
-        run: composer install --no-progress --prefer-dist
+      - name: Audit runtime dependencies
+        run: composer audit --no-dev --locked
 
-      - name: Audit dependencies
-        run: composer audit
-        continue-on-error: true
+  release:
+    name: Release
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency: release
+
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag_version.outputs.new_tag }}
+          NOTES: ${{ steps.tag_version.outputs.changelog }}
+        run: gh release create "$TAG" --title "Release $TAG" --notes "$NOTES"
