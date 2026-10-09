@@ -2,176 +2,137 @@
 
 namespace Dumbo;
 
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\ResponseInterface;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 
 /**
- * Dumbo - A simple PHP HTTP framework
- *
- * @package Dumbo
- * @author Jamie Barton
- * @version 1.0.0
- *
- * @method void all(string $path, callable(Context): (ResponseInterface|null) $handler) Add route handler for all methods
- * @method void get(string $path, callable(Context): (ResponseInterface|null) $handler) Add a GET route
- * @method void post(string $path, callable(Context): (ResponseInterface|null) $handler) Add a POST route
- * @method void put(string $path, callable(Context): (ResponseInterface|null) $handler) Add a PUT route
- * @method void delete(string $path, callable(Context): (ResponseInterface|null) $handler) Add a DELETE route
- * @method void patch(string $path, callable(Context): (ResponseInterface|null) $handler) Add a PATCH route
- * @method void options(string $path, callable(Context): (ResponseInterface|null) $handler) Add an OPTIONS route
+ * Dumbo - A lightweight, friendly PHP framework for HTTP
  */
 class Dumbo
 {
-    private Router $router;
-
-    /** @var array<callable> */
-    private $middleware = [];
-
-    /**
-     * @var array<string, array<callable>> Middleware specific to route groups
-     */
-    private $groupMiddleware = [];
-
-    private $errorHandler;
-
-    /**
-     * Production environment constant
-     */
     public const ENV_PRODUCTION = "production";
-
-    /**
-     * Development environment constant
-     */
     public const ENV_DEVELOPMENT = "development";
-
-    /**
-     * Testing environment constant
-     */
     public const ENV_TESTING = "testing";
 
-    /**
-     * Every environment Dumbo recognises
-     */
-    private const ENVIRONMENTS = [
-        self::ENV_PRODUCTION,
-        self::ENV_DEVELOPMENT,
-        self::ENV_TESTING,
-    ];
+    private const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
 
-    /**
-     * Current environment
-     *
-     * @var string
-     */
+    private Router $router;
     private string $environment;
 
-    public function __construct()
+    /** @var array<callable> */
+    private array $middleware = [];
+
+    /** @var array<string, array<callable>> Middleware scoped to a path prefix */
+    private array $groupMiddleware = [];
+
+    /** @var callable|null */
+    private $errorHandler = null;
+
+    /**
+     * @param string|null $environment Defaults to the DUMBO_ENV variable, then development
+     */
+    public function __construct(?string $environment = null)
     {
         $this->router = new Router();
-        $this->detectEnvironment();
+        $this->environment =
+            $environment ??
+            (($_SERVER["DUMBO_ENV"] ?? null) ?: getenv("DUMBO_ENV") ?: self::ENV_DEVELOPMENT);
     }
 
-    /**
-     * Magic method to handle dynamic route addition
-     *
-     * @param string $method The HTTP method (get, post, etc.)
-     * @param array $arguments The arguments passed to the method
-     * @throws \BadMethodCallException If an unsupported method is called
-     */
-    public function __call(string $method, array $arguments): void
+    public function get(string $path, callable $handler, array $middleware = []): void
     {
-        $supportedMethods = [
-            "all",
-            "get",
-            "post",
-            "put",
-            "delete",
-            "patch",
-            "options",
-        ];
+        $this->router->addRoute("GET", $path, $handler, $middleware);
+    }
 
-        if (in_array(strtolower($method), $supportedMethods)) {
-            if ($method === "all") {
-                $httpMethods = [
-                    "GET",
-                    "POST",
-                    "PUT",
-                    "PATCH",
-                    "DELETE",
-                    "HEAD",
-                    "OPTIONS",
-                ];
-                foreach ($httpMethods as $httpMethod) {
-                    $this->router->addRoute($httpMethod, ...$arguments);
-                }
-            } else {
-                $this->router->addRoute(strtoupper($method), ...$arguments);
-            }
-        } else {
-            throw new \BadMethodCallException("METHOD $method does not exist.");
+    public function post(string $path, callable $handler, array $middleware = []): void
+    {
+        $this->router->addRoute("POST", $path, $handler, $middleware);
+    }
+
+    public function put(string $path, callable $handler, array $middleware = []): void
+    {
+        $this->router->addRoute("PUT", $path, $handler, $middleware);
+    }
+
+    public function patch(string $path, callable $handler, array $middleware = []): void
+    {
+        $this->router->addRoute("PATCH", $path, $handler, $middleware);
+    }
+
+    public function delete(string $path, callable $handler, array $middleware = []): void
+    {
+        $this->router->addRoute("DELETE", $path, $handler, $middleware);
+    }
+
+    public function head(string $path, callable $handler, array $middleware = []): void
+    {
+        $this->router->addRoute("HEAD", $path, $handler, $middleware);
+    }
+
+    public function options(string $path, callable $handler, array $middleware = []): void
+    {
+        $this->router->addRoute("OPTIONS", $path, $handler, $middleware);
+    }
+
+    public function all(string $path, callable $handler, array $middleware = []): void
+    {
+        foreach (self::METHODS as $method) {
+            $this->router->addRoute($method, $path, $handler, $middleware);
         }
     }
 
     /**
-     * Add middleware to the application or a specific route group
+     * Add middleware to every route, or only to routes under a path prefix
      *
-     * @param string|callable $pathOrMiddleware The path for group-specific middleware or the middleware function
-     * @param callable|null $middleware The middleware function for group-specific middleware
-     * @throws \InvalidArgumentException If the middleware configuration is invalid
+     * @param string|callable $pathOrMiddleware A path prefix, or the middleware itself
      */
-    public function use($pathOrMiddleware, $middleware = null): void
+    public function use(string|callable $pathOrMiddleware, ?callable $middleware = null): void
     {
-        if (is_callable($pathOrMiddleware)) {
-            $this->middleware[] = $pathOrMiddleware;
-        } elseif (is_string($pathOrMiddleware) && is_callable($middleware)) {
+        if (is_string($pathOrMiddleware) && $middleware !== null) {
             $this->groupMiddleware[$pathOrMiddleware][] = $middleware;
+        } elseif (is_callable($pathOrMiddleware)) {
+            $this->middleware[] = $pathOrMiddleware;
         } else {
-            throw new \InvalidArgumentException(
-                "Invalid middleware configuration"
-            );
+            throw new \InvalidArgumentException("Invalid middleware configuration");
         }
     }
 
     /**
-     * Get the middleware stack
-     *
-     * @return array The middleware stack
+     * Mount another app's routes under a prefix. Routes added to the nested
+     * app after mounting are not included.
      */
-    public function getMiddleware(): array
+    public function route(string $prefix, self $app): void
     {
-        return $this->middleware;
-    }
-
-    /**
-     * Add a nested route to the application
-     *
-     * @param string $prefix The prefix for the nested routes
-     * @param self $nestedApp The nested Dumbo application
-     */
-    public function route(string $prefix, self $nestedApp): void
-    {
-        foreach ($nestedApp->router->getRoutes() as $route) {
-            $fullPath = rtrim($prefix, "/") . "/" . ltrim($route["path"], "/");
+        foreach ($app->router->getRoutes() as $route) {
             $this->router->addRoute(
                 $route["method"],
-                $fullPath,
+                rtrim($prefix, "/") . "/" . ltrim($route["path"], "/"),
                 $route["handler"],
-                array_merge(
-                    $nestedApp->getMiddlewareForPath($route["path"]),
-                    $route["middleware"]
-                )
+                array_merge($app->getMiddlewareForPath($route["path"]), $route["middleware"])
             );
         }
     }
 
     /**
-     * Handle an incoming server request
-     *
-     * @param ServerRequestInterface $request The server request
-     * @return ResponseInterface The response
+     * Set a handler for uncaught exceptions, called with ($error, $context)
      */
+    public function onError(callable $handler): void
+    {
+        $this->errorHandler = $handler;
+    }
+
+    public function getEnvironment(): string
+    {
+        return $this->environment;
+    }
+
+    public function isDevelopment(): bool
+    {
+        return $this->environment === self::ENV_DEVELOPMENT;
+    }
+
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $uri = $request->getUri();
@@ -184,345 +145,137 @@ class Dumbo
         }
 
         try {
-            $dispatch = $this->router->dispatch($request);
-            $route = $dispatch["route"];
+            ["route" => $route, "allowedMethods" => $allowed] = $this->router->dispatch($request);
 
-            $context = new Context(
-                $request,
-                $route ? $route["params"] : [],
-                $route ? $route["routePath"] : ""
-            );
+            $context = new Context($request, $route["params"] ?? [], $route["routePath"] ?? "");
+            $context->set("environment", $this->environment);
 
-            $this->setEnvironmentOnContext($context);
-
-            $fullMiddlewareStack = array_merge(
-                $this->getMiddlewareForPath($context->req->path()),
-                $route ? $route["middleware"] : []
-            );
-
-            if ($route) {
-                $handler = $route["handler"];
-            } elseif ($dispatch["allowedMethods"] !== []) {
-                $allowed = implode(", ", $dispatch["allowedMethods"]);
-
-                $handler = function () use ($allowed) {
-                    return new Response(
-                        405,
-                        ["Allow" => $allowed],
-                        "405 Method Not Allowed"
-                    );
-                };
-            } else {
-                $handler = function () {
-                    return new Response(404, [], "404 Not Found");
-                };
-            }
+            $handler = match (true) {
+                $route !== null => $route["handler"],
+                $allowed !== [] => fn() => new Response(
+                    405,
+                    ["Allow" => implode(", ", $allowed)],
+                    "405 Method Not Allowed"
+                ),
+                default => fn() => new Response(404, [], "404 Not Found"),
+            };
 
             return $this->runMiddleware(
                 $context,
                 $handler,
-                $fullMiddlewareStack
+                array_merge(
+                    $this->getMiddlewareForPath($context->req->path()),
+                    $route["middleware"] ?? []
+                )
             );
-        } catch (HTTPException $e) {
-            return $this->handleHTTPException($e, $request);
-        } catch (\Exception $e) {
-            return $this->handleGenericException($e, $request);
+        } catch (\Throwable $error) {
+            return $this->handleError($error, $request);
         }
     }
 
     /**
-     * Run the application
-     *
-     * This method handles the incoming request, processes it through the router,
-     * and sends the response. It also includes error handling based on the
-     * current environment.
+     * Handle the request from PHP's globals and send the response
      */
     public function run(): void
     {
         try {
-            $request = ServerRequest::fromGlobals();
-            $response = $this->handle($request);
-            $this->send($response);
+            $response = $this->handle(ServerRequest::fromGlobals());
         } catch (\Throwable $error) {
-            if ($this->isDevelopment()) {
-                $errorPage = $this->generateErrorPage($error);
-                http_response_code(500);
-                echo $errorPage;
-            } else {
-                http_response_code(500);
-                echo "An internal server error occurred.";
-            }
+            $response = $this->errorResponse($error);
         }
+
+        $this->send($response);
     }
 
-    /**
-     * Get the current environment
-     *
-     * @return string The current environment
-     */
-    public function getEnvironment(): string
+    private function runMiddleware(Context $context, callable $handler, array $middleware): ResponseInterface
     {
-        return $this->environment;
-    }
-
-    /**
-     * Set the environment
-     *
-     * @param string $env The environment to set
-     */
-    public function setEnvironment(string $env): void
-    {
-        if (in_array($env, self::ENVIRONMENTS, true)) {
-            $this->environment = $env;
-            $this->applyEnvironmentErrorReporting();
-        }
-    }
-
-    /**
-     * Check if the current environment is development
-     *
-     * @return bool True if in development environment, false otherwise
-     */
-    public function isDevelopment(): bool
-    {
-        return $this->environment === self::ENV_DEVELOPMENT;
-    }
-
-    /**
-     * Check if the current environment is production
-     *
-     * @return bool True if in production environment, false otherwise
-     */
-    public function isProduction(): bool
-    {
-        return $this->environment === self::ENV_PRODUCTION;
-    }
-
-    /**
-     * Check if the current environment is testing
-     *
-     * @return bool True if in testing environment, false otherwise
-     */
-    public function isTesting(): bool
-    {
-        return $this->environment === self::ENV_TESTING;
-    }
-
-
-    /**
-     * Run the middleware stack and the final handler
-     *
-     * @param Context $context The request context
-     * @param callable $handler The final handler to be executed after all middleware
-     * @param array<callable> $middleware The middleware stack
-     * @return ResponseInterface The response after running middleware and handler
-     */
-    private function runMiddleware(
-        Context $context,
-        callable $handler,
-        array $middleware
-    ): ResponseInterface {
-        $next = function ($context) use ($handler) {
-            $result = $handler($context);
-
-            if ($result instanceof ResponseInterface) {
-                return $result;
-            } elseif ($result === null) {
-                return $context->getResponse();
-            } else {
-                return $context->json($result);
-            }
-        };
+        $next = fn(Context $context) => $this->toResponse($context, $handler($context));
 
         foreach (array_reverse($middleware) as $mw) {
-            $next = function ($context) use ($mw, $next) {
-                $result = $mw($context, $next);
-
-                if ($result instanceof ResponseInterface) {
-                    return $result;
-                } elseif ($result === null) {
-                    return $next($context);
-                } else {
-                    return $context->json($result);
-                }
-            };
+            $next = fn(Context $context) => $this->toResponse($context, $mw($context, $next), $next);
         }
 
         return $next($context);
     }
 
     /**
-     * Send the response to the client
-     *
-     * @param ResponseInterface $response The response to send
+     * Turn whatever a handler or middleware returned into a response. A null
+     * from middleware continues to the next one; a null from a handler sends
+     * the context's response; anything else is sent as JSON.
      */
+    private function toResponse(Context $context, mixed $result, ?callable $next = null): ResponseInterface
+    {
+        return match (true) {
+            $result instanceof ResponseInterface => $result,
+            $result === null && $next !== null => $next($context),
+            $result === null => $context->getResponse(),
+            default => $context->json($result),
+        };
+    }
+
     private function send(ResponseInterface $response): void
     {
         http_response_code($response->getStatusCode());
 
         foreach ($response->getHeaders() as $name => $values) {
-            $replace = true;
-
-            foreach ($values as $value) {
-                header("$name: $value", $replace);
-                $replace = false;
+            foreach ($values as $i => $value) {
+                header("$name: $value", $i === 0);
             }
         }
 
         echo $response->getBody();
     }
 
-    /**
-     * Set a custom error handler
-     *
-     * @param callable $handler The custom error handler function
-     */
-    public function onError(callable $handler): void
+    private function handleError(\Throwable $error, ServerRequestInterface $request): ResponseInterface
     {
-        $this->errorHandler = $handler;
-    }
-
-    /**
-     * Handle HTTPException
-     *
-     * @param HTTPException $e The caught HTTPException
-     * @param ServerRequestInterface $request The original request
-     * @return ResponseInterface The response
-     */
-    private function handleHTTPException(
-        HTTPException $e,
-        ServerRequestInterface $request
-    ): ResponseInterface {
-        if ($this->errorHandler) {
-            $context = new Context($request, [], "");
-            return call_user_func($this->errorHandler, $e, $context);
-        }
-
-        $customResponse = $e->getCustomResponse();
-        if ($customResponse) {
-            return $customResponse;
-        }
-
         $context = new Context($request, [], "");
-        return $context->json($e->toArray(), $e->getStatusCode());
-    }
 
-    /**
-     * Handle generic exceptions
-     *
-     * This method is responsible for handling exceptions that are not caught
-     * elsewhere in the application. It provides different responses based on
-     * the current environment.
-     *
-     * @param \Exception $e The caught exception
-     * @param ServerRequestInterface $request The original request
-     * @return ResponseInterface The response
-     */
-    private function handleGenericException(
-        \Exception $e,
-        ServerRequestInterface $request
-    ): ResponseInterface {
         if ($this->errorHandler) {
-            $context = new Context($request, [], "");
-            return call_user_func($this->errorHandler, $e, $context);
+            return ($this->errorHandler)($error, $context);
         }
 
+        if ($error instanceof HTTPException) {
+            return $error->getCustomResponse() ??
+                $context->json($error->toArray(), $error->getStatusCode());
+        }
+
+        return $this->errorResponse($error);
+    }
+
+    private function errorResponse(\Throwable $error): ResponseInterface
+    {
         if ($this->isDevelopment()) {
-            $errorPage = $this->generateErrorPage($e);
-            return new Response(
-                500,
-                ["Content-Type" => "text/html"],
-                $errorPage
-            );
+            return new Response(500, ["Content-Type" => "text/html"], $this->renderErrorPage($error));
         }
 
-        $context = new Context($request, [], "");
-        return $context->json(["error" => "Internal Server Error"], 500);
+        return new Response(
+            500,
+            ["Content-Type" => "application/json"],
+            '{"error":"Internal Server Error"}'
+        );
     }
 
     /**
-     * Get all applicable middleware for a given path
-     *
-     * @param string $path The request path
-     * @return array<callable> Array of middleware applicable to the given path
+     * @return array<callable> Global middleware plus any scoped to a prefix of $path
      */
     private function getMiddlewareForPath(string $path): array
     {
-        $applicableMiddleware = $this->middleware;
+        $middleware = $this->middleware;
 
-        foreach ($this->groupMiddleware as $groupPath => $groupMiddlewares) {
-            $groupPath = rtrim($groupPath, "/");
+        foreach ($this->groupMiddleware as $prefix => $group) {
+            $prefix = rtrim($prefix, "/");
 
-            if (
-                $groupPath === "" ||
-                $path === $groupPath ||
-                str_starts_with($path, $groupPath . "/")
-            ) {
-                $applicableMiddleware = array_merge(
-                    $applicableMiddleware,
-                    $groupMiddlewares
-                );
+            if ($prefix === "" || $path === $prefix || str_starts_with($path, "$prefix/")) {
+                $middleware = array_merge($middleware, $group);
             }
         }
 
-        return $applicableMiddleware;
+        return $middleware;
     }
 
-    /**
-     * Detect and set the current environment
-     *
-     * @param array $serverVars Array to use instead of $_SERVER (for testing)
-     * @param callable|null $getenvFunc Function to use instead of getenv (for testing)
-     */
-    public function detectEnvironment(
-        ?array $serverVars = null,
-        ?callable $getenvFunc = null
-    ): void {
-        $serverVars = $serverVars ?? $_SERVER;
-        $getenvFunc = $getenvFunc ?? "getenv";
-
-        $env =
-            ($serverVars["DUMBO_ENV"] ?? null) ?:
-            ($getenvFunc("DUMBO_ENV") ?: self::ENV_DEVELOPMENT);
-
-        $this->environment = in_array($env, self::ENVIRONMENTS, true)
-            ? $env
-            : self::ENV_DEVELOPMENT;
-
-        $this->applyEnvironmentErrorReporting();
-    }
-
-    /**
-     * Apply the error reporting configuration for the current environment
-     */
-    private function applyEnvironmentErrorReporting(): void
+    private function renderErrorPage(\Throwable $error): string
     {
-        if ($this->isProduction()) {
-            error_reporting(0);
-            ini_set("display_errors", "0");
-        } else {
-            error_reporting(E_ALL);
-            ini_set("display_errors", "1");
-        }
-    }
-
-    private function setEnvironmentOnContext(Context $context): void
-    {
-        $context->set("environment", [
-            "current" => $this->getEnvironment(),
-            "isDevelopment" => $this->isDevelopment(),
-            "isProduction" => $this->isProduction(),
-            "isTesting" => $this->isTesting(),
-        ]);
-    }
-
-    private function generateErrorPage(\Throwable $error): string
-    {
-        $escape = static fn(string $value): string => htmlspecialchars(
-            $value,
-            ENT_QUOTES | ENT_SUBSTITUTE,
-            "UTF-8"
-        );
+        $escape = fn(string $value) => htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8");
 
         $title = $escape(get_class($error));
         $message = $escape($error->getMessage());

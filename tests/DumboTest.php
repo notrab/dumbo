@@ -7,77 +7,58 @@ use GuzzleHttp\Psr7\ServerRequest;
 
 class DumboTest extends TestCase
 {
-    public function testEnvironmentDetection()
+    public function testEnvironmentDefaultsToDevelopment()
     {
-        $testCases = [
-            // Test case: No environment set
-            [
-                "serverVars" => [],
-                "getenvFunc" => function () {
-                    return false;
-                },
-                "expectedEnv" => Dumbo::ENV_DEVELOPMENT,
-            ],
-            // Test case: Environment set in $_SERVER
-            [
-                "serverVars" => ["DUMBO_ENV" => "production"],
-                "getenvFunc" => function () {
-                    return false;
-                },
-                "expectedEnv" => Dumbo::ENV_PRODUCTION,
-            ],
-            // Test case: Environment set via getenv
-            [
-                "serverVars" => [],
-                "getenvFunc" => function () {
-                    return "testing";
-                },
-                "expectedEnv" => Dumbo::ENV_TESTING,
-            ],
-            // Test case: Invalid environment defaults to development
-            [
-                "serverVars" => ["DUMBO_ENV" => "invalid"],
-                "getenvFunc" => function () {
-                    return false;
-                },
-                "expectedEnv" => Dumbo::ENV_DEVELOPMENT,
-            ],
-            // Test case: $_SERVER takes precedence over getenv
-            [
-                "serverVars" => ["DUMBO_ENV" => "production"],
-                "getenvFunc" => function () {
-                    return "development";
-                },
-                "expectedEnv" => Dumbo::ENV_PRODUCTION,
-            ],
-        ];
+        unset($_SERVER["DUMBO_ENV"]);
+        putenv("DUMBO_ENV");
 
-        foreach ($testCases as $index => $testCase) {
-            $app = new Dumbo();
-            $app->detectEnvironment(
-                $testCase["serverVars"],
-                $testCase["getenvFunc"]
-            );
+        $app = new Dumbo();
 
-            $this->assertEquals(
-                $testCase["expectedEnv"],
-                $app->getEnvironment(),
-                "Failed assertion for test case $index"
-            );
-        }
+        $this->assertSame(Dumbo::ENV_DEVELOPMENT, $app->getEnvironment());
+        $this->assertTrue($app->isDevelopment());
     }
 
-    public function testErrorReportingConfiguration()
+    public function testEnvironmentIsReadFromServerThenEnv()
+    {
+        putenv("DUMBO_ENV=testing");
+        $this->assertSame(Dumbo::ENV_TESTING, (new Dumbo())->getEnvironment());
+
+        $_SERVER["DUMBO_ENV"] = "production";
+        $this->assertSame(Dumbo::ENV_PRODUCTION, (new Dumbo())->getEnvironment());
+
+        unset($_SERVER["DUMBO_ENV"]);
+        putenv("DUMBO_ENV");
+    }
+
+    public function testEnvironmentCanBePassedExplicitly()
+    {
+        $app = new Dumbo(Dumbo::ENV_PRODUCTION);
+
+        $this->assertSame(Dumbo::ENV_PRODUCTION, $app->getEnvironment());
+        $this->assertFalse($app->isDevelopment());
+    }
+
+    public function testErrorsAreHiddenOutsideDevelopment()
+    {
+        $app = new Dumbo(Dumbo::ENV_PRODUCTION);
+        $app->get("/", fn() => throw new \RuntimeException("secret"));
+
+        $response = $app->handle(new ServerRequest("GET", "/"));
+
+        $this->assertSame(500, $response->getStatusCode());
+        $this->assertStringNotContainsString("secret", (string) $response->getBody());
+    }
+
+    public function testErrorHandlerReceivesErrors()
     {
         $app = new Dumbo();
-        $app->detectEnvironment(["DUMBO_ENV" => "production"]);
-        $this->assertEquals(0, error_reporting());
-        $this->assertEquals("0", ini_get("display_errors"));
+        $app->onError(fn($error, Context $c) => $c->text($error->getMessage(), 418));
+        $app->get("/", fn() => throw new \TypeError("boom"));
 
-        $app = new Dumbo();
-        $app->detectEnvironment(["DUMBO_ENV" => "development"]);
-        $this->assertEquals(E_ALL, error_reporting());
-        $this->assertEquals("1", ini_get("display_errors"));
+        $response = $app->handle(new ServerRequest("GET", "/"));
+
+        $this->assertSame(418, $response->getStatusCode());
+        $this->assertSame("boom", (string) $response->getBody());
     }
 
     public function testMethodNotAllowedReturns405WithAllowHeader()

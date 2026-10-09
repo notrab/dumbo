@@ -6,28 +6,19 @@ use Psr\Http\Message\ResponseInterface;
 
 class HTTPException extends \Exception
 {
-    private int $statusCode;
-    private ?ResponseInterface $customResponse;
-    private string $errorCode;
-    private array $errorDetails;
-
     public function __construct(
         int $statusCode,
         string $message = "",
-        string $errorCode = "",
-        array $errorDetails = [],
-        ?ResponseInterface $customResponse = null
+        private string $errorCode = "",
+        private array $errorDetails = [],
+        private ?ResponseInterface $customResponse = null
     ) {
         parent::__construct($message, $statusCode);
-        $this->statusCode = $statusCode;
-        $this->customResponse = $customResponse;
-        $this->errorCode = $errorCode;
-        $this->errorDetails = $errorDetails;
     }
 
     public function getStatusCode(): int
     {
-        return $this->statusCode;
+        return $this->getCode();
     }
 
     public function getCustomResponse(): ?ResponseInterface
@@ -48,7 +39,7 @@ class HTTPException extends \Exception
     public function toArray(): array
     {
         return [
-            "status" => $this->statusCode,
+            "status" => $this->getCode(),
             "error" => [
                 "code" => $this->errorCode,
                 "message" => $this->getMessage(),

@@ -5,116 +5,77 @@ namespace Dumbo\Middleware;
 use Closure;
 use Dumbo\Context;
 use InvalidArgumentException;
-use Psr\Http\Message\ResponseInterface;
 
 class CsrfMiddleware
 {
-    private const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS', 'TRACE'];
-    private const TOKEN_LENGTH = 32;
-    private const TOKEN_NAME = 'csrf_token';
-    private const HEADER_NAME = 'X-CSRF-TOKEN';
+    private const SAFE_METHODS = ["GET", "HEAD", "OPTIONS", "TRACE"];
 
     /**
-     * @param array $options
-     * @return Closure
+     * Create a middleware that issues a CSRF token on safe requests and
+     * checks it on every other request.
+     *
+     * Options:
+     *  - getToken: callable(Context): ?string (required) reads the stored token
+     *  - setToken: callable(Context, string) (required) stores a new token
+     *  - tokenName: body field and context variable name (default "csrf_token")
+     *  - headerName: header to send and read the token in (default "X-CSRF-TOKEN")
+     *  - useHeader: read the token from the header instead of the body
+     *  - tokenLength: length of generated tokens (default 32)
+     *  - errorHandler: callable(Context): ResponseInterface for invalid tokens
+     *
+     * @throws InvalidArgumentException If the options are invalid
      */
     public static function csrf(array $options = []): Closure
     {
-        $options = self::mergeOptions($options);
-
-        self::validateOptions($options);
-
-        return function (Context $ctx, callable $next) use ($options) {
-            if (self::isSafeMethod($ctx->req->method())) {
-                return self::handleSafeMethod($ctx, $next, $options);
-            }
-
-
-            if (!self::validateToken($ctx, $options)) {
-                return self::handleError($ctx, $options['errorHandler']);
-            }
-
-            return $next($ctx);
-        };
-    }
-
-    private static function mergeOptions(array $options): array
-    {
-        return array_merge([
-            'tokenName' => self::TOKEN_NAME,
-            'headerName' => self::HEADER_NAME,
-            'tokenLength' => self::TOKEN_LENGTH,
-            'useHeader' => false,
-            'getToken' => null,
-            'setToken' => null,
-            'errorHandler' => null
+        $options = array_merge([
+            "tokenName" => "csrf_token",
+            "headerName" => "X-CSRF-TOKEN",
+            "tokenLength" => 32,
+            "useHeader" => false,
+            "getToken" => null,
+            "setToken" => null,
+            "errorHandler" => null,
         ], $options);
-    }
 
-    private static function validateOptions(array $options): void
-    {
-        if (!is_callable($options['getToken']) || !is_callable($options['setToken'])) {
-            throw new InvalidArgumentException('getToken and setToken must be callable');
+        if (!is_callable($options["getToken"]) || !is_callable($options["setToken"])) {
+            throw new InvalidArgumentException("getToken and setToken must be callable");
         }
 
-        if ($options['errorHandler'] !== null && !is_callable($options['errorHandler'])) {
-            throw new InvalidArgumentException('errorHandler must be callable');
-        }
-    }
-
-    private static function isSafeMethod(string $method): bool
-    {
-        return in_array(strtoupper($method), self::SAFE_METHODS, true);
-    }
-
-    private static function handleSafeMethod(Context $ctx, callable $next, array $options): mixed
-    {
-        $token = $options['getToken']($ctx);
-
-        if (!$token) {
-            $token = self::generateToken($options['tokenLength']);
-            $options['setToken']($ctx, $token);
+        if ($options["errorHandler"] !== null && !is_callable($options["errorHandler"])) {
+            throw new InvalidArgumentException("errorHandler must be callable");
         }
 
-        if ($options['useHeader']) {
-            $ctx->header($options['headerName'], $token);
-        }
+        return function (Context $context, callable $next) use ($options) {
+            $token = $options["getToken"]($context);
 
-        if ($ctx->get($options['tokenName']) === null) {
-            $ctx->set($options['tokenName'], $token);
-        }
+            if (in_array(strtoupper($context->req->method()), self::SAFE_METHODS, true)) {
+                if (!$token) {
+                    $token = bin2hex(random_bytes(max(1, intdiv($options["tokenLength"], 2))));
+                    $options["setToken"]($context, $token);
+                }
 
-        return $next($ctx);
-    }
+                if ($options["useHeader"]) {
+                    $context->header($options["headerName"], $token);
+                }
 
-    private static function validateToken(Context $ctx, array $options): bool
-    {
-        $storedToken = $options['getToken']($ctx);
+                if ($context->get($options["tokenName"]) === null) {
+                    $context->set($options["tokenName"], $token);
+                }
 
-        if (!$storedToken) {
-            return false;
-        }
+                return $next($context);
+            }
 
-        $receivedToken = $options['useHeader']
-            ? $ctx->req->header($options['headerName'])
-            : $ctx->req->body()[$options['tokenName']] ?? null;
+            $received = $options["useHeader"]
+                ? $context->req->header($options["headerName"])
+                : $context->req->body()[$options["tokenName"]] ?? null;
 
-        return is_string($receivedToken) && hash_equals($storedToken, $receivedToken);
-    }
+            if ($token && is_string($received) && hash_equals($token, $received)) {
+                return $next($context);
+            }
 
-    private static function generateToken(int $length): string
-    {
-        return bin2hex(random_bytes(max(1, intdiv($length, 2))));
-    }
-
-    private static function handleError(Context $ctx, ?callable $errorHandler): ResponseInterface
-    {
-        if ($errorHandler) {
-            return $errorHandler($ctx);
-        }
-
-        return $ctx->json([
-            'error' => 'Invalid CSRF token',
-        ], 403);
+            return $options["errorHandler"]
+                ? $options["errorHandler"]($context)
+                : $context->json(["error" => "Invalid CSRF token"], 403);
+        };
     }
 }

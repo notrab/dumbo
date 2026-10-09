@@ -24,12 +24,12 @@ class LoggerTest extends TestCase
         return new Context($request, [], "");
     }
 
-    public function testLoggerInstance()
+    public function testLoggerReturnsMiddleware()
     {
         $loggerMock = $this->createMock(LoggerInterface::class);
         $middleware = Logger::logger($loggerMock);
 
-        $this->assertInstanceOf(Logger::class, $middleware);
+        $this->assertIsCallable($middleware);
     }
 
     public function testInvokeLogsIncomingAndOutgoingRequest()

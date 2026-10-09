@@ -54,6 +54,10 @@ class BearerAuthTest extends TestCase
             "Unauthorized request",
             (string) $response->getBody()
         );
+        $this->assertSame(
+            'Bearer realm="API"',
+            $response->getHeaderLine("WWW-Authenticate")
+        );
     }
 
     public function testAdvancedBearerAuthWithTokensSuccess()

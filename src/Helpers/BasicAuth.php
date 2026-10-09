@@ -7,82 +7,32 @@ use Psr\Http\Message\ResponseInterface;
 
 class BasicAuth
 {
-    private const STATUS_UNAUTHORIZED = 401;
-    private const HEADER_AUTHORIZATION = "Authorization";
-    private const HEADER_WWW_AUTHENTICATE = "WWW-Authenticate";
-
     /**
-     * Create a middleware that checks for Basic Auth credentials in the Authorization header
+     * Create a middleware that requires HTTP Basic credentials.
      *
-     * @param array|string $options The options for the basic authentication middleware
-     * @param string|null $failureMessage The message to return when the credentials are invalid (only for simple auth)
-     * @return callable The middleware
+     * Pass "username:password", or an array of options:
+     *  - users: array of ["username" => ..., "password" => ...]
+     *  - verifyUser: callable(string $username, string $password, Context $context): bool
+     *  - realm: string (default "Restricted Area")
+     *  - message: string to respond with on failure
+     *
      * @throws \InvalidArgumentException If the options are invalid
      */
-    public static function basicAuth(
-        $options,
-        ?string $failureMessage = null
-    ): callable {
-        if (is_array($options)) {
-            return self::advancedBasicAuth($options);
-        } elseif (is_string($options)) {
-            $parts = explode(":", $options, 2);
-            if (count($parts) !== 2) {
-                throw new \InvalidArgumentException(
-                    "Invalid format for basic auth credentials"
-                );
-            }
-            return self::simpleBasicAuth(
-                $parts[0],
-                $parts[1],
-                $failureMessage ?? "Unauthorized"
-            );
-        } else {
-            throw new \InvalidArgumentException(
-                "Invalid options provided for basic auth middleware"
-            );
-        }
-    }
-
-    private static function simpleBasicAuth(
-        string $username,
-        string $password,
-        string $failureMessage
-    ): callable {
-        return function (Context $context, callable $next) use (
-            $username,
-            $password,
-            $failureMessage
-        ): ResponseInterface {
-            $authHeader = $context->req->header(self::HEADER_AUTHORIZATION);
-
-            if (
-                !$authHeader ||
-                !self::validateCredentials($authHeader, $username, $password)
-            ) {
-                return self::unauthorizedResponse(
-                    $context,
-                    "Restricted Area",
-                    $failureMessage
-                );
-            }
-
-            return $next($context);
-        };
-    }
-
-    /**
-     * Create a middleware for advanced basic authentication
-     *
-     * @param array $options The options for advanced basic authentication
-     *                       - verifyUser: callable A function to verify the user credentials
-     *                       - users: array An array of valid username/password pairs
-     *                       - realm: string The realm for the authentication (optional)
-     * @return callable The middleware
-     * @throws \InvalidArgumentException If the options are invalid
-     */
-    private static function advancedBasicAuth(array $options): callable
+    public static function basicAuth(string|array $options, ?string $failureMessage = null): callable
     {
+        if (is_string($options)) {
+            $parts = explode(":", $options, 2);
+
+            if (count($parts) !== 2) {
+                throw new \InvalidArgumentException("Invalid format for basic auth credentials");
+            }
+
+            $options = [
+                "users" => [["username" => $parts[0], "password" => $parts[1]]],
+                "message" => $failureMessage ?? "Unauthorized",
+            ];
+        }
+
         if (!isset($options["verifyUser"]) && empty($options["users"])) {
             throw new \InvalidArgumentException(
                 'Basic auth middleware requires either "verifyUser" function or "users" array'
@@ -90,88 +40,46 @@ class BasicAuth
         }
 
         $realm = $options["realm"] ?? "Restricted Area";
-
-        return function (
-            Context $context,
-            callable $next
-        ) use ($options, $realm): ResponseInterface {
-            $authHeader = $context->req->header(self::HEADER_AUTHORIZATION);
-
-            if (!$authHeader) {
-                return self::unauthorizedResponse(
-                    $context,
-                    $realm,
-                    "Authorization required"
-                );
-            }
-
-            $credentials = self::decodeCredentials($authHeader);
-            if (!$credentials) {
-                return self::unauthorizedResponse(
-                    $context,
-                    $realm,
-                    "Invalid credentials format"
-                );
-            }
-
-            [$username, $password] = $credentials;
-
-            if (isset($options["verifyUser"])) {
-                if ($options["verifyUser"]($username, $password, $context)) {
-                    return $next($context);
-                }
-            } elseif (isset($options["users"])) {
-                foreach ($options["users"] as $user) {
-                    if (
-                        hash_equals($user["username"], $username) &&
-                        hash_equals($user["password"], $password)
-                    ) {
-                        return $next($context);
-                    }
+        $message = $options["message"] ?? null;
+        $verify = $options["verifyUser"] ?? function (string $username, string $password) use ($options): bool {
+            foreach ($options["users"] as $user) {
+                if (hash_equals($user["username"], $username) && hash_equals($user["password"], $password)) {
+                    return true;
                 }
             }
 
-            return self::unauthorizedResponse(
-                $context,
-                $realm,
-                "Invalid credentials"
-            );
+            return false;
+        };
+
+        return function (Context $context, callable $next) use ($realm, $message, $verify): ResponseInterface {
+            $header = $context->req->header("Authorization");
+            $credentials = self::decode($header ?? "");
+
+            if ($credentials !== null && $verify($credentials[0], $credentials[1], $context)) {
+                return $next($context);
+            }
+
+            $error = $message ?? ($header ? "Invalid credentials" : "Authorization required");
+
+            return $context->text($error, 401, [
+                "WWW-Authenticate" => sprintf('Basic realm="%s"', $realm),
+            ]);
         };
     }
 
-    private static function unauthorizedResponse(
-        Context $context,
-        string $realm,
-        string $error
-    ): ResponseInterface {
-        return $context->text($error, self::STATUS_UNAUTHORIZED, [
-            self::HEADER_WWW_AUTHENTICATE => sprintf(
-                'Basic realm="%s"',
-                $realm
-            ),
-        ]);
-    }
-
-    private static function validateCredentials(
-        string $authHeader,
-        string $username,
-        string $password
-    ): bool {
-        $credentials = self::decodeCredentials($authHeader);
-
-        return $credentials !== null &&
-            hash_equals($username, $credentials[0]) &&
-            hash_equals($password, $credentials[1]);
-    }
-
-    private static function decodeCredentials(string $authHeader): ?array
+    /**
+     * @return array{0: string, 1: string}|null The username and password
+     */
+    private static function decode(string $header): ?array
     {
-        if (preg_match('/^Basic\s+(.*)$/i', $authHeader, $matches)) {
-            $credentials = base64_decode($matches[1]);
-            if ($credentials && strpos($credentials, ":") !== false) {
-                return explode(":", $credentials, 2);
-            }
+        if (!preg_match('/^Basic\s+(.+)$/i', $header, $matches)) {
+            return null;
         }
-        return null;
+
+        $credentials = base64_decode($matches[1], true);
+
+        return $credentials && str_contains($credentials, ":")
+            ? explode(":", $credentials, 2)
+            : null;
     }
 }

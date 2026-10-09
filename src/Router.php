@@ -4,134 +4,73 @@ namespace Dumbo;
 
 use FastRoute\Dispatcher;
 use FastRoute\RouteCollector;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
-/**
- * Router class for handling HTTP routes in the Dumbo framework
- */
 class Router
 {
     private ?Dispatcher $dispatcher = null;
 
-    /** @var array<array{method: string, path: string, handler: callable(Context): (ResponseInterface|null), middleware: array}> */
-    private $routes = [];
+    /** @var array<array{method: string, path: string, handler: callable, middleware: array<callable>}> */
+    private array $routes = [];
 
-    /**
-     * Add a route to the router
-     *
-     * @param string $method The HTTP method for the route
-     * @param string $path The URL path for the route
-     * @param callable $handler The handler function for the route
-     * @param array<callable> $middleware Array of middleware functions for the route
-     */
-    public function addRoute(
-        string $method,
-        string $path,
-        callable $handler,
-        array $middleware = []
-    ): void {
+    public function addRoute(string $method, string $path, callable $handler, array $middleware = []): void
+    {
         $this->routes[] = [
             "method" => $method,
             "path" => $path,
             "handler" => $handler,
             "middleware" => $middleware,
         ];
+        $this->dispatcher = null;
     }
 
-
-    /**
-     * Dispatch the given request against the registered routes
-     *
-     * When the path is registered but not for the request method, the route is
-     * null and the methods that path does accept are returned instead.
-     *
-     * @param ServerRequestInterface $request The incoming HTTP request
-     * @return array{route: array|null, allowedMethods: array<string>} The dispatch result
-     */
-    public function dispatch(ServerRequestInterface $request): array
-    {
-        if (!$this->dispatcher) {
-            $this->buildDispatcher();
-        }
-
-        $httpMethod = $request->getMethod();
-        $uri = $this->normalizeUri($request->getUri()->getPath());
-
-        $routeInfo = $this->dispatcher->dispatch($httpMethod, $uri);
-
-        if ($routeInfo[0] === Dispatcher::FOUND) {
-            $handler = $routeInfo[1];
-            $vars = $routeInfo[2];
-
-            return [
-                "route" => [
-                    "handler" => $handler["handler"],
-                    "params" => $vars,
-                    "routePath" => $handler["path"],
-                    "middleware" => $handler["middleware"] ?? [],
-                ],
-                "allowedMethods" => [],
-            ];
-        }
-
-        return [
-            "route" => null,
-            "allowedMethods" =>
-                $routeInfo[0] === Dispatcher::METHOD_NOT_ALLOWED
-                    ? array_values(array_unique($routeInfo[1]))
-                    : [],
-        ];
-    }
-
-
-    /**
-     * Get all declared routes
-     *
-     * @return array All registered routes
-     */
     public function getRoutes(): array
     {
         return $this->routes;
     }
 
     /**
-     * Prepare the path by converting :parameter syntax to {parameter}
+     * Match the request against the registered routes. When the path exists
+     * but not for this method, the route is null and allowedMethods lists the
+     * methods it does accept.
      *
-     * @param string $path The route path to prepare
-     * @return string The prepared path
+     * @return array{route: array|null, allowedMethods: array<string>}
      */
-    private function preparePath(string $path): string
+    public function dispatch(ServerRequestInterface $request): array
     {
-        $path = preg_replace("/:(\w+)/", '{$1}', $path);
-        return $this->normalizeUri($path);
-    }
-
-    /**
-     * Build the FastRoute dispatcher
-     *
-     * This method is called when the application run.
-     */
-    public function buildDispatcher(): void
-    {
-        $this->dispatcher = \FastRoute\simpleDispatcher(function (
-            RouteCollector $r
-        ) {
+        $this->dispatcher ??= \FastRoute\simpleDispatcher(function (RouteCollector $r) {
             foreach ($this->routes as $route) {
-                $path = $this->preparePath($route["path"]);
-                $r->addRoute($route["method"], $path, $route);
+                // Convert :param to FastRoute's {param}
+                $path = preg_replace("/:(\w+)/", '{$1}', $route["path"]);
+                $r->addRoute($route["method"], self::normalize($path), $route);
             }
         });
+
+        $result = $this->dispatcher->dispatch(
+            $request->getMethod(),
+            self::normalize($request->getUri()->getPath())
+        );
+
+        return match ($result[0]) {
+            Dispatcher::FOUND => [
+                "route" => [
+                    "handler" => $result[1]["handler"],
+                    "params" => $result[2],
+                    "routePath" => $result[1]["path"],
+                    "middleware" => $result[1]["middleware"],
+                ],
+                "allowedMethods" => [],
+            ],
+            Dispatcher::METHOD_NOT_ALLOWED => [
+                "route" => null,
+                "allowedMethods" => array_values(array_unique($result[1])),
+            ],
+            default => ["route" => null, "allowedMethods" => []],
+        };
     }
 
-    /**
-     * Normalize the given URI by ensuring it starts with a forward slash
-     *
-     * @param string $uri The URI to normalize
-     * @return string The normalized URI
-     */
-    private function normalizeUri(string $uri): string
+    public static function normalize(string $path): string
     {
-        return "/" . trim($uri, "/");
+        return "/" . trim($path, "/");
     }
 }

@@ -7,53 +7,25 @@ use Psr\Http\Message\ResponseInterface;
 
 class RequestId
 {
-    private const DEFAULT_HEADER_NAME = "X-Request-Id";
-    private const DEFAULT_LIMIT_LENGTH = 255;
-
     /**
-     * Create a middleware that generates and sets a unique request ID
+     * Create a middleware that reuses the incoming request ID header or
+     * generates one, stores it as the "requestId" context variable and echoes
+     * it on the response.
      *
-     * @param array{
-     *     headerName?: string,
-     *     limitLength?: int,
-     *     generator?: callable(Context): string
-     * } $options Configuration options
-     * @return callable(Context, callable): ResponseInterface The middleware
+     * @param array{headerName?: string, limitLength?: int, generator?: callable(Context): string} $options
      */
     public static function requestId(array $options = []): callable
     {
-        $headerName = $options["headerName"] ?? self::DEFAULT_HEADER_NAME;
-        $limitLength = $options["limitLength"] ?? self::DEFAULT_LIMIT_LENGTH;
-        $generator = $options["generator"] ?? null;
+        $headerName = $options["headerName"] ?? "X-Request-Id";
+        $limitLength = $options["limitLength"] ?? 255;
+        $generator = $options["generator"] ?? fn() => bin2hex(random_bytes(16));
 
-        return function (
-            Context $context,
-            callable $next
-        ) use ($headerName, $limitLength, $generator): ResponseInterface {
-            $requestId = $context->req->header($headerName);
-
-            if (!$requestId) {
-                $requestId = $generator
-                    ? $generator($context)
-                    : self::generateRequestId();
-                $requestId = substr($requestId, 0, $limitLength);
-            }
+        return function (Context $context, callable $next) use ($headerName, $limitLength, $generator): ResponseInterface {
+            $requestId = $context->req->header($headerName) ?: substr($generator($context), 0, $limitLength);
 
             $context->set("requestId", $requestId);
 
-            $response = $next($context);
-
-            return $response->withHeader($headerName, $requestId);
+            return $next($context)->withHeader($headerName, $requestId);
         };
-    }
-
-    /**
-     * Generate a unique request ID
-     *
-     * @return string The generated request ID
-     */
-    private static function generateRequestId(): string
-    {
-        return bin2hex(random_bytes(16));
     }
 }

@@ -75,4 +75,17 @@ class StaticFilesTest extends TestCase
         $this->assertSame(304, $response->getStatusCode());
         $this->assertSame("", (string) $response->getBody());
     }
+
+    public function testPassesThroughAsMiddlewareWhenNoFileMatches()
+    {
+        $app = new \Dumbo\Dumbo();
+        $app->use("/", StaticFiles::serve($this->public));
+        $app->get("/api", fn(Context $context) => $context->text("api"));
+
+        $file = $app->handle(new ServerRequest("GET", "/index.html"));
+        $route = $app->handle(new ServerRequest("GET", "/api"));
+
+        $this->assertSame("<h1>Hello</h1>", (string) $file->getBody());
+        $this->assertSame("api", (string) $route->getBody());
+    }
 }
