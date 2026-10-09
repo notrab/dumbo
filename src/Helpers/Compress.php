@@ -5,88 +5,57 @@ namespace Dumbo\Helpers;
 use Dumbo\Context;
 use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\StreamInterface;
 
 class Compress
 {
+    private const ENCODINGS = ["gzip", "deflate"];
+
     private const STR_REGEX = '/^\s*(?:text\/[^;\s]+|application\/(?:javascript|json|xml|xml-dtd|ecmascript|dart|postscript|rtf|tar|toml|vnd\.dart|vnd\.ms-fontobject|vnd\.ms-opentype|wasm|x-httpd-php|x-javascript|x-ns-proxy-autoconfig|x-sh|x-tar|x-virtualbox-hdd|x-virtualbox-ova|x-virtualbox-ovf|x-virtualbox-vbox|x-virtualbox-vdi|x-virtualbox-vhd|x-virtualbox-vmdk|x-www-form-urlencoded)|font\/(?:otf|ttf)|image\/(?:bmp|vnd\.adobe\.photoshop|vnd\.microsoft\.icon|vnd\.ms-dds|x-icon|x-ms-bmp)|message\/rfc822|model\/gltf-binary|x-shader\/x-fragment|x-shader\/x-vertex|[^;\s]+?\+(?:json|text|xml|yaml))(?:[;\s]|$)/i';
 
     /**
-     * Create a middleware that compresses the response body using the specified encoding
-     * if the response size is greater than the given threshold.
+     * Create a middleware that compresses response bodies of at least
+     * `threshold` bytes, using `encoding` or the first of gzip/deflate the
+     * client accepts.
      *
-     * @param array{
-     *     threshold?: int,
-     *     allowedEncodings?: string[],
-     *     encoding?: string
-     * } $options Configuration options
-     * @return callable The middleware
+     * @param array{threshold?: int, encoding?: string} $options
      */
     public static function compress(array $options = []): callable
     {
         $threshold = $options["threshold"] ?? 1024;
-        $allowedEncodings = ["gzip", "deflate"];
-        $encoding = $options["encoding"] ?? null;
+        $forcedEncoding = $options["encoding"] ?? null;
 
-        return self::compressor($threshold, $allowedEncodings, $encoding);
-    }
-
-    /**
-     * Create a middleware that compresses the response body using the specified encoding
-     * if the response size is greater than the given threshold.
-     *
-     * @param int $threshold The minimum response size in bytes to compress
-     * @param array $allowedEncodings The list of allowed encodings
-     * @param ?string $encoding The selected encoding, or null to auto-detect
-     * @return callable The middleware
-     */
-    private static function compressor(
-        int $threshold,
-        array $allowedEncodings,
-        ?string $encoding
-    ): callable {
         return function (Context $context, callable $next) use (
             $threshold,
-            $allowedEncodings,
-            $encoding
-        ) {
+            $forcedEncoding
+        ): ResponseInterface {
             $response = $next($context);
-            $contentLength = $response->getHeaderLine("Content-Length");
+            $size = $response->getBody()->getSize();
 
             if (
-                $response->hasHeader("Content-Encoding") ||
                 $context->req->method() === "HEAD" ||
-                ($contentLength && (int) $contentLength < $threshold) ||
-                !self::shouldCompress($response) ||
-                !self::shouldTransform($response)
+                $response->hasHeader("Content-Encoding") ||
+                ($size !== null && $size < $threshold) ||
+                !preg_match(self::STR_REGEX, $response->getHeaderLine("Content-Type")) ||
+                preg_match('/(?:^|,)\s*no-transform\s*(?:,|$)/i', $response->getHeaderLine("Cache-Control"))
             ) {
                 return $response;
             }
 
-            $acceptedEncodings = array_map(
-                "trim",
-                explode(",", $context->req->header("Accept-Encoding") ?? "")
-            );
+            $encoding =
+                $forcedEncoding ??
+                self::negotiate($context->req->header("Accept-Encoding") ?? "");
 
-            if (!$encoding) {
-                foreach ($allowedEncodings as $enc) {
-                    if (in_array($enc, $acceptedEncodings)) {
-                        $encoding = $enc;
-                        break;
-                    }
-                }
-            }
-
-            if (!$encoding || !$response->getBody()) {
+            if ($encoding === null) {
                 return $response;
             }
 
-            $compressedBody = self::performCompression(
-                $response->getBody(),
-                $encoding
-            );
+            $contents = (string) $response->getBody();
+            $compressed = $encoding === "deflate"
+                ? gzdeflate($contents)
+                : gzencode($contents);
+
             return $response
-                ->withBody($compressedBody)
+                ->withBody(Utils::streamFor($compressed))
                 ->withoutHeader("Content-Length")
                 ->withHeader("Content-Encoding", $encoding)
                 ->withAddedHeader("Vary", "Accept-Encoding");
@@ -94,52 +63,27 @@ class Compress
     }
 
     /**
-     * Check if the response should be compressed based on the Content-Type header
-     *
-     * @param ResponseInterface $response The response to check
-     * @return bool Whether the response should be compressed
+     * Pick the first supported encoding the client accepts, ignoring any it
+     * has refused with q=0.
      */
-    private static function shouldCompress(ResponseInterface $response): bool
+    private static function negotiate(string $acceptEncoding): ?string
     {
-        $type = $response->getHeaderLine("Content-Type");
+        $accepted = [];
 
-        return preg_match(self::STR_REGEX, $type) === 1;
-    }
+        foreach (explode(",", $acceptEncoding) as $part) {
+            if (preg_match('/;\s*q=0(?:\.0*)?\s*$/i', $part)) {
+                continue;
+            }
 
-    /**
-     * Check if the response should be transformed (e.g. compressed) based on the
-     * Cache-Control header
-     *
-     * @param ResponseInterface $response The response to check
-     * @return bool Whether the response should be transformed
-     */
-    private static function shouldTransform(ResponseInterface $response): bool
-    {
-        $cacheControl = $response->getHeaderLine("Cache-Control");
-        return preg_match(
-            '/(?:^|,)\s*?no-transform\s*?(?:,|$)/i',
-            $cacheControl
-        ) !== 1;
-    }
+            $accepted[] = strtolower(trim(explode(";", $part)[0]));
+        }
 
-    /**
-     * Perform the actual compression of the response body using the specified encoding
-     *
-     * @param StreamInterface $body The response body to compress
-     * @param string $encoding The encoding to use for compression
-     *
-     * @return StreamInterface The compressed response body
-     */
-    private static function performCompression(
-        StreamInterface $body,
-        string $encoding
-    ): StreamInterface {
-        $contents = (string) $body;
+        foreach (self::ENCODINGS as $encoding) {
+            if (in_array($encoding, $accepted, true)) {
+                return $encoding;
+            }
+        }
 
-        return match ($encoding) {
-            "deflate" => Utils::streamFor(gzdeflate($contents)),
-            "gzip" => Utils::streamFor(gzencode($contents)),
-            default => $body,
-        };
+        return null;
     }
 }
