@@ -18,8 +18,7 @@ $app->use(
     CacheMiddleware::withHeaders(
         type: "public",
         mustRevalidate: true,
-        maxAge: 3600,
-        strictEtag: true
+        maxAge: 3600
     )
 );
 

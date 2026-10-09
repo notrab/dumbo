@@ -5,112 +5,82 @@ namespace Dumbo\Tests;
 use Dumbo\Context;
 use Dumbo\Middleware\CacheMiddleware;
 use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriInterface;
 
 class CacheMiddlewareTest extends TestCase
 {
-    private function createMockContext($method = 'GET', $headers = [], $path = '/', $queryParams = []): Context
-    {
-        $request = $this->createMock(ServerRequestInterface::class);
-        $request->method('getMethod')->willReturn($method);
+    private function send(
+        string $body = "Response body",
+        array $headers = [],
+        string $method = "GET",
+        array $responseHeaders = []
+    ) {
+        $middleware = CacheMiddleware::withHeaders("public", true, 60);
+        $context = new Context(new ServerRequest($method, "/", $headers), [], "/");
 
-        $uri = $this->createMock(UriInterface::class);
-        $uri->method('getPath')->willReturn($path);
-        $request->method('getUri')->willReturn($uri);
-
-        $request->method('getHeader')
-            ->willReturnCallback(function ($headerName) use ($headers) {
-                return $headers[$headerName] ?? [];
-            });
-
-        $request->method('getHeaders')->willReturn($headers);
-
-        $request->method('getQueryParams')->willReturn($queryParams);
-
-        return new Context($request, [], $path);
+        return $middleware(
+            $context,
+            fn() => new Response(200, $responseHeaders, $body)
+        );
     }
 
-    public function testHeadersAreModifiedByMiddleware()
+    public function testAddsCacheControlAndEtag()
     {
-        $middleware = CacheMiddleware::withHeaders('public', true, 60);
-        $context = $this->createMockContext();
-
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
-        };
-
-        $response = $middleware($context, $next);
+        $response = $this->send();
 
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEquals('public, max-age=60, must-revalidate', $response->getHeaderLine('Cache-Control'));
-        $this->assertNotEmpty($response->getHeaderLine('ETag'));
-        $this->assertNotEmpty($response->getHeaderLine('Last-Modified'));
+        $this->assertEquals(
+            "public, max-age=60, must-revalidate",
+            $response->getHeaderLine("Cache-Control")
+        );
+        $this->assertEquals(
+            'W/"' . md5("Response body") . '"',
+            $response->getHeaderLine("ETag")
+        );
     }
 
-    public function testReturns304WhenETagMatches()
+    public function testReturns304WhenEtagMatches()
     {
-        $etag = 'W/"' . md5('/') . '"';
-        $middleware = CacheMiddleware::withHeaders('public', true, 60);
-        $context = $this->createMockContext('GET', ['If-None-Match' => [$etag]]);
+        $etag = $this->send()->getHeaderLine("ETag");
 
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
-        };
-
-        $response = $middleware($context, $next);
+        $response = $this->send("Response body", ["If-None-Match" => $etag]);
 
         $this->assertEquals(304, $response->getStatusCode());
-        $this->assertEquals($etag, $response->getHeaderLine('ETag'));
+        $this->assertEquals("", (string) $response->getBody());
     }
 
-    public function testReturns304WhenIfModifiedSinceMatches()
+    public function testReturns200WhenTheContentChanges()
     {
-        $lastModified = gmdate('D, d M Y H:i:s') . ' GMT';
-        $middleware = CacheMiddleware::withHeaders('public', true, 60);
-        $context = $this->createMockContext('GET', ['If-Modified-Since' => [$lastModified]]);
+        $etag = $this->send("old")->getHeaderLine("ETag");
 
-        $next = function ($ctx) use ($lastModified) {
-            return (new Response(200, [], 'Response body'))
-                ->withHeader('Last-Modified', $lastModified);
-        };
+        $response = $this->send("new", ["If-None-Match" => $etag]);
 
-        $response = $middleware($context, $next);
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals("new", (string) $response->getBody());
+    }
+
+    public function testReturns304WhenIfModifiedSinceMatchesLastModified()
+    {
+        $lastModified = gmdate(DATE_RFC7231, time() - 60);
+
+        $response = $this->send(
+            "Response body",
+            ["If-Modified-Since" => gmdate(DATE_RFC7231)],
+            "GET",
+            ["Last-Modified" => $lastModified]
+        );
 
         $this->assertEquals(304, $response->getStatusCode());
-        $this->assertEquals($lastModified, $response->getHeaderLine('Last-Modified'));
+        $this->assertEquals($lastModified, $response->getHeaderLine("Last-Modified"));
     }
 
     public function testDoesNotCacheNonGetRequests()
     {
-        $middleware = CacheMiddleware::withHeaders('public', true, 60);
-        $context = $this->createMockContext('POST');
-
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
-        };
-
-        $response = $middleware($context, $next);
+        $response = $this->send("Response body", [], "POST");
 
         $this->assertEquals(200, $response->getStatusCode());
-        $this->assertEmpty($response->getHeaderLine('Cache-Control'));
-    }
-
-    public function testGeneratesCorrectETagForStrictMode()
-    {
-        $middleware = CacheMiddleware::withHeaders('public', true, 60, true);
-
-        $context = $this->createMockContext('GET', [], '/test', ['name' => 'Dumbo']);
-
-        $next = function ($ctx) {
-            return new Response(200, [], 'Response body');
-        };
-
-        $expectedEtag = 'W/"' . md5('GET/test' . serialize(['name' => 'Dumbo'])) . '"';
-
-        $response = $middleware($context, $next);
-
-        $this->assertEquals($expectedEtag, $response->getHeaderLine('ETag'));
+        $this->assertFalse($response->hasHeader("Cache-Control"));
+        $this->assertFalse($response->hasHeader("ETag"));
     }
 }

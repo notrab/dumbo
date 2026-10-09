@@ -3,96 +3,88 @@
 namespace Dumbo\Middleware;
 
 use Dumbo\Context;
+use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
 
 class CacheMiddleware
 {
-    const HTTP_NOT_MODIFIED = 304;
-
+    /**
+     * Create a middleware that adds Cache-Control and a weak ETag (derived from
+     * the response body) to GET and HEAD responses, and answers conditional
+     * requests with 304 Not Modified.
+     */
     public static function withHeaders(
-        string $type = 'private',
-        bool   $mustRevalidate = false,
-        int    $maxAge = 86400,
-        bool   $strictEtag = false,
-    ): callable
-    {
-        return function (Context $ctx, callable $next) use (
+        string $type = "private",
+        bool $mustRevalidate = false,
+        int $maxAge = 86400
+    ): callable {
+        $cacheControl = sprintf(
+            "%s, max-age=%d%s",
             $type,
-            $mustRevalidate,
             $maxAge,
-            $strictEtag
+            $mustRevalidate ? ", must-revalidate" : ""
+        );
+
+        return function (Context $context, callable $next) use (
+            $cacheControl
         ): ResponseInterface {
-
-            $request = $ctx->req;
-
-            if (!in_array($request->method(), ['GET', 'HEAD'], true)) {
-                return $next($ctx);
+            if (!in_array($context->req->method(), ["GET", "HEAD"], true)) {
+                return $next($context);
             }
 
-            $etag = self::generateEtag($ctx, $strictEtag);
-            $lastModified = gmdate(DATE_RFC7231);
-            $cacheControlHeader = sprintf('%s, max-age=%d%s', $type, $maxAge, $mustRevalidate ? ', must-revalidate' : '');
+            $response = $next($context);
 
-            $ifNoneMatch = $request->header('If-None-Match');
-            $ifModifiedSince = $request->header('If-Modified-Since');
-
-            if ($ifNoneMatch && self::etagMatches($etag, $ifNoneMatch)) {
-                return $ctx->getResponse()
-                    ->withStatus(self::HTTP_NOT_MODIFIED)
-                    ->withHeader('Cache-Control', $cacheControlHeader)
-                    ->withHeader('ETag', $etag)
-                    ->withHeader('Last-Modified', $lastModified);
+            if ($response->getStatusCode() !== 200) {
+                return $response;
             }
 
-            if ($ifModifiedSince && strtotime($ifModifiedSince) >= strtotime($lastModified)) {
-                return $ctx->getResponse()
-                    ->withStatus(self::HTTP_NOT_MODIFIED)
-                    ->withHeader('Cache-Control', $cacheControlHeader)
-                    ->withHeader('ETag', $etag)
-                    ->withHeader('Last-Modified', $lastModified);
+            if (!$response->hasHeader("Cache-Control")) {
+                $response = $response->withHeader("Cache-Control", $cacheControl);
             }
 
-            $response = $next($ctx);
-
-            if (!$response->hasHeader('Cache-Control')) {
-                $response = $response->withHeader('Cache-Control', $cacheControlHeader);
+            if (!$response->hasHeader("ETag")) {
+                $etag = sprintf('W/"%s"', md5((string) $response->getBody()));
+                $response = $response->withHeader("ETag", $etag);
             }
 
-            return $response
-                ->withHeader('ETag', $etag)
-                ->withHeader('Last-Modified', $lastModified);
+            return self::notModified($context, $response)
+                ? $response->withStatus(304)->withBody(Utils::streamFor(""))
+                : $response;
         };
     }
 
-    /**
-     * Check an ETag against an If-None-Match header, which may hold a
-     * comma separated list of candidates or the "*" wildcard.
-     */
-    private static function etagMatches(string $etag, string $ifNoneMatch): bool
-    {
-        $candidates = array_map('trim', explode(',', $ifNoneMatch));
+    private static function notModified(
+        Context $context,
+        ResponseInterface $response
+    ): bool {
+        $ifNoneMatch = $context->req->header("If-None-Match");
 
-        if (in_array('*', $candidates, true)) {
-            return true;
-        }
+        // If-None-Match takes precedence over If-Modified-Since (RFC 9110)
+        if ($ifNoneMatch !== null) {
+            $etag = self::opaqueTag($response->getHeaderLine("ETag"));
 
-        $weak = static fn(string $value): string => ltrim($value, 'W/');
+            foreach (explode(",", $ifNoneMatch) as $candidate) {
+                $candidate = trim($candidate);
 
-        foreach ($candidates as $candidate) {
-            if ($weak($candidate) === $weak($etag)) {
-                return true;
+                if ($candidate === "*" || self::opaqueTag($candidate) === $etag) {
+                    return true;
+                }
             }
+
+            return false;
         }
 
-        return false;
+        $ifModifiedSince = strtotime($context->req->header("If-Modified-Since") ?? "");
+        $lastModified = strtotime($response->getHeaderLine("Last-Modified"));
+
+        return $ifModifiedSince && $lastModified && $ifModifiedSince >= $lastModified;
     }
 
-    private static function generateEtag(Context $ctx, bool $strict): string
+    /**
+     * Strip the weak indicator so tags compare weakly.
+     */
+    private static function opaqueTag(string $tag): string
     {
-        $identifier = $strict
-            ? $ctx->req->method() . $ctx->req->path() . serialize($ctx->req->query())
-            : $ctx->req->path();
-
-        return sprintf('W/"%s"', md5($identifier));
+        return str_starts_with($tag, "W/") ? substr($tag, 2) : $tag;
     }
 }
