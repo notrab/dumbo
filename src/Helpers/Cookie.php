@@ -26,7 +26,7 @@ class Cookie
         Context $context,
         string $name,
         ?string $value = null,
-        string $prefix = ""
+        ?string $prefix = null
     ): bool {
         $cookies = self::parse($context->req->header("Cookie") ?? "");
         $fullName = self::getPrefixedName($name, $prefix);
@@ -66,7 +66,7 @@ class Cookie
      * @param Context $context The context object for setting the response header
      * @param string $name The name of the cookie
      * @param string $value The value of the cookie
-     * @param array $options Additional options for the cookie (e.g., 'expires', 'path', 'domain', etc.)
+     * @param array $options Additional options for the cookie (e.g., 'expires', 'path', 'domain', 'prefix', etc.)
      */
     public static function set(
         Context $context,
@@ -74,6 +74,19 @@ class Cookie
         string $value,
         array $options = []
     ): void {
+        $prefix = $options["prefix"] ?? null;
+
+        // Browsers reject prefixed cookies that don't meet these requirements
+        if ($prefix === self::PREFIX_SECURE || $prefix === self::PREFIX_HOST) {
+            $options["secure"] = true;
+        }
+
+        if ($prefix === self::PREFIX_HOST) {
+            $options["path"] = "/";
+            unset($options["domain"]);
+        }
+
+        $name = self::getPrefixedName($name, $prefix);
         $cookieString = self::buildString($name, $value, $options);
         $context->header("Set-Cookie", $cookieString, true);
     }
@@ -91,8 +104,7 @@ class Cookie
         string $name,
         array $options = []
     ): ?string {
-        $prefix = $options["prefix"] ?? "";
-        $value = self::get($context, $name, $prefix);
+        $value = self::get($context, $name, $options["prefix"] ?? null);
 
         if ($value === null) {
             return null;
@@ -177,8 +189,7 @@ class Cookie
         string $name,
         array $options = []
     ): bool {
-        $prefix = $options["prefix"] ?? "";
-        $value = self::get($context, $name, $prefix);
+        $value = self::get($context, $name, $options["prefix"] ?? null);
 
         if ($value === null) {
             return false;
