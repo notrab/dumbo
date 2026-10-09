@@ -18,13 +18,6 @@ class Router
     private $routes = [];
 
     /**
-     * Array of route groups
-     *
-     * @var array<string, array>
-     */
-    private array $groups = [];
-
-    /**
      * Add a route to the router
      *
      * @param string $method The HTTP method for the route
@@ -46,16 +39,6 @@ class Router
         ];
     }
 
-    /**
-     * Add a group of routes with a common prefix
-     *
-     * @param string $prefix The common prefix for the group of routes
-     * @param array $groupRoutes Array of routes in the group
-     */
-    public function addGroup(string $prefix, array $groupRoutes): void
-    {
-        $this->groups[$prefix] = $groupRoutes;
-    }
 
     /**
      * Dispatch the given request against the registered routes
@@ -101,31 +84,15 @@ class Router
         ];
     }
 
-    /**
-     * Find a matching route for the given request
-     *
-     * @param ServerRequestInterface $request The incoming HTTP request
-     * @return array|null The matched route information or null if no match found
-     */
-    public function findRoute(ServerRequestInterface $request): ?array
-    {
-        return $this->dispatch($request)["route"];
-    }
 
     /**
      * Get all declared routes
      *
-     * @return array All registered routes including group routes
+     * @return array All registered routes
      */
     public function getRoutes(): array
     {
-        $allRoutes = $this->routes;
-
-        foreach ($this->groups as $groupRoutes) {
-            $allRoutes = array_merge($allRoutes, $groupRoutes);
-        }
-
-        return $allRoutes;
+        return $this->routes;
     }
 
     /**

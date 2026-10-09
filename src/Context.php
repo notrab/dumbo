@@ -41,9 +41,9 @@ class Context
      * @param string $routePath The registered route path
      */
     public function __construct(
-        private ServerRequestInterface $request,
-        private array $params,
-        private string $routePath
+        ServerRequestInterface $request,
+        array $params,
+        string $routePath
     ) {
         $this->response = new Response();
         $this->req = new RequestWrapper($request, $params, $routePath);

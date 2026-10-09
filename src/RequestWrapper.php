@@ -7,7 +7,7 @@ use Psr\Http\Message\ServerRequestInterface;
 /**
  * RequestWrapper class for handling HTTP request details in the Dumbo framework
  */
-class RequestWrapper implements RequestWrapperInterface
+class RequestWrapper
 {
     /** @var array The parsed request body */
     private array $parsedBody;

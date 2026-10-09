@@ -23,7 +23,7 @@ class RouterTest extends TestCase
         });
 
         $request = new ServerRequest("GET", "/test");
-        $route = $this->router->findRoute($request);
+        $route = $this->router->dispatch($request)["route"];
 
         $this->assertNotNull($route);
         $this->assertEquals("/test", $route["routePath"]);
@@ -44,13 +44,13 @@ class RouterTest extends TestCase
         });
 
         $request1 = new ServerRequest("GET", "/api/users");
-        $route1 = $this->router->findRoute($request1);
+        $route1 = $this->router->dispatch($request1)["route"];
 
         $this->assertNotNull($route1);
         $this->assertEquals("/api/users", $route1["routePath"]);
 
         $request2 = new ServerRequest("GET", "/api/users/123");
-        $route2 = $this->router->findRoute($request2);
+        $route2 = $this->router->dispatch($request2)["route"];
 
         $this->assertNotNull($route2);
         $this->assertEquals("/api/users/:id", $route2["routePath"]);
@@ -74,7 +74,7 @@ class RouterTest extends TestCase
         );
 
         $request = new ServerRequest("GET", "/protected");
-        $route = $this->router->findRoute($request);
+        $route = $this->router->dispatch($request)["route"];
 
         $this->assertNotNull($route);
         $this->assertCount(1, $route["middleware"]);
@@ -90,7 +90,7 @@ class RouterTest extends TestCase
         });
 
         $request = new ServerRequest("GET", "/users/123/posts/456");
-        $route = $this->router->findRoute($request);
+        $route = $this->router->dispatch($request)["route"];
 
         $this->assertNotNull($route);
         $this->assertEquals("/users/:id/posts/:postId", $route["routePath"]);
@@ -109,7 +109,7 @@ class RouterTest extends TestCase
         });
 
         $request = new ServerRequest("POST", "/method-test");
-        $route = $this->router->findRoute($request);
+        $route = $this->router->dispatch($request)["route"];
 
         $this->assertNull($route);
     }
@@ -117,7 +117,7 @@ class RouterTest extends TestCase
     public function testRouteNotFound()
     {
         $request = new ServerRequest("GET", "/non-existent-route");
-        $route = $this->router->findRoute($request);
+        $route = $this->router->dispatch($request)["route"];
 
         $this->assertNull($route);
     }
@@ -189,7 +189,7 @@ class RouterTest extends TestCase
         );
 
         $request = new ServerRequest("GET", "/multi-middleware");
-        $route = $this->router->findRoute($request);
+        $route = $this->router->dispatch($request)["route"];
 
         $this->assertNotNull($route);
         $this->assertCount(2, $route["middleware"]);

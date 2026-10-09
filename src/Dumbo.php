@@ -25,7 +25,6 @@ use GuzzleHttp\Psr7\ServerRequest;
 class Dumbo
 {
     private Router $router;
-    private bool $removeTrailingSlash = true;
 
     /** @var array<callable> */
     private $middleware = [];
@@ -34,8 +33,6 @@ class Dumbo
      * @var array<string, array<callable>> Middleware specific to route groups
      */
     private $groupMiddleware = [];
-
-    private ?Dumbo $parent = null;
 
     private $errorHandler;
 
@@ -155,8 +152,6 @@ class Dumbo
      */
     public function route(string $prefix, self $nestedApp): void
     {
-        $nestedApp->parent = $this;
-
         foreach ($nestedApp->router->getRoutes() as $route) {
             $fullPath = rtrim($prefix, "/") . "/" . ltrim($route["path"], "/");
             $this->router->addRoute(
@@ -180,16 +175,13 @@ class Dumbo
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        if ($this->removeTrailingSlash) {
-            $uri = $request->getUri();
-            $path = $uri->getPath();
+        $uri = $request->getUri();
+        $path = $uri->getPath();
 
-            if (strlen($path) > 1 && substr($path, -1) === "/") {
-                $newPath = rtrim($path, "/");
-                $newUri = $uri->withPath($newPath);
+        if (strlen($path) > 1 && str_ends_with($path, "/")) {
+            $location = (string) $uri->withPath(rtrim($path, "/"));
 
-                return new Response(301, ["Location" => (string) $newUri]);
-            }
+            return new Response(301, ["Location" => $location]);
         }
 
         try {
@@ -232,15 +224,11 @@ class Dumbo
                 };
             }
 
-            $response = $this->runMiddleware(
+            return $this->runMiddleware(
                 $context,
                 $handler,
                 $fullMiddlewareStack
             );
-
-            return $response instanceof ResponseInterface
-                ? $response
-                : $context->getResponse();
         } catch (HTTPException $e) {
             return $this->handleHTTPException($e, $request);
         } catch (\Exception $e) {
@@ -257,10 +245,8 @@ class Dumbo
      */
     public function run(): void
     {
-        $this->router->buildDispatcher();
-
         try {
-            $request = $this->createServerRequestFromGlobals();
+            $request = ServerRequest::fromGlobals();
             $response = $this->handle($request);
             $this->send($response);
         } catch (\Throwable $error) {
@@ -328,18 +314,6 @@ class Dumbo
         return $this->environment === self::ENV_TESTING;
     }
 
-    /**
-     * Create a server request from the PHP globals
-     *
-     * @return ServerRequestInterface The server request
-     */
-    private function createServerRequestFromGlobals(): ServerRequestInterface
-    {
-        $request = ServerRequest::fromGlobals();
-        $body = file_get_contents("php://input");
-
-        return $request->withBody(\GuzzleHttp\Psr7\Utils::streamFor($body));
-    }
 
     /**
      * Run the middleware stack and the final handler
