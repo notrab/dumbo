@@ -159,9 +159,8 @@ class Dumbo
                 $fullPath,
                 $route["handler"],
                 array_merge(
-                    $this->middleware,
-                    $nestedApp->getMiddleware(),
-                    $route["middleware"] ?? []
+                    $nestedApp->getMiddlewareForPath($route["path"]),
+                    $route["middleware"]
                 )
             );
         }
@@ -202,11 +201,6 @@ class Dumbo
             );
 
             if ($route) {
-                $fullMiddlewareStack = array_unique(
-                    $fullMiddlewareStack,
-                    SORT_REGULAR
-                );
-
                 $handler = $route["handler"];
             } elseif ($dispatch["allowedMethods"] !== []) {
                 $allowed = implode(", ", $dispatch["allowedMethods"]);
@@ -457,7 +451,13 @@ class Dumbo
         $applicableMiddleware = $this->middleware;
 
         foreach ($this->groupMiddleware as $groupPath => $groupMiddlewares) {
-            if (strpos($path, $groupPath) === 0) {
+            $groupPath = rtrim($groupPath, "/");
+
+            if (
+                $groupPath === "" ||
+                $path === $groupPath ||
+                str_starts_with($path, $groupPath . "/")
+            ) {
                 $applicableMiddleware = array_merge(
                     $applicableMiddleware,
                     $groupMiddlewares
