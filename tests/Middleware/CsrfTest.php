@@ -1,15 +1,15 @@
 <?php
 
-namespace Dumbo\Tests;
+namespace Dumbo\Tests\Middleware;
 
 use PHPUnit\Framework\TestCase;
 use Dumbo\Context;
-use Dumbo\Middleware\CsrfMiddleware;
+use Dumbo\Middleware\Csrf;
 use GuzzleHttp\Psr7\ServerRequest;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\Utils;
 
-class CsrfMiddlewareTest extends TestCase
+class CsrfTest extends TestCase
 {
     private array $tokenStorage = [];
 
@@ -42,7 +42,7 @@ class CsrfMiddlewareTest extends TestCase
 
     public function testSafeMethodGeneratesToken()
     {
-        $middleware = CsrfMiddleware::csrf([
+        $middleware = Csrf::csrf([
             'getToken' => $this->getTokenCallback(),
             'setToken' => $this->setTokenCallback(),
             'tokenLength' => 64,
@@ -66,7 +66,7 @@ class CsrfMiddlewareTest extends TestCase
         $token = bin2hex(random_bytes(32));
         $this->tokenStorage['csrf_token'] = $token;
 
-        $middleware = CsrfMiddleware::csrf([
+        $middleware = Csrf::csrf([
             'getToken' => $this->getTokenCallback(),
             'setToken' => $this->setTokenCallback(),
         ]);
@@ -85,7 +85,7 @@ class CsrfMiddlewareTest extends TestCase
 
     public function testUnsafeMethodWithInvalidToken()
     {
-        $middleware = CsrfMiddleware::csrf([
+        $middleware = Csrf::csrf([
             'getToken' => $this->getTokenCallback(),
             'setToken' => $this->setTokenCallback(),
         ]);
@@ -103,7 +103,7 @@ class CsrfMiddlewareTest extends TestCase
 
     public function testUnsafeMethodWithMissingToken()
     {
-        $middleware = CsrfMiddleware::csrf([
+        $middleware = Csrf::csrf([
             'getToken' => $this->getTokenCallback(),
             'setToken' => $this->setTokenCallback(),
         ]);
@@ -121,7 +121,7 @@ class CsrfMiddlewareTest extends TestCase
 
     public function testCustomErrorHandler()
     {
-        $middleware = CsrfMiddleware::csrf([
+        $middleware = Csrf::csrf([
             'getToken' => $this->getTokenCallback(),
             'setToken' => $this->setTokenCallback(),
             'errorHandler' => function ($ctx) {
@@ -145,7 +145,7 @@ class CsrfMiddlewareTest extends TestCase
         $token = bin2hex(random_bytes(32));
         $this->tokenStorage['csrf_token'] = $token;
 
-        $middleware = CsrfMiddleware::csrf([
+        $middleware = Csrf::csrf([
             'getToken' => $this->getTokenCallback(),
             'setToken' => $this->setTokenCallback(),
             'useHeader' => true,

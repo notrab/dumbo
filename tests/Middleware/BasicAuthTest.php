@@ -1,9 +1,9 @@
 <?php
 
-namespace Dumbo\Tests\Helpers;
+namespace Dumbo\Tests\Middleware;
 
 use PHPUnit\Framework\TestCase;
-use Dumbo\Helpers\BasicAuth;
+use Dumbo\Middleware\BasicAuth;
 use Dumbo\Context;
 use Psr\Http\Message\ServerRequestInterface;
 use GuzzleHttp\Psr7\Response;

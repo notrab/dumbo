@@ -6,23 +6,22 @@ use Dumbo\Context;
 use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
 
-class CacheMiddleware
+class Cache
 {
     /**
      * Create a middleware that adds Cache-Control and a weak ETag (derived from
      * the response body) to GET and HEAD responses, and answers conditional
      * requests with 304 Not Modified.
+     *
+     * @param array{type?: string, maxAge?: int, mustRevalidate?: bool} $options
      */
-    public static function withHeaders(
-        string $type = "private",
-        bool $mustRevalidate = false,
-        int $maxAge = 86400
-    ): callable {
+    public static function cache(array $options = []): callable
+    {
         $cacheControl = sprintf(
             "%s, max-age=%d%s",
-            $type,
-            $maxAge,
-            $mustRevalidate ? ", must-revalidate" : ""
+            $options["type"] ?? "private",
+            $options["maxAge"] ?? 86400,
+            ($options["mustRevalidate"] ?? false) ? ", must-revalidate" : ""
         );
 
         return function (Context $context, callable $next) use (

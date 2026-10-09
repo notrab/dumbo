@@ -1,14 +1,14 @@
 <?php
 
-namespace Dumbo\Tests;
+namespace Dumbo\Tests\Middleware;
 
 use Dumbo\Context;
-use Dumbo\Middleware\CacheMiddleware;
+use Dumbo\Middleware\Cache;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
 
-class CacheMiddlewareTest extends TestCase
+class CacheTest extends TestCase
 {
     private function send(
         string $body = "Response body",
@@ -16,7 +16,11 @@ class CacheMiddlewareTest extends TestCase
         string $method = "GET",
         array $responseHeaders = []
     ) {
-        $middleware = CacheMiddleware::withHeaders("public", true, 60);
+        $middleware = Cache::cache([
+            "type" => "public",
+            "maxAge" => 60,
+            "mustRevalidate" => true,
+        ]);
         $context = new Context(new ServerRequest($method, "/", $headers), [], "/");
 
         return $middleware(

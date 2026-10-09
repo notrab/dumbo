@@ -1,11 +1,11 @@
 <?php
 
-namespace Dumbo\Tests\Helpers;
+namespace Dumbo\Tests\Middleware;
 
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Http\Message\ResponseInterface;
-use Dumbo\Helpers\Logger;
+use Dumbo\Middleware\Logger;
 use Dumbo\Context;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriInterface;

@@ -1,6 +1,6 @@
 <?php
 
-namespace Dumbo\Helpers;
+namespace Dumbo\Middleware;
 
 use Dumbo\Context;
 use Dumbo\HTTPException;
@@ -12,7 +12,7 @@ class BodyLimit
      * Create a middleware that rejects requests whose Content-Length exceeds
      * $maxSize bytes, with $onError($context, $maxSize) or a 413 HTTPException.
      */
-    public static function limit(int $maxSize, ?callable $onError = null): callable
+    public static function bodyLimit(int $maxSize, ?callable $onError = null): callable
     {
         return function (Context $context, callable $next) use ($maxSize, $onError): ResponseInterface {
             $contentLength = $context->req->header("Content-Length");

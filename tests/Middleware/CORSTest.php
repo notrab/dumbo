@@ -1,9 +1,9 @@
 <?php
 
-namespace Dumbo\Tests\Helpers;
+namespace Dumbo\Tests\Middleware;
 
 use Dumbo\Context;
-use Dumbo\Helpers\CORS;
+use Dumbo\Middleware\CORS;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;

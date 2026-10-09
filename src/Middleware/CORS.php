@@ -1,6 +1,6 @@
 <?php
 
-namespace Dumbo\Helpers;
+namespace Dumbo\Middleware;
 
 use Dumbo\Context;
 use Psr\Http\Message\ResponseInterface;
@@ -19,11 +19,11 @@ class CORS
         $options = array_merge(
             [
                 "origin" => "*",
-                "allow_methods" => ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
-                "allow_headers" => ["X-Requested-With", "Content-Type", "Accept", "Origin", "Authorization"],
-                "expose_headers" => [],
+                "allowMethods" => ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+                "allowHeaders" => ["X-Requested-With", "Content-Type", "Accept", "Origin", "Authorization"],
+                "exposeHeaders" => [],
                 "credentials" => false,
-                "max_age" => 86400,
+                "maxAge" => 86400,
             ],
             $options
         );
@@ -45,24 +45,24 @@ class CORS
                 $requestHeaders = $request->header("Access-Control-Request-Headers");
 
                 $headers["Access-Control-Allow-Methods"] =
-                    $requestMethod && in_array($requestMethod, $options["allow_methods"], true)
+                    $requestMethod && in_array($requestMethod, $options["allowMethods"], true)
                         ? $requestMethod
-                        : implode(", ", $options["allow_methods"]);
+                        : implode(", ", $options["allowMethods"]);
 
-                $allowHeaders = $requestHeaders ?: implode(", ", $options["allow_headers"]);
+                $allowHeaders = $requestHeaders ?: implode(", ", $options["allowHeaders"]);
 
                 if ($allowHeaders !== "") {
                     $headers["Access-Control-Allow-Headers"] = $allowHeaders;
                 }
 
-                if ($options["max_age"] !== null) {
-                    $headers["Access-Control-Max-Age"] = (string) $options["max_age"];
+                if ($options["maxAge"] !== null) {
+                    $headers["Access-Control-Max-Age"] = (string) $options["maxAge"];
                 }
 
                 $response = $context->text("", 204);
             } else {
-                if (!empty($options["expose_headers"])) {
-                    $headers["Access-Control-Expose-Headers"] = implode(", ", $options["expose_headers"]);
+                if (!empty($options["exposeHeaders"])) {
+                    $headers["Access-Control-Expose-Headers"] = implode(", ", $options["exposeHeaders"]);
                 }
 
                 $response = $next($context);

@@ -17,7 +17,7 @@ This example demonstrates how to use the http cache middleware in Dumbo
    ```
 
 3. To test the cached route, use the curl command to send a GET request to http://localhost:8000/cached/greet. This
-   route has the CacheMiddleware applied to it, so it should return cache control headers. Here's the command:
+   route has the Cache middleware applied to it, so it should return cache control headers. Here's the command:
 
    ```bash
      curl -i http://localhost:8000/cached/greet
@@ -37,7 +37,7 @@ This example demonstrates how to use the http cache middleware in Dumbo
    ```
 
 5. To test the uncached route, send a GET request to http://localhost:8000/uncached/greet. This route does not have the
-   CacheMiddleware applied to it, so it should not return cache control headers. Here's the command:
+   Cache middleware applied to it, so it should not return cache control headers. Here's the command:
 
    ```bash
      curl -i http://localhost:8000/uncached/greet

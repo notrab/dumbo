@@ -1,6 +1,7 @@
 {
   "require": {
-    "notrab/dumbo": "@dev"
+    "notrab/dumbo": "@dev",
+    "firebase/php-jwt": "^6.10"
   },
   "repositories": [
     {

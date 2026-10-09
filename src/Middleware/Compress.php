@@ -1,6 +1,6 @@
 <?php
 
-namespace Dumbo\Helpers;
+namespace Dumbo\Middleware;
 
 use Dumbo\Context;
 use GuzzleHttp\Psr7\Utils;

@@ -3,7 +3,7 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\BearerAuth;
+use Dumbo\Middleware\BearerAuth;
 
 $app = new Dumbo();
 $token = "mysupersecret";

@@ -33,7 +33,6 @@
 - 🛣️ Flexible routing with parameters
 - 🔒 Built-in security features (CSRF, JWT)
 - 🍪 Cookie management
-- 📅 Date helpers
 - 🔍 Request ID for tracing
 - 📁 Static file serving
 - 🔐 Basic and Bearer authentication
@@ -89,6 +88,23 @@ $app->run();
 ```
 
 See the [examples](/examples) directory for more quickstarts.
+
+## Upgrading from 1.x
+
+- Middleware moved from `Dumbo\Helpers` to `Dumbo\Middleware`, and
+  `CacheMiddleware` and `CsrfMiddleware` are now `Cache` and `Csrf`.
+- `BodyLimit::limit()` is now `BodyLimit::bodyLimit()`, and
+  `CacheMiddleware::withHeaders(...)` is now `Cache::cache([...])` with
+  `type`, `maxAge` and `mustRevalidate` options.
+- CORS options are camelCase: `allowMethods`, `allowHeaders`, `exposeHeaders`
+  and `maxAge`.
+- `DateHelper` was removed; use PHP's date functions.
+- `firebase/php-jwt` is no longer installed automatically. Require it if you
+  use `Dumbo\Helpers\JWT`.
+- Pass the environment to `new Dumbo('production')` or set `DUMBO_ENV`.
+  `setEnvironment()`, `detectEnvironment()`, `isProduction()` and `isTesting()`
+  were removed, and Dumbo no longer changes `error_reporting`. The
+  `environment` context variable is now the environment name.
 
 ## License
 
@@ -174,6 +190,38 @@ $app->use(function($context, $next) {
 
     return $response;
 });
+```
+
+Built-in middleware lives in `Dumbo\Middleware`:
+
+```php
+<?php
+
+use Dumbo\Middleware\BasicAuth;
+use Dumbo\Middleware\BearerAuth;
+use Dumbo\Middleware\BodyLimit;
+use Dumbo\Middleware\Cache;
+use Dumbo\Middleware\Compress;
+use Dumbo\Middleware\CORS;
+use Dumbo\Middleware\Csrf;
+use Dumbo\Middleware\Logger;
+use Dumbo\Middleware\RequestId;
+
+$app->use(Logger::logger($psrLogger));
+$app->use(RequestId::requestId());
+$app->use(CORS::cors(['origin' => ['https://example.com']]));
+$app->use(Compress::compress());
+$app->use(BodyLimit::bodyLimit(1024 * 1024));
+$app->use('/admin', BasicAuth::basicAuth('user:password'));
+$app->use('/api', BearerAuth::bearerAuth('secret-token'));
+$app->use('/blog', Cache::cache(['type' => 'public', 'maxAge' => 3600]));
+```
+
+Helpers for cookies, JWTs and static files live in `Dumbo\Helpers`. The JWT
+helper needs `firebase/php-jwt`:
+
+```bash
+composer require firebase/php-jwt
 ```
 
 ### Custom context

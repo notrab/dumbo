@@ -1,9 +1,9 @@
 <?php
 
-namespace Dumbo\Tests\Helpers;
+namespace Dumbo\Tests\Middleware;
 
 use Dumbo\Context;
-use Dumbo\Helpers\Compress;
+use Dumbo\Middleware\Compress;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;

@@ -6,7 +6,7 @@ use Closure;
 use Dumbo\Context;
 use InvalidArgumentException;
 
-class CsrfMiddleware
+class Csrf
 {
     private const SAFE_METHODS = ["GET", "HEAD", "OPTIONS", "TRACE"];
 
