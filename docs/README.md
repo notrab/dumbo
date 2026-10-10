@@ -23,7 +23,7 @@ Then open [http://localhost:8000](http://localhost:8000). Run `npm run dev` alon
 | --- | --- |
 | `config.php` | Site settings |
 | `content/` | Docs pages, each served at `/docs/{file name}` |
-| `pages/` | The home page, docs routes, sitemap, robots.txt and 404 page |
+| `pages/` | The home page, docs routes, robots.txt and 404 page. Jumbo writes the sitemap. |
 | `components/` | Markdown components |
 | `theme/` | Layout, templates and Tailwind styles |
 | `public/` | Files served as-is |

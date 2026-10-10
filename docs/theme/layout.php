@@ -44,8 +44,8 @@
     <link rel="stylesheet" href="<?= e($site->asset("@fontsource-variable/bricolage-grotesque", "index.css")) ?>">
     <link rel="stylesheet" href="<?= e($site->asset("@fontsource-variable/instrument-sans", "index.css")) ?>">
     <link rel="stylesheet" href="<?= e($site->asset("@fontsource-variable/jetbrains-mono", "index.css")) ?>">
-    <link rel="stylesheet" href="<?= e($site->asset("@highlightjs/cdn-assets", "styles/github-dark.min.css")) ?>">
-    <link rel="stylesheet" href="/app.css">
+    <link rel="stylesheet" href="<?= e($site->file("/app.css")) ?>">
+    <style><?= $site->highlightStyles("github-dark") ?></style>
     <style>
         :root {
             --primary: <?= e($config["theme"]["primary"]) ?>;
@@ -98,12 +98,8 @@
         </footer>
     <?php endif ?>
 
-    <script src="<?= e($site->asset("@highlightjs/cdn-assets", "highlight.min.js")) ?>"></script>
-    <script src="<?= e($site->asset("@highlightjs/cdn-assets", "languages/dockerfile.min.js")) ?>"></script>
     <script>
         window.confetti = <?= json_encode($config["confetti"]) ?>;
-
-        hljs.highlightAll();
 
         document.querySelector("[data-theme-toggle]").addEventListener("click", () => {
             const dark = document.documentElement.classList.toggle("dark");
