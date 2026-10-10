@@ -139,6 +139,23 @@ $app->get('/users/:id', function($context) {
 });
 ```
 
+Constrain a param with a regex using `{name:pattern}`. Requests that don't
+match fall through to a 404:
+
+```php
+<?php
+
+$app->get('/posts/{id:\d+}', function($context) {
+    return $context->json(['id' => $context->req->param('id')]);
+});
+```
+
+#### Trailing slashes
+
+Requests with a trailing slash are redirected to the path without it. `GET`
+and `HEAD` get a `301`; other methods get a `308` so the method and body are
+kept.
+
 #### Nested
 
 ```php

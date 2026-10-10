@@ -4,6 +4,7 @@ namespace Dumbo;
 
 use Closure;
 use GuzzleHttp\Psr7\Response;
+use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
@@ -114,7 +115,8 @@ class Context
 
     /**
      * Send a response with any body and content type. Arrays and objects are
-     * JSON encoded and streams are used as-is.
+     * JSON encoded and streams are used as-is. The body replaces anything
+     * sent earlier in the request.
      */
     public function send(
         mixed $body = "",
@@ -130,14 +132,13 @@ class Context
             $this->response = $this->response->withHeader($name, $value);
         }
 
-        if ($body instanceof StreamInterface) {
-            $this->response = $this->response->withBody($body);
-        } elseif (is_string($body) || is_numeric($body)) {
-            $this->response->getBody()->write((string) $body);
-        } elseif (is_array($body) || is_object($body)) {
-            $this->response->getBody()->write((string) json_encode($body));
-        }
+        $body = match (true) {
+            $body instanceof StreamInterface => $body,
+            is_string($body) || is_numeric($body) => (string) $body,
+            is_array($body) || is_object($body) => (string) json_encode($body),
+            default => "",
+        };
 
-        return $this->response;
+        return $this->response = $this->response->withBody(Utils::streamFor($body));
     }
 }

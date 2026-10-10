@@ -196,4 +196,19 @@ class RouterTest extends TestCase
         $this->assertSame($middleware1, $route["middleware"][0]);
         $this->assertSame($middleware2, $route["middleware"][1]);
     }
+
+    public function testParamsCanBeConstrainedWithARegex()
+    {
+        $this->router->addRoute("GET", "/posts/{id:\\d+}", function (
+            Context $context
+        ) {
+            return $context->text("Post");
+        });
+
+        $match = $this->router->dispatch(new ServerRequest("GET", "/posts/42"));
+        $miss = $this->router->dispatch(new ServerRequest("GET", "/posts/abc"));
+
+        $this->assertEquals(["id" => "42"], $match["route"]["params"]);
+        $this->assertNull($miss["route"]);
+    }
 }

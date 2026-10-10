@@ -141,7 +141,10 @@ class Dumbo
         if (strlen($path) > 1 && str_ends_with($path, "/")) {
             $location = (string) $uri->withPath(rtrim($path, "/"));
 
-            return new Response(301, ["Location" => $location]);
+            // 308 keeps the method and body; clients turn a 301 POST into a GET
+            $status = in_array($request->getMethod(), ["GET", "HEAD"], true) ? 301 : 308;
+
+            return new Response($status, ["Location" => $location]);
         }
 
         try {

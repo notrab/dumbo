@@ -184,4 +184,40 @@ class DumboTest extends TestCase
             $app->handle(new ServerRequest("GET", "/administrator"))->getStatusCode()
         );
     }
+
+    public function testHandlerResponseReplacesMiddlewareBody()
+    {
+        $app = new Dumbo();
+        $app->use(function (Context $context, callable $next) {
+            $context->text("fallback");
+            return $next($context);
+        });
+        $app->get("/", fn(Context $context) => $context->json(["ok" => true]));
+
+        $response = $app->handle(new ServerRequest("GET", "/"));
+
+        $this->assertSame('{"ok":true}', (string) $response->getBody());
+    }
+
+    public function testTrailingSlashRedirectsGetWith301()
+    {
+        $app = new Dumbo();
+        $app->get("/users", fn(Context $context) => $context->text("users"));
+
+        $response = $app->handle(new ServerRequest("GET", "/users/?page=2"));
+
+        $this->assertSame(301, $response->getStatusCode());
+        $this->assertSame("/users?page=2", $response->getHeaderLine("Location"));
+    }
+
+    public function testTrailingSlashRedirectsOtherMethodsWith308()
+    {
+        $app = new Dumbo();
+        $app->post("/users", fn(Context $context) => $context->text("created"));
+
+        $response = $app->handle(new ServerRequest("POST", "/users/"));
+
+        $this->assertSame(308, $response->getStatusCode());
+        $this->assertSame("/users", $response->getHeaderLine("Location"));
+    }
 }
