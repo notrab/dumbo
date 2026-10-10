@@ -29,7 +29,7 @@
     "psr/http-server-middleware": "^1.0"
   },
   "require-dev": {
-    "firebase/php-jwt": "^6.10",
+    "firebase/php-jwt": "^7.0",
     "phpunit/phpunit": "^11.0"
   },
   "suggest": {
