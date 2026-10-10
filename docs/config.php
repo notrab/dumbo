@@ -48,7 +48,7 @@ return [
 
     // Sidebar groups, in reading order. Each slug is a file in content/.
     "sidebar" => [
-        "🚀 Getting started" => ["introduction", "quickstart"],
+        "🚀 Getting started" => ["introduction", "quickstart", "agents"],
         "🧠 Concepts" => ["routing", "context", "middleware", "error-handling"],
         "🧩 Middleware" => ["built-in-middleware"],
         "🧰 Helpers" => ["cookies", "jwt", "static-files"],

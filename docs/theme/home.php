@@ -76,7 +76,7 @@ $highlight = fn(string $text) => preg_replace('/\*(.+?)\*/', '<span class="highl
     </section>
 
     <?php if ($features): ?>
-        <section class="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+        <section class="mx-auto max-w-5xl px-4 py-20 sm:px-6">
             <?php if (!empty($page["meta"]["features_title"])): ?>
                 <h2 class="text-center font-display text-3xl font-extrabold tracking-tight text-ink sm:text-5xl"><?= $highlight($page["meta"]["features_title"]) ?></h2>
             <?php endif ?>
@@ -84,14 +84,20 @@ $highlight = fn(string $text) => preg_replace('/\*(.+?)\*/', '<span class="highl
                 <p class="mx-auto mt-4 max-w-xl text-center text-lg text-stone-600 dark:text-stone-400"><?= e($page["meta"]["features_text"]) ?></p>
             <?php endif ?>
 
-            <div class="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div class="mt-14 grid gap-8 md:grid-cols-2">
                 <?php foreach ($features as $i => $feature): ?>
-                    <div class="pop pop-hover rounded-2xl p-6 text-[#1c1917] <?= $tints[$i % 3] ?> <?= $i % 2 ? "rotate-1" : "-rotate-1" ?> hover:rotate-0 dark:bg-stone-900 dark:text-stone-300">
+                    <div class="pop pop-hover flex min-w-0 flex-col rounded-2xl p-6 text-[#1c1917] <?= $tints[$i % 3] ?> <?= $i % 2 ? "rotate-1" : "-rotate-1" ?> hover:rotate-0 dark:bg-stone-900 dark:text-stone-300">
                         <?php if (!empty($feature["icon"])): ?>
-                            <div class="flex h-12 w-12 items-center justify-center rounded-xl border-2 border-ink bg-white text-2xl dark:bg-stone-800"><?= e($feature["icon"]) ?></div>
+                            <div class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl border-2 border-ink bg-white text-2xl dark:bg-stone-800"><?= e($feature["icon"]) ?></div>
                         <?php endif ?>
-                        <h3 class="mt-4 font-display text-xl font-bold text-[#1c1917] dark:text-white"><?= e($feature["title"]) ?></h3>
+                        <h3 class="font-display text-xl font-bold text-[#1c1917] dark:text-white"><?= e($feature["title"]) ?></h3>
                         <p class="mt-2 text-sm leading-relaxed opacity-80"><?= e($feature["details"] ?? "") ?></p>
+                        <?php if (!empty($feature["code"])): ?>
+                            <pre class="mt-5 overflow-x-auto rounded-xl border-2 border-ink bg-zinc-900 p-4 font-mono text-xs leading-relaxed"><code class="language-<?= e($feature["language"] ?? "php") ?>"><?= e(rtrim($feature["code"])) ?></code></pre>
+                        <?php endif ?>
+                        <?php if (!empty($feature["href"])): ?>
+                            <a href="<?= e($feature["href"]) ?>" class="mt-auto inline-flex items-center gap-1 self-start pt-5 text-sm font-bold text-primary-700 underline decoration-accent-400 decoration-2 underline-offset-4 hover:decoration-primary-500 dark:text-primary-300"><?= e($feature["link"] ?? "Learn more") ?> &rarr;</a>
+                        <?php endif ?>
                     </div>
                 <?php endforeach ?>
             </div>
@@ -99,7 +105,7 @@ $highlight = fn(string $text) => preg_replace('/\*(.+?)\*/', '<span class="highl
     <?php endif ?>
 
     <?php if (trim(strip_tags($page["html"])) !== ""): ?>
-        <section class="prose prose-stone mx-auto max-w-3xl px-4 pb-20 sm:px-6 dark:prose-invert prose-headings:text-ink">
+        <section class="prose prose-stone mx-auto max-w-3xl px-4 pb-20 sm:px-6 dark:prose-invert prose-headings:text-ink prose-h2:text-center prose-h2:text-3xl prose-h2:font-extrabold sm:prose-h2:text-5xl prose-p:text-center prose-p:text-lg">
             <?= $page["html"] ?>
         </section>
     <?php endif ?>

@@ -111,7 +111,7 @@
 
         const labels = { php: "PHP", bash: "Terminal", sh: "Terminal", json: "JSON", js: "JavaScript", javascript: "JavaScript", html: "HTML", css: "CSS", yaml: "YAML", dockerfile: "Dockerfile", nginx: "Nginx", apache: "Apache" };
 
-        document.querySelectorAll(".prose pre").forEach((pre) => {
+        document.querySelectorAll(".prose pre:not([data-plain])").forEach((pre) => {
             const code = pre.querySelector("code");
             const language = [...(code?.classList ?? [])].find((c) => c.startsWith("language-"))?.slice(9);
 

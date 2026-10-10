@@ -81,11 +81,14 @@ hero:
     language: php
     source: |
       <?php echo "hi";
-features_title: Why Acme, *in a nutshell*
+features_title: Pick something to *build*
 features:
-  - icon: ⚡
-    title: Fast
-    details: Very.
+  - title: A JSON API
+    details: Routes and JSON responses in a few lines.
+    href: /docs/routing
+    link: Routing
+    code: |
+      $app->get('/', fn($c) => $c->json(['ok' => true]));
 cta:
   title: Try it
   action:
@@ -94,7 +97,7 @@ cta:
 ---
 ```
 
-Words in `*asterisks*` in `features_title` get the marker-pen highlight.
+Words in `*asterisks*` in `features_title` get the marker-pen highlight. Each feature card takes a `title` and `details`, plus an optional `code` snippet (with `language`, PHP by default), a link (`href` and `link` text) and an `icon`. Dumbo's home page uses them to show use cases with real code.
 
 ## Components
 
@@ -129,6 +132,7 @@ To nest components, give the outer one more colons:
 | `steps` | | Turns the ordered list inside into numbered steps |
 | `cards` | | A grid of `card` components |
 | `card` | `title`, `href`, `icon` | A card, linked when it has an `href` |
+| `prompt` | `file`, `title` | Shows a text file from `public/` with a copy button, for prompts to paste into a coding agent |
 
 ### Your own
 
