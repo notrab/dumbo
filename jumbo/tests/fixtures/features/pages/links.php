@@ -1,0 +1,1 @@
+<a href="/about">ok</a> <a href="/missing">missing</a> <a href="/api/ping">api</a> <img src="/app.css?v=1" alt=""> <a href="https://example.com/x">external</a> <a href="//cdn.example.com/x">protocol</a>

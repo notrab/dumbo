@@ -1,0 +1,9 @@
+body { max-width: 34rem; margin: 3rem auto; padding: 0 1rem; font: 17px/1.6 system-ui, sans-serif; color: #1c1917; background: #fffdf8; }
+.card { display: grid; gap: 1rem; padding: 1.5rem; border: 2px solid #1c1917; border-radius: 1rem; background: white; box-shadow: 4px 4px 0 #1c1917; }
+.card.inline { grid-template-columns: 1fr auto; }
+.card.inline .result { grid-column: 1 / -1; margin: 0; }
+label { display: grid; gap: 0.25rem; font-weight: 600; }
+input, textarea { font: inherit; padding: 0.5rem 0.75rem; border: 1px solid #a8a29e; border-radius: 0.5rem; }
+button { font: inherit; font-weight: 700; padding: 0.5rem 1rem; border: 2px solid #1c1917; border-radius: 0.5rem; background: #fcd96a; cursor: pointer; }
+.error { color: #b91c1c; font-weight: 500; font-size: 0.9rem; }
+.alert { margin: 0; padding: 0.5rem 0.75rem; border-radius: 0.5rem; background: #fee2e2; color: #991b1b; }

@@ -1,0 +1,13 @@
+{
+  "scripts": {
+    "dev": [
+      "Composer\\Config::disableProcessTimeout",
+      "jumbo dev"
+    ],
+    "build": "jumbo build",
+    "preview": [
+      "Composer\\Config::disableProcessTimeout",
+      "jumbo preview"
+    ]
+  }
+}

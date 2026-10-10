@@ -141,7 +141,7 @@ code {
     font-variant-ligatures: none;
 }
 
-pre code.hljs {
+pre code {
     @apply bg-transparent p-0;
 }
 
