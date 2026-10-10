@@ -8,4 +8,10 @@ $root = getenv("JUMBO_ROOT") ?: getcwd();
 
 require "$root/vendor/autoload.php";
 
-Dumbo\Jumbo\Site::load($root)->run();
+$site = Dumbo\Jumbo\Site::load($root);
+
+if (getenv("JUMBO_WATCH") !== "0") {
+    $site->watch();
+}
+
+$site->run();

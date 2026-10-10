@@ -1,0 +1,12 @@
+:root { --accent: #8a2be2; }
+body { max-width: 42rem; margin: 0 auto; padding: 2rem 1rem; font: 17px/1.6 system-ui, sans-serif; }
+header { display: flex; justify-content: space-between; margin-bottom: 3rem; }
+a { color: var(--accent); }
+.logo { font-weight: 700; text-decoration: none; }
+pre { overflow-x: auto; padding: 1rem; border-radius: 0.5rem; background: #f6f8fa; }
+time { color: GrayText; }
+.hl-keyword { color: #d73a49; }
+.hl-type, .hl-property { color: #6f42c1; }
+.hl-value { color: #032f62; }
+.hl-variable { color: #e36209; }
+.hl-comment { color: #6a737d; }
