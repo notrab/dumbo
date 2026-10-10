@@ -30,7 +30,7 @@
   },
   "require-dev": {
     "firebase/php-jwt": "^6.10",
-    "phpunit/phpunit": "^11.0"
+    "phpunit/phpunit": "^13.0"
   },
   "suggest": {
     "firebase/php-jwt": "Required to use Dumbo\\Helpers\\JWT"
