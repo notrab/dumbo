@@ -303,6 +303,15 @@ class Router
             return "/" . trim($path, "/");
         }
 
+        // One replace is enough when every param is a whole segment, like /users/:id
+        if (strpbrk($path, "*{?") === false) {
+            $compiled = preg_replace('~(?<=/):(\w+)(?=/|$)~', '{$1}', "/" . trim($path, "/"), -1, $params);
+
+            if (!str_contains($compiled, ":")) {
+                return $params > 1 ? self::assertUniqueNames($compiled, $path) : $compiled;
+            }
+        }
+
         // Split on slashes outside of {...} patterns
         $segments = str_contains($path, "{")
             ? preg_split('#/(?![^{]*})#', trim($path, "/"))
@@ -349,11 +358,17 @@ class Router
                 . str_repeat("]", count($optional));
         }
 
-        if (
-            substr_count($compiled, "{") > 1
-            && preg_match_all('/\{([a-zA-Z_][\w-]*)/', $compiled, $names)
-            && count($names[1]) !== count(array_unique($names[1]))
-        ) {
+        return substr_count($compiled, "{") > 1 ? self::assertUniqueNames($compiled, $path) : $compiled;
+    }
+
+    /**
+     * @throws \InvalidArgumentException If a param name is used twice
+     */
+    private static function assertUniqueNames(string $compiled, string $path): string
+    {
+        preg_match_all('/\{([a-zA-Z_][\w-]*)/', $compiled, $names);
+
+        if (count($names[1]) !== count(array_unique($names[1]))) {
             throw new \InvalidArgumentException("Route params must have unique names in $path");
         }
 
