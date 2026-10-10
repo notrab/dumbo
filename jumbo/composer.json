@@ -14,7 +14,7 @@
     "php": ">=8.3",
     "notrab/dumbo": "@dev",
     "league/commonmark": "^2.5",
-    "symfony/yaml": "^7.4",
+    "symfony/yaml": "^8.0",
     "tempest/highlight": "^2.11"
   },
   "require-dev": {
