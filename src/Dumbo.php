@@ -35,6 +35,8 @@ class Dumbo implements RequestHandlerInterface
     /** @var callable|null */
     private $notFoundHandler = null;
 
+    private bool $removeTrailingSlash = true;
+
     /**
      * @param string|null $environment Defaults to the DUMBO_ENV variable, then development
      */
@@ -184,6 +186,17 @@ class Dumbo implements RequestHandlerInterface
         return $this;
     }
 
+    /**
+     * Redirect paths ending in a slash to the same path without it (the
+     * default). When off, /users/ is served by the /users route as is.
+     */
+    public function setRemoveTrailingSlash(bool $remove): static
+    {
+        $this->removeTrailingSlash = $remove;
+
+        return $this;
+    }
+
     public function getEnvironment(): string
     {
         return $this->environment;
@@ -199,7 +212,7 @@ class Dumbo implements RequestHandlerInterface
         $uri = $request->getUri();
         $path = $uri->getPath();
 
-        if (strlen($path) > 1 && str_ends_with($path, "/")) {
+        if ($this->removeTrailingSlash && strlen($path) > 1 && str_ends_with($path, "/")) {
             $location = (string) $uri->withPath(rtrim($path, "/"));
 
             // 308 keeps the method and body; clients turn a 301 POST into a GET
