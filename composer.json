@@ -33,7 +33,8 @@
     "phpunit/phpunit": "^11.0"
   },
   "suggest": {
-    "firebase/php-jwt": "Required to use Dumbo\\Helpers\\JWT"
+    "firebase/php-jwt": "Required to use Dumbo\\Helpers\\JWT",
+    "ext-sodium": "Required to use Dumbo\\Session\\CookieStore"
   },
   "autoload": {
     "psr-4": {

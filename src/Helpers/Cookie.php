@@ -40,6 +40,15 @@ class Cookie
 
     public static function set(Context $context, string $name, string $value, array $options = []): void
     {
+        $context->header("Set-Cookie", self::header($name, $value, $options), true);
+    }
+
+    /**
+     * The Set-Cookie header value for a cookie, for adding to a response
+     * that wasn't built from the context
+     */
+    public static function header(string $name, string $value, array $options = []): string
+    {
         $prefix = $options["prefix"] ?? null;
 
         // Browsers reject prefixed cookies that don't meet these requirements
@@ -52,8 +61,7 @@ class Cookie
             unset($options["domain"]);
         }
 
-        $name = self::getPrefixedName($name, $prefix);
-        $context->header("Set-Cookie", self::buildString($name, $value, $options), true);
+        return self::buildString(self::getPrefixedName($name, $prefix), $value, $options);
     }
 
     /**

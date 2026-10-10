@@ -109,6 +109,8 @@ $app->get('/form', function ($context) {
 | `tokenLength` | `32` | Length of generated tokens |
 | `errorHandler` | `null` | Returns a response for invalid tokens |
 
+With [sessions](/docs/sessions), keep the token in the session instead of its own cookie.
+
 ## Body limit
 
 Reject requests whose `Content-Length` is larger than a number of bytes with a `413`:

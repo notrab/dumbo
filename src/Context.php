@@ -4,6 +4,7 @@ namespace Dumbo;
 
 use Closure;
 use GuzzleHttp\Psr7\Response;
+use Dumbo\Session\Session;
 use Dumbo\Stream\CallbackStream;
 use Dumbo\Stream\StreamWriter;
 use GuzzleHttp\Psr7\Utils;
@@ -54,6 +55,20 @@ class Context
     public function get(string $key): mixed
     {
         return $this->variables[$key] ?? null;
+    }
+
+    /**
+     * The visitor's session, from the session middleware
+     *
+     * @throws \LogicException If the session middleware isn't in use
+     */
+    public function session(): Session
+    {
+        $session = $this->variables["session"] ?? null;
+
+        return $session instanceof Session
+            ? $session
+            : throw new \LogicException("No session. Add the middleware with \$app->use(Dumbo\\Middleware\\Session::session())");
     }
 
     /**

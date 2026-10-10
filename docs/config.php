@@ -51,7 +51,7 @@ return [
         "🚀 Getting started" => ["introduction", "quickstart", "agents"],
         "🧠 Concepts" => ["routing", "context", "middleware", "error-handling"],
         "🧩 Middleware" => ["built-in-middleware"],
-        "🧰 Helpers" => ["cookies", "jwt", "static-files"],
+        "🧰 Helpers" => ["cookies", "sessions", "jwt", "static-files"],
         "🗺️ Guides" => ["templates", "environments", "deployment", "upgrading"],
         "🧪 Examples" => ["examples"],
     ],
