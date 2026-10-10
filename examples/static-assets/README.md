@@ -1,6 +1,6 @@
-# HTML Example
+# Static Assets Example
 
-This example demonstrates how to return HTML with Dumbo.
+This example demonstrates how to serve static files with Dumbo.
 
 ## Running the Example
 

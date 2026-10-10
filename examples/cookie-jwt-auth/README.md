@@ -1,6 +1,6 @@
 # Cookie JWT Auth Example
 
-This example showcases how to uses a JWT to store information about the logged in user.
+This example showcases how to use a JWT to store information about the logged in user.
 
 ## Getting Started
 

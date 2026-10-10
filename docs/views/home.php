@@ -4,7 +4,7 @@
 
         <div class="flex-1 text-center lg:text-left">
             <h1 class="text-5xl font-extrabold tracking-tight sm:text-7xl">
-                <span class="bg-gradient-to-r from-brand-500 to-fuchsia-500 bg-clip-text text-transparent">Dumbo</span>
+                <span class="bg-linear-to-r from-brand-500 to-fuchsia-500 bg-clip-text text-transparent">Dumbo</span>
             </h1>
             <p class="mt-4 text-2xl font-bold text-zinc-900 sm:text-4xl dark:text-white">
                 A lightweight, friendly PHP framework for HTTP
@@ -17,12 +17,12 @@
                 <a href="https://github.com/notrab/dumbo" class="rounded-full bg-zinc-100 px-6 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-200 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700">View on GitHub</a>
             </div>
             <div class="prose mx-auto mt-8 max-w-md lg:mx-0">
-                <pre class="!my-0 !py-3 text-left"><code class="language-bash">composer require notrab/dumbo</code></pre>
+                <pre class="my-0! py-3! text-left"><code class="language-bash">composer require notrab/dumbo</code></pre>
             </div>
         </div>
 
         <div class="prose mt-12 min-w-0 max-w-none flex-1 lg:mt-0">
-            <pre class="!my-0 text-sm shadow-2xl shadow-brand-500/10"><code class="language-php">&lt;?php
+            <pre class="my-0! text-sm shadow-2xl shadow-brand-500/10"><code class="language-php">&lt;?php
 
 use Dumbo\Dumbo;
 

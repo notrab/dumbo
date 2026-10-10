@@ -1,6 +1,7 @@
 <?php
 
-// Sidebar groups, in reading order. Each slug maps to content/{slug}.md
+// Sidebar groups, in reading order. Each slug maps to content/{slug}.md,
+// except examples, which lists the repo's examples directory
 return [
     "Getting started" => [
         "introduction" => "Introduction",
@@ -25,5 +26,8 @@ return [
         "environments" => "Environments",
         "deployment" => "Deployment",
         "upgrading" => "Upgrading from 1.x",
+    ],
+    "Examples" => [
+        "examples" => "All examples",
     ],
 ];

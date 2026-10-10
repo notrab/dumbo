@@ -15,35 +15,8 @@
             }
         } catch {}
     </script>
-    <script src="https://cdn.tailwindcss.com/3.4.17?plugins=typography"></script>
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: "#f6f0fe", 100: "#ede0fc", 200: "#d9c0f9", 300: "#c094f4",
-                            400: "#a75fec", 500: "#8a2be2", 600: "#7a1fcc", 700: "#6619a8",
-                            800: "#53168a", 900: "#441470", 950: "#2c0650",
-                        },
-                    },
-                },
-            },
-        };
-    </script>
+    <link rel="stylesheet" href="/app.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-    <style type="text/tailwindcss">
-        .prose pre { @apply bg-zinc-900 dark:bg-zinc-900/70 rounded-lg ring-1 ring-zinc-800 relative; }
-        .prose pre code.hljs { @apply bg-transparent p-0; }
-        .prose :not(pre) > code { @apply rounded bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 font-medium before:content-none after:content-none; }
-        .prose h2, .prose h3 { @apply scroll-mt-24 relative; }
-        .prose .anchor { @apply ml-2 font-normal no-underline text-brand-500 opacity-0 transition-opacity; }
-        .prose h2:hover .anchor, .prose h3:hover .anchor { @apply opacity-100; }
-        .copy-button { @apply absolute top-2 right-2 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-300 opacity-0 transition hover:text-white; }
-        .prose pre:hover .copy-button, .copy-button:focus { @apply opacity-100; }
-        @media (hover: none) { .copy-button { @apply opacity-100; } }
-    </style>
 </head>
 <body class="bg-white text-zinc-700 antialiased dark:bg-zinc-950 dark:text-zinc-300">
     <header class="sticky top-0 z-40 border-b border-zinc-200 bg-white/80 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/80">
@@ -53,7 +26,7 @@
             </a>
             <nav class="ml-auto flex items-center gap-1 text-sm font-medium">
                 <a href="/docs" class="rounded-md px-3 py-2 hover:text-brand-500">Docs</a>
-                <a href="https://github.com/notrab/dumbo/tree/main/examples" class="hidden rounded-md px-3 py-2 hover:text-brand-500 sm:block">Examples</a>
+                <a href="/docs/examples" class="hidden rounded-md px-3 py-2 hover:text-brand-500 sm:block">Examples</a>
                 <a href="https://discord.gg/nAq2h9BfsU" class="hidden rounded-md px-3 py-2 hover:text-brand-500 sm:block">Discord</a>
                 <a href="https://github.com/notrab/dumbo" class="rounded-md p-2 hover:text-brand-500" aria-label="GitHub">
                     <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.2 1.9 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5Z"/></svg>

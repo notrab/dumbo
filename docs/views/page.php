@@ -47,7 +47,7 @@
             </article>
 
             <div class="mt-12 border-t border-zinc-200 pt-6 text-sm dark:border-zinc-800">
-                <a href="https://github.com/notrab/dumbo/edit/main/docs/content/<?= e($slug) ?>.md" class="inline-flex items-center gap-1.5 font-medium text-brand-600 hover:underline dark:text-brand-300">
+                <a href="<?= e($editUrl) ?>" class="inline-flex items-center gap-1.5 font-medium text-brand-600 hover:underline dark:text-brand-300">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m16.9 3.5 3.6 3.6L8 19.6l-4.5 1 1-4.5L16.9 3.5Z"/></svg>
                     Edit this page on GitHub
                 </a>
@@ -55,7 +55,7 @@
 
             <nav class="mt-8 grid gap-4 sm:grid-cols-2">
                 <?php if ($prev): ?>
-                    <a href="/docs/<?= e($prev["slug"]) ?>" class="group rounded-lg border border-zinc-200 p-4 transition hover:border-brand-500 dark:border-zinc-800">
+                    <a href="<?= e($prev["href"]) ?>" class="group rounded-lg border border-zinc-200 p-4 transition hover:border-brand-500 dark:border-zinc-800">
                         <span class="text-xs text-zinc-500">Previous page</span>
                         <span class="block font-medium text-zinc-900 group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-300">&larr; <?= e($prev["title"]) ?></span>
                     </a>
@@ -63,7 +63,7 @@
                     <span class="hidden sm:block"></span>
                 <?php endif ?>
                 <?php if ($next): ?>
-                    <a href="/docs/<?= e($next["slug"]) ?>" class="group rounded-lg border border-zinc-200 p-4 text-right transition hover:border-brand-500 dark:border-zinc-800">
+                    <a href="<?= e($next["href"]) ?>" class="group rounded-lg border border-zinc-200 p-4 text-right transition hover:border-brand-500 dark:border-zinc-800">
                         <span class="text-xs text-zinc-500">Next page</span>
                         <span class="block font-medium text-zinc-900 group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-300"><?= e($next["title"]) ?> &rarr;</span>
                     </a>

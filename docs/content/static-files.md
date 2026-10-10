@@ -1,6 +1,6 @@
 # Static files
 
-The `Dumbo\Helpers\StaticFiles` helper serves files from a directory, with the right `Content-Type`, an `ETag` and `304 Not Modified` responses.
+The `Dumbo\Helpers\StaticFiles` helper serves files from a directory, with the right `Content-Type`, an `ETag` and `304 Not Modified` responses. These docs serve their CSS with it.
 
 ## As middleware
 

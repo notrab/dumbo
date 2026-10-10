@@ -1,0 +1,68 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@source "./index.php";
+@source "./views";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --color-brand-50: #f6f0fe;
+    --color-brand-100: #ede0fc;
+    --color-brand-200: #d9c0f9;
+    --color-brand-300: #c094f4;
+    --color-brand-400: #a75fec;
+    --color-brand-500: #8a2be2;
+    --color-brand-600: #7a1fcc;
+    --color-brand-700: #6619a8;
+    --color-brand-800: #53168a;
+    --color-brand-900: #441470;
+    --color-brand-950: #2c0650;
+}
+
+.prose pre {
+    @apply relative rounded-lg bg-zinc-900 ring-1 ring-zinc-800 dark:bg-zinc-900/70;
+}
+
+.prose pre code.hljs {
+    @apply bg-transparent p-0;
+}
+
+.prose :not(pre) > code {
+    @apply rounded bg-zinc-100 px-1.5 py-0.5 font-medium before:content-none after:content-none dark:bg-zinc-800;
+}
+
+.prose h2,
+.prose h3 {
+    @apply relative scroll-mt-24;
+}
+
+.prose .anchor {
+    @apply ml-2 font-normal text-brand-500 no-underline opacity-0 transition-opacity;
+}
+
+.prose h2:hover .anchor,
+.prose h3:hover .anchor {
+    @apply opacity-100;
+}
+
+.copy-button {
+    @apply absolute top-2 right-2 cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-300 opacity-0 transition hover:text-white;
+}
+
+.prose pre:hover .copy-button,
+.copy-button:focus {
+    @apply opacity-100;
+}
+
+@media (hover: none) {
+    .copy-button {
+        @apply opacity-100;
+    }
+}
+
+@layer base {
+    button {
+        cursor: pointer;
+    }
+}

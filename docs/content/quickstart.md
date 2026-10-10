@@ -82,4 +82,4 @@ $app->run();
 
 - Learn about [routing](/docs/routing)
 - See what's on the [context](/docs/context)
-- Browse the [examples](https://github.com/notrab/dumbo/tree/main/examples)
+- Browse the [examples](/docs/examples)

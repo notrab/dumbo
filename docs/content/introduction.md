@@ -32,4 +32,4 @@ Dumbo requires **PHP 8.3** or newer and [Composer](https://getcomposer.org).
 
 If you've used Hono or Express, Dumbo will feel familiar. Every handler receives a single `$context` holding the request, the response and any values your middleware shares. Handlers return a response and that's it.
 
-Ready? Head to the [quickstart](/docs/quickstart).
+Ready? Head to the [quickstart](/docs/quickstart), or browse the [examples](/docs/examples).
