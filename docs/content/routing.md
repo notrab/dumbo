@@ -76,7 +76,15 @@ $app->get('/dashboard', fn($context) => $context->text('Welcome'), [$auth]);
 
 ## Trailing slashes
 
-Requests with a trailing slash are redirected with a `301` to the same path without it, so `/users/` becomes `/users`.
+Requests with a trailing slash are redirected with a `301` to the same path without it, so `/users/` becomes `/users`. Other methods get a `308`, which keeps the method and body.
+
+To serve both forms without redirecting, for example so relative links on `/docs/` resolve under it, turn this off:
+
+```php
+$app->setRemoveTrailingSlash(false);
+```
+
+The `/users` route then answers `/users/` directly.
 
 ## 404 and 405
 

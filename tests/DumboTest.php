@@ -221,6 +221,18 @@ class DumboTest extends TestCase
         $this->assertSame("/users", $response->getHeaderLine("Location"));
     }
 
+    public function testTrailingSlashIsServedWhenRemovalDisabled()
+    {
+        $app = new Dumbo();
+        $app->setRemoveTrailingSlash(false);
+        $app->get("/folder", fn(Context $context) => $context->text($context->req->path()));
+
+        $response = $app->handle(new ServerRequest("GET", "/folder/"));
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame("/folder", (string) $response->getBody());
+    }
+
     public function testNotFoundHandlerReplacesDefault404()
     {
         $app = new Dumbo();
