@@ -175,4 +175,32 @@ class CookieTest extends TestCase
             Cookie::getSigned($this->context, "test_secret", "signed_cookie")
         );
     }
+
+    public function testSetAppliesPrefixRequirements()
+    {
+        Cookie::set($this->context, "sid", "abc", [
+            "prefix" => Cookie::PREFIX_HOST,
+            "domain" => "example.com",
+        ]);
+
+        $this->assertSame(
+            "__Host-sid=abc; Path=/; Secure",
+            $this->context->getResponse()->getHeaderLine("Set-Cookie")
+        );
+    }
+
+    public function testDeletePrefixedCookie()
+    {
+        $this->setRequestCookie("__Secure-sid=abc");
+
+        $deleted = Cookie::delete($this->context, "sid", [
+            "prefix" => Cookie::PREFIX_SECURE,
+        ]);
+
+        $this->assertSame("abc", $deleted);
+        $this->assertStringStartsWith(
+            "__Secure-sid=;",
+            $this->context->getResponse()->getHeaderLine("Set-Cookie")
+        );
+    }
 }

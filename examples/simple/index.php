@@ -5,7 +5,7 @@ require __DIR__ . "/vendor/autoload.php";
 use Dumbo\Dumbo;
 use Dumbo\HTTPException;
 
-// use Dumbo\Helpers\BearerAuth;
+// use Dumbo\Middleware\BearerAuth;
 
 $app = new Dumbo();
 $user = new Dumbo();

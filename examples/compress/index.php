@@ -3,7 +3,7 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\Compress;
+use Dumbo\Middleware\Compress;
 
 $app = new Dumbo();
 
@@ -15,7 +15,11 @@ $app->use(
 );
 
 $app->get("/", function ($c) {
-    return $c->json(["message" => "Hello, Dumbo!"]);
+    // Large enough to pass the threshold above
+    return $c->json([
+        "message" => "Hello, Dumbo!",
+        "items" => range(1, 500),
+    ]);
 });
 
 $app->run();

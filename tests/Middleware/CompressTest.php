@@ -1,9 +1,9 @@
 <?php
 
-namespace Dumbo\Tests\Helpers;
+namespace Dumbo\Tests\Middleware;
 
 use Dumbo\Context;
-use Dumbo\Helpers\Compress;
+use Dumbo\Middleware\Compress;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
@@ -68,5 +68,39 @@ class CompressTest extends TestCase
         );
 
         $this->assertSame("br", $response->getHeaderLine("Content-Encoding"));
+    }
+
+    public function testHonoursQualityValuesInAcceptEncoding()
+    {
+        $middleware = Compress::compress(["threshold" => 1]);
+        $handler = fn() => new Response(
+            200,
+            ["Content-Type" => "text/plain"],
+            str_repeat("x", 2000)
+        );
+
+        $weighted = $middleware(
+            $this->context(["Accept-Encoding" => "gzip;q=1.0, br"]),
+            $handler
+        );
+        $refused = $middleware(
+            $this->context(["Accept-Encoding" => "gzip;q=0, deflate"]),
+            $handler
+        );
+
+        $this->assertSame("gzip", $weighted->getHeaderLine("Content-Encoding"));
+        $this->assertSame("deflate", $refused->getHeaderLine("Content-Encoding"));
+    }
+
+    public function testSkipsBodiesBelowTheThreshold()
+    {
+        $middleware = Compress::compress(["threshold" => 1024]);
+
+        $response = $middleware(
+            $this->context(["Accept-Encoding" => "gzip"]),
+            fn() => new Response(200, ["Content-Type" => "text/plain"], "small")
+        );
+
+        $this->assertFalse($response->hasHeader("Content-Encoding"));
     }
 }

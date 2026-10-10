@@ -1,26 +1,26 @@
 <?php
 
 use Dumbo\Dumbo;
-use Dumbo\Middleware\CacheMiddleware;
+use Dumbo\Middleware\Cache;
 
 require __DIR__ . "/vendor/autoload.php";
 
 $app = new Dumbo();
 
 /**
- * CacheMiddleware is a middleware that adds cache control headers to the HTTP response.
+ * The Cache middleware adds Cache-Control and ETag headers to the HTTP response,
+ * and answers with 304 Not Modified when the client already has the latest version.
  * This middleware is applied only to routes that begin with "/cached",
  * meaning that only these routes will have cache control headers.
  */
 
 $app->use(
     "/cached",
-    CacheMiddleware::withHeaders(
-        type: "public",
-        mustRevalidate: true,
-        maxAge: 3600,
-        strictEtag: true
-    )
+    Cache::cache([
+        "type" => "public",
+        "mustRevalidate" => true,
+        "maxAge" => 3600,
+    ])
 );
 
 $app->get("/cached/greet", function ($c) {

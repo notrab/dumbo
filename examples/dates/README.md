@@ -1,6 +1,6 @@
 # Date Example
 
-This example demonstrates how to return text with Dumbo.
+This example demonstrates working with dates in a Dumbo route using PHP's built-in date functions.
 
 ## Running the Example
 

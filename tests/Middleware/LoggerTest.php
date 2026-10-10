@@ -1,11 +1,11 @@
 <?php
 
-namespace Dumbo\Tests\Helpers;
+namespace Dumbo\Tests\Middleware;
 
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Psr\Http\Message\ResponseInterface;
-use Dumbo\Helpers\Logger;
+use Dumbo\Middleware\Logger;
 use Dumbo\Context;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriInterface;
@@ -24,12 +24,12 @@ class LoggerTest extends TestCase
         return new Context($request, [], "");
     }
 
-    public function testLoggerInstance()
+    public function testLoggerReturnsMiddleware()
     {
         $loggerMock = $this->createMock(LoggerInterface::class);
         $middleware = Logger::logger($loggerMock);
 
-        $this->assertInstanceOf(Logger::class, $middleware);
+        $this->assertIsCallable($middleware);
     }
 
     public function testInvokeLogsIncomingAndOutgoingRequest()

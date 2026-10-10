@@ -3,7 +3,7 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\RequestId;
+use Dumbo\Middleware\RequestId;
 
 $app = new Dumbo();
 

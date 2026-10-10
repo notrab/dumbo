@@ -3,7 +3,7 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\BasicAuth;
+use Dumbo\Middleware\BasicAuth;
 
 $app = new Dumbo();
 

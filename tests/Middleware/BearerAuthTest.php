@@ -1,9 +1,9 @@
 <?php
 
-namespace Dumbo\Tests\Helpers;
+namespace Dumbo\Tests\Middleware;
 
 use PHPUnit\Framework\TestCase;
-use Dumbo\Helpers\BearerAuth;
+use Dumbo\Middleware\BearerAuth;
 use Dumbo\Context;
 use Psr\Http\Message\ServerRequestInterface;
 use GuzzleHttp\Psr7\Response;
@@ -53,6 +53,10 @@ class BearerAuthTest extends TestCase
         $this->assertStringContainsString(
             "Unauthorized request",
             (string) $response->getBody()
+        );
+        $this->assertSame(
+            'Bearer realm="API"',
+            $response->getHeaderLine("WWW-Authenticate")
         );
     }
 

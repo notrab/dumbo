@@ -6,15 +6,11 @@ use Dumbo\Dumbo;
 
 $app = new Dumbo();
 
-$app->get("/", function ($c) {
-    $env = $c->get("environment");
-
+$app->get("/", function ($c) use ($app) {
     return $c->json([
         "message" => "Hello from Dumbo!",
-        "environment" => $env["current"],
-        "is_development" => $env["isDevelopment"],
-        "is_production" => $env["isProduction"],
-        "is_testing" => $env["isTesting"],
+        "environment" => $c->get("environment"),
+        "is_development" => $app->isDevelopment(),
     ]);
 });
 

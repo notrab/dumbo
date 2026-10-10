@@ -3,7 +3,7 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\Logger;
+use Dumbo\Middleware\Logger;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Logger as MonologLogger;
 use Monolog\Handler\StreamHandler;

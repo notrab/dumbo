@@ -3,7 +3,7 @@
 require __DIR__ . "/vendor/autoload.php";
 
 use Dumbo\Dumbo;
-use Dumbo\Helpers\CORS;
+use Dumbo\Middleware\CORS;
 
 $app = new Dumbo();
 
@@ -17,10 +17,10 @@ $app->get("/", function ($context) {
 // $app->use(
 //     CORS::cors([
 //         "origin" => fn($origin, $c) => $origin,
-//         "allow_headers" => ["X-Custom-Header", "Upgrade-Insecure-Requests"],
-//         "allow_methods" => ["POST", "GET", "OPTIONS"],
-//         "expose_headers" => ["Content-Length", "X-Kuma-Revision"],
-//         "max_age" => 600,
+//         "allowHeaders" => ["X-Custom-Header", "Upgrade-Insecure-Requests"],
+//         "allowMethods" => ["POST", "GET", "OPTIONS"],
+//         "exposeHeaders" => ["Content-Length", "X-Kuma-Revision"],
+//         "maxAge" => 600,
 //         "credentials" => true,
 //     ])
 // );
