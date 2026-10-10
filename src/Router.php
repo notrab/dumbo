@@ -12,6 +12,9 @@ class Router
 
     private ?Dispatcher $dispatcher = null;
 
+    /** @var array<string, string> Compiled paths, so each is compiled once */
+    private array $compiled = [];
+
     /** @var array<array{method: string, path: string, compiled: string, handler: callable, middleware: array<callable>}> */
     private array $routes = [];
 
@@ -20,7 +23,7 @@ class Router
         $this->routes[] = [
             "method" => $method,
             "path" => $path,
-            "compiled" => self::compile($path),
+            "compiled" => $this->compiled[$path] ??= self::compile($path),
             "handler" => $handler,
             "middleware" => $middleware,
         ];
@@ -56,11 +59,13 @@ class Router
             Dispatcher::FOUND => [
                 "route" => [
                     "handler" => $result[1]["handler"],
-                    "params" => array_filter(
-                        $result[2],
-                        fn($name) => !str_starts_with($name, self::WILDCARD),
-                        ARRAY_FILTER_USE_KEY
-                    ),
+                    "params" => str_contains($result[1]["compiled"], self::WILDCARD)
+                        ? array_filter(
+                            $result[2],
+                            fn($name) => !str_starts_with($name, self::WILDCARD),
+                            ARRAY_FILTER_USE_KEY
+                        )
+                        : $result[2],
                     "routePath" => $result[1]["path"],
                     "middleware" => $result[1]["middleware"],
                 ],

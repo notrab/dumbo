@@ -131,6 +131,24 @@ class RequestWrapper
     }
 
     /**
+     * The body parsed from JSON, or an empty array for other content types
+     */
+    public function json(): array
+    {
+        return $this->is("application/json") ? $this->body() : [];
+    }
+
+    /**
+     * The form fields, or an empty array for other content types
+     */
+    public function form(): array
+    {
+        return $this->is("application/x-www-form-urlencoded") || $this->is("multipart/form-data")
+            ? $this->body()
+            : [];
+    }
+
+    /**
      * The raw request body
      */
     public function text(): string
@@ -191,19 +209,21 @@ class RequestWrapper
         return $cookies;
     }
 
+    private function is(string $mediaType): bool
+    {
+        return str_contains($this->request->getHeaderLine("Content-Type"), $mediaType);
+    }
+
     private function parseBody(): array
     {
-        $contentType = $this->request->getHeaderLine("Content-Type");
-        $body = $this->text();
-
-        if (str_contains($contentType, "application/json")) {
-            $decoded = json_decode($body, true);
+        if ($this->is("application/json")) {
+            $decoded = json_decode($this->text(), true);
 
             return is_array($decoded) ? $decoded : [];
         }
 
-        if (str_contains($contentType, "application/x-www-form-urlencoded")) {
-            parse_str($body, $data);
+        if ($this->is("application/x-www-form-urlencoded")) {
+            parse_str($this->text(), $data);
 
             return $data;
         }

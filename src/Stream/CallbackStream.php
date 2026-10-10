@@ -5,14 +5,15 @@ namespace Dumbo\Stream;
 use Psr\Http\Message\StreamInterface;
 
 /**
- * A response body produced by a callback when the response is sent, so it
- * reaches the client as it is written. Reading it any other way, e.g. in a
- * test, runs the callback and buffers the result.
+ * A response body produced by a callback as it is read. The callback runs in
+ * a Fiber that pauses at each write, so each read() returns the next chunk
+ * and nothing is buffered.
  */
 class CallbackStream implements StreamInterface
 {
-    private bool $ran = false;
-    private string $buffer = "";
+    private ?\Fiber $fiber = null;
+    private string $pending = "";
+    private bool $done = false;
     private int $position = 0;
 
     /**
@@ -23,52 +24,46 @@ class CallbackStream implements StreamInterface
     }
 
     /**
-     * Run the callback, passing each chunk to $output as it is written. If
-     * the body was already read, the rest of it is passed in one chunk.
-     *
-     * @param callable(string): void $output
+     * Up to $length bytes of the next chunk the callback writes, running it
+     * until it writes or returns
      */
-    public function pipe(callable $output): void
-    {
-        if ($this->ran) {
-            $output($this->getContents());
-
-            return;
-        }
-
-        $this->ran = true;
-        ($this->callback)(new StreamWriter(\Closure::fromCallable($output)));
-    }
-
-    /**
-     * The whole body, running the callback if it hasn't run yet
-     */
-    public function __toString(): string
-    {
-        $this->position = strlen($this->buffered());
-
-        return $this->buffer;
-    }
-
-    public function getContents(): string
-    {
-        $contents = substr($this->buffered(), $this->position);
-        $this->position = strlen($this->buffered());
-
-        return $contents;
-    }
-
     public function read(int $length): string
     {
-        $chunk = substr($this->buffered(), $this->position, $length);
+        while ($this->pending === "" && !$this->done) {
+            $this->pending = $this->nextChunk();
+        }
+
+        $chunk = substr($this->pending, 0, $length);
+        $this->pending = substr($this->pending, strlen($chunk));
         $this->position += strlen($chunk);
 
         return $chunk;
     }
 
+    public function getContents(): string
+    {
+        $contents = "";
+
+        while (!$this->eof()) {
+            $contents .= $this->read(8192);
+        }
+
+        return $contents;
+    }
+
+    public function __toString(): string
+    {
+        return $this->getContents();
+    }
+
     public function eof(): bool
     {
-        return $this->ran && $this->position >= strlen($this->buffer);
+        return $this->done && $this->pending === "";
+    }
+
+    public function tell(): int
+    {
+        return $this->position;
     }
 
     public function getSize(): ?int
@@ -106,11 +101,6 @@ class CallbackStream implements StreamInterface
         $this->seek(0);
     }
 
-    public function tell(): int
-    {
-        return $this->position;
-    }
-
     public function close(): void
     {
         $this->detach();
@@ -118,9 +108,9 @@ class CallbackStream implements StreamInterface
 
     public function detach()
     {
-        $this->ran = true;
-        $this->buffer = "";
-        $this->position = 0;
+        $this->done = true;
+        $this->pending = "";
+        $this->fiber = null;
 
         return null;
     }
@@ -130,15 +120,23 @@ class CallbackStream implements StreamInterface
         return $key === null ? [] : null;
     }
 
-    private function buffered(): string
+    /**
+     * Run the callback until its next write, or "" once it has returned
+     */
+    private function nextChunk(): string
     {
-        if (!$this->ran) {
-            $this->ran = true;
-            ($this->callback)(new StreamWriter(function (string $chunk) {
-                $this->buffer .= $chunk;
-            }));
+        $this->fiber ??= new \Fiber(function () {
+            ($this->callback)(new StreamWriter(fn(string $chunk) => \Fiber::suspend($chunk)));
+        });
+
+        $chunk = $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+
+        if ($this->fiber->isTerminated()) {
+            $this->done = true;
+
+            return "";
         }
 
-        return $this->buffer;
+        return $chunk;
     }
 }

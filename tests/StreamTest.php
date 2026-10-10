@@ -49,39 +49,42 @@ class StreamTest extends TestCase
         $this->assertSame("event: ab\ndata: x\n\n", $output);
     }
 
-    public function testPipeSendsEachChunkAsItIsWritten()
+    public function testEachReadReturnsTheNextWrite()
     {
-        $chunks = [];
         $stream = new CallbackStream(function (StreamWriter $s) {
             $s->write("one")->write("two");
         });
 
-        $stream->pipe(function (string $chunk) use (&$chunks) {
-            $chunks[] = $chunk;
-        });
-
-        $this->assertSame(["one", "two"], $chunks);
+        $this->assertSame("one", $stream->read(8192));
+        $this->assertSame("two", $stream->read(8192));
+        $this->assertFalse($stream->eof());
+        $this->assertSame("", $stream->read(8192));
         $this->assertTrue($stream->eof());
     }
 
-    public function testCallbackRunsOnceWhenReadThenPiped()
+    public function testReadSplitsChunksLongerThanTheLength()
     {
-        $runs = 0;
-        $stream = new CallbackStream(function (StreamWriter $s) use (&$runs) {
-            $runs++;
-            $s->write("body");
+        $stream = new CallbackStream(fn(StreamWriter $s) => $s->write("abcdef"));
+
+        $this->assertSame("abcd", $stream->read(4));
+        $this->assertSame("ef", $stream->read(4));
+        $this->assertSame(6, $stream->tell());
+    }
+
+    public function testCallbackOnlyRunsAsFarAsTheBodyIsRead()
+    {
+        $writes = [];
+        $stream = new CallbackStream(function (StreamWriter $s) use (&$writes) {
+            foreach (["a", "b", "c"] as $chunk) {
+                $writes[] = $chunk;
+                $s->write($chunk);
+            }
         });
 
-        $this->assertSame("bo", $stream->read(2));
-
-        $piped = "";
-        $stream->pipe(function (string $chunk) use (&$piped) {
-            $piped .= $chunk;
-        });
-
-        $this->assertSame("dy", $piped);
-        $this->assertSame("body", (string) $stream);
-        $this->assertSame(1, $runs);
+        $this->assertSame([], $writes);
+        $stream->read(1);
+        $this->assertSame(["a"], $writes);
+        $this->assertSame("bc", $stream->getContents());
     }
 
     public function testStreamSetsContentTypeAndBody()

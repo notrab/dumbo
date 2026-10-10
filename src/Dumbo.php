@@ -2,7 +2,6 @@
 
 namespace Dumbo;
 
-use Dumbo\Stream\CallbackStream;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Http\Message\ResponseInterface;
@@ -115,7 +114,7 @@ class Dumbo implements RequestHandlerInterface
         callable|MiddlewareInterface|null $middleware = null
     ): static {
         if (is_string($pathOrMiddleware) && $middleware !== null) {
-            $this->groupMiddleware[$pathOrMiddleware][] = self::toCallable($middleware);
+            $this->groupMiddleware[self::normalizePrefix($pathOrMiddleware)][] = self::toCallable($middleware);
         } elseif (is_callable($pathOrMiddleware) || $pathOrMiddleware instanceof MiddlewareInterface) {
             $this->middleware[] = self::toCallable($pathOrMiddleware);
         } else {
@@ -126,24 +125,21 @@ class Dumbo implements RequestHandlerInterface
     }
 
     /**
-     * Mount another app's routes under a prefix. Routes added to the nested
-     * app after mounting are not included.
+     * Mount another app's routes under a prefix. Its middleware runs for
+     * every request under the prefix. Routes and middleware added to the
+     * nested app after mounting are not included.
      */
     public function route(string $prefix, self $app): static
     {
-        $prefix = rtrim($prefix, "/");
+        $prefix = self::normalizePrefix($prefix);
 
-        // The nested app's scoped middleware, checked against the request path
-        // so it also covers routes with params and wildcards
-        $scoped = [];
+        foreach ($app->middleware as $middleware) {
+            $this->groupMiddleware[$prefix][] = $middleware;
+        }
 
         foreach ($app->groupMiddleware as $groupPrefix => $group) {
-            $groupPrefix = $prefix . "/" . ltrim($groupPrefix, "/");
-
             foreach ($group as $middleware) {
-                $scoped[] = fn(Context $context, callable $next) => self::coversPath($groupPrefix, $context->req->path())
-                    ? $middleware($context, $next)
-                    : $next($context);
+                $this->groupMiddleware[$prefix . $groupPrefix][] = $middleware;
             }
         }
 
@@ -152,7 +148,7 @@ class Dumbo implements RequestHandlerInterface
                 $route["method"],
                 $prefix . "/" . ltrim($route["path"], "/"),
                 $route["handler"],
-                array_merge($app->middleware, $scoped, $route["middleware"])
+                $route["middleware"]
             );
         }
 
@@ -215,12 +211,7 @@ class Dumbo implements RequestHandlerInterface
         try {
             ["route" => $route, "allowedMethods" => $allowed] = $this->router->dispatch($request);
 
-            $context = new Context(
-                $request,
-                $route["params"] ?? [],
-                $route["routePath"] ?? "",
-                $this->notFoundHandler
-            );
+            $context = $this->createContext($request, $route["params"] ?? [], $route["routePath"] ?? "");
             $context->set("environment", $this->environment);
 
             $handler = match (true) {
@@ -351,35 +342,33 @@ class Dumbo implements RequestHandlerInterface
         }
 
         $body = $response->getBody();
+        $streaming = !$body->isSeekable();
 
-        if ($body instanceof CallbackStream) {
+        if ($streaming) {
             // Send output buffers on, stopping at one that can't be removed
-            while (ob_get_level() > 0) {
-                if (!@ob_end_flush()) {
-                    break;
-                }
+            while (ob_get_level() > 0 && @ob_end_flush()) {
             }
-
-            $body->pipe(function (string $chunk) {
-                echo $chunk;
-                flush();
-            });
-
-            return;
-        }
-
-        if ($body->isSeekable()) {
+        } else {
             $body->rewind();
         }
 
         while (!$body->eof()) {
             echo $body->read(8192);
+
+            if ($streaming) {
+                flush();
+            }
         }
+    }
+
+    private function createContext(ServerRequestInterface $request, array $params, string $routePath): Context
+    {
+        return new Context($request, $params, $routePath, $this->notFoundHandler);
     }
 
     private function handleError(\Throwable $error, ServerRequestInterface $request): ResponseInterface
     {
-        $context = new Context($request, [], "");
+        $context = $this->createContext($request, [], "");
 
         if ($this->errorHandler) {
             return ($this->errorHandler)($error, $context);
@@ -423,14 +412,22 @@ class Dumbo implements RequestHandlerInterface
     }
 
     /**
-     * Whether a middleware prefix covers a path. "/admin", "/admin/" and
-     * "/admin/*" all cover /admin and everything below it.
+     * Whether a normalized middleware prefix covers a path: itself and
+     * everything below it
      */
     private static function coversPath(string $prefix, string $path): bool
     {
-        $prefix = rtrim(preg_replace('#(^|/)\*$#', "", $prefix), "/");
-
         return $prefix === "" || $path === $prefix || str_starts_with($path, "$prefix/");
+    }
+
+    /**
+     * "/admin", "admin/" and "/admin/*" all become "/admin"; "/" and "*" become ""
+     */
+    private static function normalizePrefix(string $prefix): string
+    {
+        $prefix = trim(preg_replace('#(^|/)\*$#', "", $prefix), "/");
+
+        return $prefix === "" ? "" : "/$prefix";
     }
 
     private function renderErrorPage(\Throwable $error): string

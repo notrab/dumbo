@@ -408,4 +408,28 @@ class DumboTest extends TestCase
         $this->assertSame(403, $app->request("/api/admin")->getStatusCode());
         $this->assertSame(200, $app->request("/api/about")->getStatusCode());
     }
+
+    public function testScopedMiddlewareSurvivesMountingTwice()
+    {
+        $admin = new Dumbo();
+        $admin->use("/secret", fn(Context $c, callable $next) => $c->text("denied", 403));
+        $admin->get("/secret/:id", fn(Context $c) => $c->text("secret"));
+
+        $v1 = (new Dumbo())->route("/v1", $admin);
+        $app = (new Dumbo())->route("/api", $v1);
+
+        $this->assertSame(403, $app->request("/api/v1/secret/1")->getStatusCode());
+    }
+
+    public function testJsonAndFormOnlyReadMatchingContentTypes()
+    {
+        $app = new Dumbo();
+        $app->post("/", fn(Context $c) => ["json" => $c->req->json(), "form" => $c->req->form()]);
+
+        $json = $app->request("/", "POST", [], ["a" => 1]);
+        $form = $app->request("/", "POST", ["Content-Type" => "application/x-www-form-urlencoded"], "b=2");
+
+        $this->assertSame('{"json":{"a":1},"form":[]}', (string) $json->getBody());
+        $this->assertSame('{"json":[],"form":{"b":"2"}}', (string) $form->getBody());
+    }
 }

@@ -210,8 +210,10 @@ $nestedApp->get('/nested', function($context) {
 });
 
 $app->route('/prefix', $nestedApp);
-
 ```
+
+The nested app's middleware runs for every request under the prefix. Add
+routes and middleware to it before mounting it.
 
 ### Context
 
@@ -224,6 +226,8 @@ $app->get('/', function($context) {
     $queryParam = $context->req->query('param');
     $tags = $context->req->queries('tags');
     $body = $context->req->body();
+    $json = $context->req->json(); // [] unless the body is JSON
+    $form = $context->req->form(); // [] unless the body is a form
     $rawBody = $context->req->text();
     $url = $context->req->url();
     $theme = $context->req->cookie('theme');
@@ -251,8 +255,9 @@ return $context->status(201)->json($user);
 
 `stream()` sends the body as you write it, and `streamSSE()` sends
 [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events).
-The callback runs when the response is sent, so middleware that reads the
-whole body, like `Compress` and `Cache`, leaves streams alone.
+The callback runs as the body is read, a write at a time, so it streams
+from `run()` or any PSR-7 server. Middleware that reads the whole body, like
+`Compress` and `Cache`, leaves streams alone.
 
 ```php
 <?php

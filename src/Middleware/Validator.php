@@ -45,13 +45,10 @@ class Validator
     private static function value(Context $context, string $target): array
     {
         $req = $context->req;
-        $contentType = $req->header("Content-Type") ?? "";
 
         return match ($target) {
-            "json" => str_contains($contentType, "application/json") ? $req->body() : [],
-            "form" => preg_match('#application/x-www-form-urlencoded|multipart/form-data#', $contentType)
-                ? $req->body()
-                : [],
+            "json" => $req->json(),
+            "form" => $req->form(),
             "query" => $req->query(),
             "param" => $req->param(),
             "header" => array_map(
