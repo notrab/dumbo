@@ -202,3 +202,5 @@ composer build -- --url=https://notrab.github.io/dumbo
 ```
 
 Use `--base=/dumbo` to set the sub-path on its own. Preview a build with `php -S localhost:8080 -t dist`.
+
+Dumbo's own docs deploy to GitHub Pages this way from [`.github/workflows/docs.yml`](../.github/workflows/docs.yml) on every push to `main`, and pull requests check that the build still works.
