@@ -8,6 +8,17 @@ use Psr\Http\Message\ResponseInterface;
 
 class StaticFiles
 {
+    /** Text formats that mime_content_type() reports as text/plain */
+    private const MIME_TYPES = [
+        "css" => "text/css",
+        "htm" => "text/html",
+        "html" => "text/html",
+        "js" => "text/javascript",
+        "mjs" => "text/javascript",
+        "json" => "application/json",
+        "svg" => "image/svg+xml",
+    ];
+
     /**
      * Serve files from a directory, as a route handler (using the "path"
      * route param) or as middleware (using the request path, and passing
@@ -26,7 +37,7 @@ class StaticFiles
 
             $response = $context
                 ->getResponse()
-                ->withHeader("Content-Type", mime_content_type($file) ?: "application/octet-stream")
+                ->withHeader("Content-Type", self::mimeType($file))
                 ->withHeader("Cache-Control", "public, max-age=3600")
                 ->withHeader("ETag", $etag);
 
@@ -36,6 +47,12 @@ class StaticFiles
 
             return $response->withBody(Utils::streamFor(Utils::tryFopen($file, "r")));
         };
+    }
+
+    private static function mimeType(string $file): string
+    {
+        return self::MIME_TYPES[strtolower(pathinfo($file, PATHINFO_EXTENSION))]
+            ?? (mime_content_type($file) ?: "application/octet-stream");
     }
 
     /**

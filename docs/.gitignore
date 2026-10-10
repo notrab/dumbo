@@ -1,0 +1,4 @@
+node_modules
+public/app.css
+dist
+composer.lock

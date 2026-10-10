@@ -1,6 +1,6 @@
 # Context Example
 
-This example demonstrates how to pass a render closure to context and generate a view using the latte template engine.
+This example demonstrates how to pass a render closure to context and generate a view using the Twig template engine.
 
 ## Running the Example
 

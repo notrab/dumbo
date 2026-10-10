@@ -1,0 +1,32 @@
+{
+  "require": {
+    "notrab/dumbo": "@dev",
+    "notrab/jumbo": "@dev"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../"
+    },
+    {
+      "type": "path",
+      "url": "../jumbo"
+    }
+  ],
+  "scripts": {
+    "start": [
+      "Composer\\Config::disableProcessTimeout",
+      "npm run build",
+      "jumbo dev"
+    ],
+    "build": [
+      "npm run build",
+      "jumbo build"
+    ]
+  },
+  "autoload": {
+    "psr-4": {
+      "Docs\\": "src/"
+    }
+  }
+}

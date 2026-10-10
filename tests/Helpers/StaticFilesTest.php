@@ -21,13 +21,15 @@ class StaticFilesTest extends TestCase
         mkdir($this->root . "/public-private", 0777, true);
 
         file_put_contents($this->public . "/index.html", "<h1>Hello</h1>");
+        file_put_contents($this->public . "/app.css", "body { color: red; }");
+        file_put_contents($this->public . "/app.js", "console.log(1);");
         file_put_contents($this->root . "/public-private/secret.txt", "secret");
     }
 
     protected function tearDown(): void
     {
         foreach (
-            ["/public/index.html", "/public-private/secret.txt"]
+            ["/public/index.html", "/public/app.css", "/public/app.js", "/public-private/secret.txt"]
             as $file
         ) {
             @unlink($this->root . $file);
@@ -57,6 +59,13 @@ class StaticFilesTest extends TestCase
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame("<h1>Hello</h1>", (string) $response->getBody());
         $this->assertStringStartsWith('"', $response->getHeaderLine("ETag"));
+    }
+
+    public function testSendsTheContentTypeForStylesheetsAndScripts()
+    {
+        $this->assertSame("text/css", $this->serve("app.css")->getHeaderLine("Content-Type"));
+        $this->assertSame("text/javascript", $this->serve("app.js")->getHeaderLine("Content-Type"));
+        $this->assertSame("text/html", $this->serve("index.html")->getHeaderLine("Content-Type"));
     }
 
     public function testDoesNotServeASiblingDirectorySharingThePrefix()
