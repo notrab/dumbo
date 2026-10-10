@@ -97,4 +97,24 @@ class StaticFilesTest extends TestCase
         $this->assertSame("<h1>Hello</h1>", (string) $file->getBody());
         $this->assertSame("api", (string) $route->getBody());
     }
+
+    public function testServesWithAPathParamThroughTheRouter()
+    {
+        $app = new \Dumbo\Dumbo();
+        $app->get("/assets/:path{.+}", StaticFiles::serve($this->public));
+
+        $response = $app->request("/assets/index.html");
+
+        $this->assertSame("<h1>Hello</h1>", (string) $response->getBody());
+    }
+
+    public function testWildcardRouteServesTheFullRequestPath()
+    {
+        $app = new \Dumbo\Dumbo();
+        $app->get("/public/*", StaticFiles::serve($this->root));
+
+        $response = $app->request("/public/index.html");
+
+        $this->assertSame("<h1>Hello</h1>", (string) $response->getBody());
+    }
 }

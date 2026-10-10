@@ -29,7 +29,7 @@
 ## Features
 
 - 🚀 Lightweight and fast
-- 🧩 Middleware support
+- 🧩 Middleware support, including PSR-15
 - 🛣️ Flexible routing with parameters
 - 🔒 Built-in security features (CSRF, JWT)
 - 🍪 Cookie management
@@ -39,9 +39,11 @@
 - 📝 Logging support
 - 🗃️ HTTP caching
 - 🔄 CORS support
+- 📡 Streaming and server-sent events
 - 🗜️ Response compression
 - 📦 Request body size limits
 - 🧬 Environment-based configuration
+- ✅ Request validation
 
 ## Install
 
@@ -89,6 +91,26 @@ $app->run();
 
 See the [examples](/examples) directory for more quickstarts.
 
+## FrankenPHP worker mode
+
+Keep your app in memory between requests by running it in a
+[FrankenPHP worker](https://frankenphp.dev/docs/worker/):
+
+```php
+<?php
+
+$app = new Dumbo();
+// ...routes
+
+if (function_exists('frankenphp_handle_request')) {
+    while (frankenphp_handle_request(fn() => $app->run())) {
+        gc_collect_cycles();
+    }
+} else {
+    $app->run();
+}
+```
+
 ## Upgrading from 1.x
 
 - Middleware moved from `Dumbo\Helpers` to `Dumbo\Middleware`, and
@@ -125,6 +147,10 @@ $app->get('/users', function($context) { /* ... */ });
 $app->post('/users', function($context) { /* ... */ });
 $app->put('/users/:id', function($context) { /* ... */ });
 $app->delete('/users/:id', function($context) { /* ... */ });
+
+// Several methods, or every method
+$app->on(['GET', 'POST'], '/form', function($context) { /* ... */ });
+$app->all('/anything', function($context) { /* ... */ });
 ```
 
 #### Params
@@ -139,6 +165,39 @@ $app->get('/users/:id', function($context) {
 });
 ```
 
+Constrain a param with a regex, make the last ones optional, or match
+anything with `*`. A trailing `/*` also matches the path without it.
+
+```php
+<?php
+
+$app->get('/posts/:id{[0-9]+}', fn($c) => $c->json(['id' => $c->req->param('id')]));
+$app->get('/animals/:type?', fn($c) => $c->text($c->req->param('type') ?? 'all'));
+$app->get('/files/*', fn($c) => $c->text('any file'));
+$app->get('/wild/*/card', fn($c) => $c->text('any path in between'));
+```
+
+FastRoute's `{id:\d+}` syntax works too.
+
+#### Chaining
+
+Route and middleware methods return the app, so you can chain them:
+
+```php
+<?php
+
+$app
+    ->use(Logger::logger($psrLogger))
+    ->get('/', fn($c) => $c->text('Home'))
+    ->post('/users', fn($c) => $c->json($c->req->body(), 201));
+```
+
+#### Trailing slashes
+
+Requests with a trailing slash are redirected to the path without it. `GET`
+and `HEAD` get a `301`; other methods get a `308` so the method and body are
+kept.
+
 #### Nested
 
 ```php
@@ -151,8 +210,11 @@ $nestedApp->get('/nested', function($context) {
 });
 
 $app->route('/prefix', $nestedApp);
-
 ```
+
+The nested app's middleware comes with its routes, and middleware it scopes
+to a path stays scoped under the new prefix. Add routes and middleware to it
+before mounting it.
 
 ### Context
 
@@ -165,7 +227,13 @@ $app->get('/', function($context) {
     $queryParam = $context->req->query('param');
     $tags = $context->req->queries('tags');
     $body = $context->req->body();
+    $json = $context->req->json(); // [] unless the body is JSON
+    $form = $context->req->form(); // [] unless the body is a form
+    $rawBody = $context->req->text();
+    $url = $context->req->url();
+    $theme = $context->req->cookie('theme');
     $userAgent = $context->req->header('User-Agent');
+    $psrRequest = $context->req->raw();
 });
 ```
 
@@ -178,6 +246,41 @@ return $context->json(['key' => 'value']);
 return $context->text('Hello, World!');
 return $context->html('<h1>Hello, World!</h1>');
 return $context->redirect('/new-url');
+return $context->send($csv, 'text/csv');
+
+// Set the status for responses that don't pass one
+return $context->status(201)->json($user);
+```
+
+#### Streaming
+
+`stream()` sends the body as you write it, and `streamSSE()` sends
+[server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events).
+The callback runs as the body is read, a write at a time, so it streams
+from `run()` or any PSR-7 server. Middleware that reads the whole body, like
+`Compress` and `Cache`, leaves streams alone.
+
+```php
+<?php
+
+use Dumbo\Stream\StreamWriter;
+
+$app->get('/events', function ($context) {
+    return $context->streamSSE(function (StreamWriter $stream) {
+        for ($i = 1; !$stream->aborted() && $i <= 10; $i++) {
+            $stream->writeSSE(['tick' => $i], event: 'tick', id: (string) $i);
+            $stream->sleep(1);
+        }
+    });
+});
+
+$app->get('/export', function ($context) {
+    return $context->stream(function (StreamWriter $stream) {
+        foreach (fetchRows() as $row) {
+            $stream->writeln(implode(',', $row));
+        }
+    }, 'text/csv');
+});
 ```
 
 ### Middleware
@@ -206,19 +309,83 @@ use Dumbo\Middleware\CORS;
 use Dumbo\Middleware\Csrf;
 use Dumbo\Middleware\Logger;
 use Dumbo\Middleware\RequestId;
+use Dumbo\Middleware\Validator;
 
 $app->use(Logger::logger($psrLogger));
 $app->use(RequestId::requestId());
 $app->use(CORS::cors(['origin' => ['https://example.com']]));
 $app->use(Compress::compress());
 $app->use(BodyLimit::bodyLimit(1024 * 1024));
-$app->use('/admin', BasicAuth::basicAuth('user:password'));
+$app->use('/admin/*', BasicAuth::basicAuth('user:password'));
 $app->use('/api', BearerAuth::bearerAuth('secret-token'));
 $app->use('/blog', Cache::cache(['type' => 'public', 'maxAge' => 3600]));
+$app->use('/orgs/:org/admin', $requireOrgAdmin);
 ```
 
-Helpers for cookies, JWTs and static files live in `Dumbo\Helpers`. The JWT
-helper needs `firebase/php-jwt`:
+#### Validation
+
+`Validator::validator()` checks the `json`, `form`, `query`, `param`,
+`header` or `cookie` part of a request before your handler runs. Return a
+response to reject the request, or the validated data, which the handler
+reads with `$context->req->valid()`. Bring whichever validation library you
+like.
+
+```php
+<?php
+
+use Dumbo\Middleware\Validator;
+
+$app->post('/users', function ($context) {
+    $user = $context->req->valid('json');
+
+    return $context->json($user, 201);
+}, [
+    Validator::validator('json', function (array $value, $context) {
+        if (!filter_var($value['email'] ?? '', FILTER_VALIDATE_EMAIL)) {
+            return $context->json(['error' => 'A valid email is required'], 400);
+        }
+
+        return ['email' => strtolower($value['email'])];
+    }),
+]);
+```
+
+#### PSR-15 middleware
+
+Any [PSR-15](https://www.php-fig.org/psr/psr-15/) middleware works anywhere
+Dumbo middleware does. Request attributes it adds are available from
+`$context->req->raw()`.
+
+```php
+<?php
+
+$app->use(new Middlewares\ClientIp());
+
+$app->get('/', function ($context) {
+    return $context->text($context->req->raw()->getAttribute('client-ip'));
+});
+```
+
+Dumbo is also a PSR-15 request handler, so `$app->handle($request)` works
+with any PSR-7 server request.
+
+Helpers for cookies, JWTs and static files live in `Dumbo\Helpers`.
+`StaticFiles::serve()` uses the `path` route param when there is one, and
+the full request path otherwise:
+
+```php
+<?php
+
+use Dumbo\Helpers\StaticFiles;
+
+// /assets/app.css serves ./public/app.css
+$app->get('/assets/:path{.+}', StaticFiles::serve(__DIR__ . '/public'));
+
+// /static/app.css serves ./public/static/app.css
+$app->get('/static/*', StaticFiles::serve(__DIR__ . '/public'));
+```
+
+The JWT helper needs `firebase/php-jwt`:
 
 ```bash
 composer require firebase/php-jwt
@@ -257,4 +424,53 @@ $app->get('/api/data', function ($context) {
 });
 
 $app->run();
+```
+
+### Testing
+
+`$app->request()` sends a request straight to your app, without a server.
+Arrays are sent as JSON.
+
+```php
+<?php
+
+$response = $app->request('/users?page=2');
+$response = $app->request('/users', 'POST', ['Authorization' => 'Bearer token'], ['name' => 'Jamie']);
+
+$this->assertSame(201, $response->getStatusCode());
+```
+
+### Errors and 404s
+
+Throw an `HTTPException` to respond with a JSON error, or handle every
+uncaught exception yourself with `onError()`. Requests that match no route go
+to `notFound()`, which runs after middleware like any route handler. Call
+`$context->notFound()` from a handler to send the same response.
+
+```php
+<?php
+
+use Dumbo\HTTPException;
+
+$app->onError(function ($error, $context) {
+    return $context->json(['error' => $error->getMessage()], 500);
+});
+
+$app->notFound(function ($context) {
+    return $context->json(['error' => 'Not found'], 404);
+});
+
+$app->get('/users/:id', function ($context) {
+    $user = findUser($context->req->param('id'));
+
+    if (!$user) {
+        return $context->notFound();
+    }
+
+    if (!$user->active) {
+        throw new HTTPException(403, 'User is disabled', 'USER_DISABLED');
+    }
+
+    return $context->json($user);
+});
 ```

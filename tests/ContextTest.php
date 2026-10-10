@@ -71,4 +71,24 @@ class ContextTest extends TestCase
             $response->getHeaderLine("Content-Type")
         );
     }
+
+    public function testSendReplacesAnEarlierBody()
+    {
+        $context = $this->context();
+
+        $context->text("first");
+        $response = $context->json(["a" => 1]);
+
+        $this->assertSame('{"a":1}', (string) $response->getBody());
+    }
+
+    public function testSendKeepsHeadersSetEarlier()
+    {
+        $context = $this->context();
+
+        $context->header("X-Custom", "kept");
+        $response = $context->text("body");
+
+        $this->assertSame("kept", $response->getHeaderLine("X-Custom"));
+    }
 }

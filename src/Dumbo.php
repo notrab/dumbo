@@ -6,11 +6,13 @@ use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Dumbo - A lightweight, friendly PHP framework for HTTP
  */
-class Dumbo
+class Dumbo implements RequestHandlerInterface
 {
     public const ENV_PRODUCTION = "production";
     public const ENV_DEVELOPMENT = "development";
@@ -30,6 +32,9 @@ class Dumbo
     /** @var callable|null */
     private $errorHandler = null;
 
+    /** @var callable|null */
+    private $notFoundHandler = null;
+
     /**
      * @param string|null $environment Defaults to the DUMBO_ENV variable, then development
      */
@@ -41,86 +46,142 @@ class Dumbo
             (($_SERVER["DUMBO_ENV"] ?? null) ?: getenv("DUMBO_ENV") ?: self::ENV_DEVELOPMENT);
     }
 
-    public function get(string $path, callable $handler, array $middleware = []): void
+    public function get(string $path, callable $handler, array $middleware = []): static
     {
-        $this->router->addRoute("GET", $path, $handler, $middleware);
+        return $this->on("GET", $path, $handler, $middleware);
     }
 
-    public function post(string $path, callable $handler, array $middleware = []): void
+    public function post(string $path, callable $handler, array $middleware = []): static
     {
-        $this->router->addRoute("POST", $path, $handler, $middleware);
+        return $this->on("POST", $path, $handler, $middleware);
     }
 
-    public function put(string $path, callable $handler, array $middleware = []): void
+    public function put(string $path, callable $handler, array $middleware = []): static
     {
-        $this->router->addRoute("PUT", $path, $handler, $middleware);
+        return $this->on("PUT", $path, $handler, $middleware);
     }
 
-    public function patch(string $path, callable $handler, array $middleware = []): void
+    public function patch(string $path, callable $handler, array $middleware = []): static
     {
-        $this->router->addRoute("PATCH", $path, $handler, $middleware);
+        return $this->on("PATCH", $path, $handler, $middleware);
     }
 
-    public function delete(string $path, callable $handler, array $middleware = []): void
+    public function delete(string $path, callable $handler, array $middleware = []): static
     {
-        $this->router->addRoute("DELETE", $path, $handler, $middleware);
+        return $this->on("DELETE", $path, $handler, $middleware);
     }
 
-    public function head(string $path, callable $handler, array $middleware = []): void
+    public function head(string $path, callable $handler, array $middleware = []): static
     {
-        $this->router->addRoute("HEAD", $path, $handler, $middleware);
+        return $this->on("HEAD", $path, $handler, $middleware);
     }
 
-    public function options(string $path, callable $handler, array $middleware = []): void
+    public function options(string $path, callable $handler, array $middleware = []): static
     {
-        $this->router->addRoute("OPTIONS", $path, $handler, $middleware);
+        return $this->on("OPTIONS", $path, $handler, $middleware);
     }
 
-    public function all(string $path, callable $handler, array $middleware = []): void
+    public function all(string $path, callable $handler, array $middleware = []): static
     {
-        foreach (self::METHODS as $method) {
-            $this->router->addRoute($method, $path, $handler, $middleware);
-        }
+        return $this->on(self::METHODS, $path, $handler, $middleware);
     }
 
     /**
-     * Add middleware to every route, or only to routes under a path prefix
+     * Add a route for one or more methods
      *
-     * @param string|callable $pathOrMiddleware A path prefix, or the middleware itself
+     * @param string|array<string> $methods
+     * @param array<callable|MiddlewareInterface> $middleware
      */
-    public function use(string|callable $pathOrMiddleware, ?callable $middleware = null): void
+    public function on(string|array $methods, string $path, callable $handler, array $middleware = []): static
     {
+        $this->router->addRoute(
+            array_map(strtoupper(...), (array) $methods),
+            $path,
+            $handler,
+            array_map(self::toCallable(...), $middleware)
+        );
+
+        return $this;
+    }
+
+    /**
+     * Add middleware to every route, or only to routes under a path prefix.
+     * Middleware is a callable($context, $next) or a PSR-15 middleware.
+     *
+     * @param string|callable|MiddlewareInterface $pathOrMiddleware A path prefix, or the middleware itself
+     */
+    public function use(
+        string|callable|MiddlewareInterface $pathOrMiddleware,
+        callable|MiddlewareInterface|null $middleware = null
+    ): static {
         if (is_string($pathOrMiddleware) && $middleware !== null) {
-            $this->groupMiddleware[$pathOrMiddleware][] = $middleware;
-        } elseif (is_callable($pathOrMiddleware)) {
-            $this->middleware[] = $pathOrMiddleware;
+            $this->groupMiddleware[self::normalizePrefix($pathOrMiddleware)][] = self::toCallable($middleware);
+        } elseif (is_callable($pathOrMiddleware) || $pathOrMiddleware instanceof MiddlewareInterface) {
+            $this->middleware[] = self::toCallable($pathOrMiddleware);
         } else {
             throw new \InvalidArgumentException("Invalid middleware configuration");
         }
+
+        return $this;
     }
 
     /**
-     * Mount another app's routes under a prefix. Routes added to the nested
-     * app after mounting are not included.
+     * Mount another app's routes under a prefix, with its middleware. Routes
+     * and middleware added to the nested app after mounting are not included.
      */
-    public function route(string $prefix, self $app): void
+    public function route(string $prefix, self $app): static
     {
+        $prefix = self::normalizePrefix($prefix);
+        $scoped = [];
+
+        foreach ($app->groupMiddleware as $groupPrefix => $group) {
+            foreach ($group as $middleware) {
+                $scoped[] = new ScopedMiddleware($prefix . $groupPrefix, \Closure::fromCallable($middleware));
+            }
+        }
+
         foreach ($app->router->getRoutes() as $route) {
             $this->router->addRoute(
                 $route["method"],
-                rtrim($prefix, "/") . "/" . ltrim($route["path"], "/"),
+                $prefix . "/" . ltrim($route["path"], "/"),
                 $route["handler"],
-                array_merge($app->getMiddlewareForPath($route["path"]), $route["middleware"])
+                array_merge($app->middleware, $scoped, array_map(
+                    fn($middleware) => $middleware instanceof ScopedMiddleware ? $middleware->under($prefix) : $middleware,
+                    $route["middleware"]
+                ))
             );
         }
+
+        return $this;
     }
 
     /**
-     * Set a handler for uncaught exceptions, called with ($error, $context)
+     * Set a handler for uncaught exceptions, called with ($error, $context).
+     * Responses it sends default to the HTTPException's status, or 500.
      */
-    public function onError(callable $handler): void
+    public function onError(callable $handler): static
     {
-        $this->errorHandler = $handler;
+        $this->errorHandler = fn(\Throwable $error, Context $context) => $this->toResponse(
+            $context->status($error instanceof HTTPException ? $error->getStatusCode() : 500),
+            $handler($error, $context)
+        );
+
+        return $this;
+    }
+
+    /**
+     * Set the handler for requests that match no route, called with ($context).
+     * It runs after middleware, like a route handler, and its responses
+     * default to a 404 status.
+     */
+    public function notFound(callable $handler): static
+    {
+        $this->notFoundHandler = fn(Context $context) => $this->toResponse(
+            $context->status(404),
+            $handler($context)
+        );
+
+        return $this;
     }
 
     public function getEnvironment(): string
@@ -141,13 +202,16 @@ class Dumbo
         if (strlen($path) > 1 && str_ends_with($path, "/")) {
             $location = (string) $uri->withPath(rtrim($path, "/"));
 
-            return new Response(301, ["Location" => $location]);
+            // 308 keeps the method and body; clients turn a 301 POST into a GET
+            $status = in_array($request->getMethod(), ["GET", "HEAD"], true) ? 301 : 308;
+
+            return new Response($status, ["Location" => $location]);
         }
 
         try {
             ["route" => $route, "allowedMethods" => $allowed] = $this->router->dispatch($request);
 
-            $context = new Context($request, $route["params"] ?? [], $route["routePath"] ?? "");
+            $context = $this->createContext($request, $route["params"] ?? [], $route["routePath"] ?? "");
             $context->set("environment", $this->environment);
 
             $handler = match (true) {
@@ -157,7 +221,7 @@ class Dumbo
                     ["Allow" => implode(", ", $allowed)],
                     "405 Method Not Allowed"
                 ),
-                default => fn() => new Response(404, [], "404 Not Found"),
+                default => fn(Context $context) => $context->notFound(),
             };
 
             return $this->runMiddleware(
@@ -174,6 +238,27 @@ class Dumbo
     }
 
     /**
+     * Send a request to the app without a server, e.g. in tests. Arrays and
+     * objects are sent as a JSON body.
+     */
+    public function request(
+        string $path,
+        string $method = "GET",
+        array $headers = [],
+        mixed $body = null
+    ): ResponseInterface {
+        if (is_array($body) || is_object($body)) {
+            $body = json_encode($body);
+            $headers += ["Content-Type" => "application/json"];
+        }
+
+        $request = new ServerRequest($method, $path, $headers, $body);
+        parse_str($request->getUri()->getQuery(), $query);
+
+        return $this->handle($request->withQueryParams($query));
+    }
+
+    /**
      * Handle the request from PHP's globals and send the response
      */
     public function run(): void
@@ -187,27 +272,60 @@ class Dumbo
         $this->send($response);
     }
 
+    /**
+     * Adapt a PSR-15 middleware to a Dumbo callable. A request it passes on,
+     * e.g. with added attributes, replaces the context's request.
+     */
+    private static function toCallable(callable|MiddlewareInterface $middleware): callable
+    {
+        if (!$middleware instanceof MiddlewareInterface) {
+            return $middleware;
+        }
+
+        return fn(Context $context, callable $next) => $middleware->process(
+            $context->req->raw(),
+            new class ($context, $next) implements RequestHandlerInterface {
+                public function __construct(private Context $context, private \Closure $next)
+                {
+                }
+
+                public function handle(ServerRequestInterface $request): ResponseInterface
+                {
+                    $this->context->req = $this->context->req->withRequest($request);
+
+                    return ($this->next)($this->context);
+                }
+            }
+        );
+    }
+
     private function runMiddleware(Context $context, callable $handler, array $middleware): ResponseInterface
     {
         $next = fn(Context $context) => $this->toResponse($context, $handler($context));
 
         foreach (array_reverse($middleware) as $mw) {
-            $next = fn(Context $context) => $this->toResponse($context, $mw($context, $next), $next);
+            $next = function (Context $context) use ($mw, $next): ResponseInterface {
+                $response = null;
+                $result = $mw($context, function (Context $context) use ($next, &$response) {
+                    return $response = $next($context);
+                });
+
+                // Returning nothing continues the chain, unless the middleware already did
+                return $this->toResponse($context, $result ?? $response ?? $next($context));
+            };
         }
 
         return $next($context);
     }
 
     /**
-     * Turn whatever a handler or middleware returned into a response. A null
-     * from middleware continues to the next one; a null from a handler sends
-     * the context's response; anything else is sent as JSON.
+     * Turn whatever a handler returned into a response: null sends the
+     * context's response and anything else is sent as JSON
      */
-    private function toResponse(Context $context, mixed $result, ?callable $next = null): ResponseInterface
+    private function toResponse(Context $context, mixed $result): ResponseInterface
     {
         return match (true) {
             $result instanceof ResponseInterface => $result,
-            $result === null && $next !== null => $next($context),
             $result === null => $context->getResponse(),
             default => $context->json($result),
         };
@@ -223,12 +341,34 @@ class Dumbo
             }
         }
 
-        echo $response->getBody();
+        $body = $response->getBody();
+        $streaming = !$body->isSeekable();
+
+        if ($streaming) {
+            // Send output buffers on, stopping at one that can't be removed
+            while (ob_get_level() > 0 && @ob_end_flush()) {
+            }
+        } else {
+            $body->rewind();
+        }
+
+        while (!$body->eof()) {
+            echo $body->read(8192);
+
+            if ($streaming) {
+                flush();
+            }
+        }
+    }
+
+    private function createContext(ServerRequestInterface $request, array $params, string $routePath): Context
+    {
+        return new Context($request, $params, $routePath, $this->notFoundHandler);
     }
 
     private function handleError(\Throwable $error, ServerRequestInterface $request): ResponseInterface
     {
-        $context = new Context($request, [], "");
+        $context = $this->createContext($request, [], "");
 
         if ($this->errorHandler) {
             return ($this->errorHandler)($error, $context);
@@ -263,14 +403,43 @@ class Dumbo
         $middleware = $this->middleware;
 
         foreach ($this->groupMiddleware as $prefix => $group) {
-            $prefix = rtrim($prefix, "/");
-
-            if ($prefix === "" || $path === $prefix || str_starts_with($path, "$prefix/")) {
+            if (self::coversPath($prefix, $path)) {
                 $middleware = array_merge($middleware, $group);
             }
         }
 
         return $middleware;
+    }
+
+    /**
+     * Whether a normalized middleware prefix covers a path: itself and
+     * everything below it. Param segments like :org match any segment.
+     *
+     * @internal
+     */
+    public static function coversPath(string $prefix, string $path): bool
+    {
+        $segments = explode("/", $path);
+
+        foreach (explode("/", $prefix) as $i => $expected) {
+            $actual = $segments[$i] ?? null;
+
+            if ($actual === null || ($expected !== $actual && !in_array($expected[0] ?? "", [":", "{", "*"], true))) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * "/admin", "admin/" and "/admin/*" all become "/admin"; "/" and "*" become ""
+     */
+    private static function normalizePrefix(string $prefix): string
+    {
+        $prefix = trim(preg_replace('#(^|/)\*$#', "", $prefix), "/");
+
+        return $prefix === "" ? "" : "/$prefix";
     }
 
     private function renderErrorPage(\Throwable $error): string
