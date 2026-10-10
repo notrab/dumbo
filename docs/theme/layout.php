@@ -94,6 +94,7 @@
             <?php if ($config["footer"]["text"]): ?>
                 <p class="mt-1"><?= e($config["footer"]["text"]) ?></p>
             <?php endif ?>
+            <p class="mt-3 text-xs opacity-75">Built with <a href="https://github.com/notrab/dumbo/tree/main/jumbo" class="font-semibold underline underline-offset-2 hover:opacity-100">Jumbo</a></p>
         </footer>
     <?php endif ?>
 
