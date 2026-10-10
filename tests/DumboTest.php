@@ -279,4 +279,28 @@ class DumboTest extends TestCase
         $this->assertSame("POST", (string) $app->handle(new ServerRequest("POST", "/form"))->getBody());
         $this->assertSame(405, $app->handle(new ServerRequest("PUT", "/form"))->getStatusCode());
     }
+
+    public function testRouteMethodsAreChainable()
+    {
+        $app = (new Dumbo())
+            ->use(fn(Context $c, callable $next) => $next($c))
+            ->get("/a", fn(Context $c) => $c->text("a"))
+            ->post("/b", fn(Context $c) => $c->text("b"));
+
+        $this->assertSame("a", (string) $app->handle(new ServerRequest("GET", "/a"))->getBody());
+        $this->assertSame("b", (string) $app->handle(new ServerRequest("POST", "/b"))->getBody());
+    }
+
+    public function testPathScopedMiddlewareAcceptsAWildcard()
+    {
+        $app = new Dumbo();
+        $app->use("/admin/*", fn(Context $c, callable $next) => $c->text("denied", 403));
+        $app->get("/admin", fn(Context $c) => $c->text("admin"));
+        $app->get("/admin/users", fn(Context $c) => $c->text("users"));
+        $app->get("/public", fn(Context $c) => $c->text("public"));
+
+        $this->assertSame(403, $app->handle(new ServerRequest("GET", "/admin"))->getStatusCode());
+        $this->assertSame(403, $app->handle(new ServerRequest("GET", "/admin/users"))->getStatusCode());
+        $this->assertSame(200, $app->handle(new ServerRequest("GET", "/public"))->getStatusCode());
+    }
 }

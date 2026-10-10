@@ -164,15 +164,31 @@ $app->get('/users/:id', function($context) {
 });
 ```
 
-Constrain a param with a regex using `{name:pattern}`. Requests that don't
-match fall through to a 404:
+Constrain a param with a regex, make the last ones optional, or match
+anything with `*`. A trailing `/*` also matches the path without it.
 
 ```php
 <?php
 
-$app->get('/posts/{id:\d+}', function($context) {
-    return $context->json(['id' => $context->req->param('id')]);
-});
+$app->get('/posts/:id{[0-9]+}', fn($c) => $c->json(['id' => $c->req->param('id')]));
+$app->get('/animals/:type?', fn($c) => $c->text($c->req->param('type') ?? 'all'));
+$app->get('/files/*', fn($c) => $c->text('any file'));
+$app->get('/wild/*/card', fn($c) => $c->text('any path in between'));
+```
+
+FastRoute's `{id:\d+}` syntax works too.
+
+#### Chaining
+
+Route and middleware methods return the app, so you can chain them:
+
+```php
+<?php
+
+$app
+    ->use(Logger::logger($psrLogger))
+    ->get('/', fn($c) => $c->text('Home'))
+    ->post('/users', fn($c) => $c->json($c->req->body(), 201));
 ```
 
 #### Trailing slashes
@@ -286,7 +302,7 @@ $app->use(RequestId::requestId());
 $app->use(CORS::cors(['origin' => ['https://example.com']]));
 $app->use(Compress::compress());
 $app->use(BodyLimit::bodyLimit(1024 * 1024));
-$app->use('/admin', BasicAuth::basicAuth('user:password'));
+$app->use('/admin/*', BasicAuth::basicAuth('user:password'));
 $app->use('/api', BearerAuth::bearerAuth('secret-token'));
 $app->use('/blog', Cache::cache(['type' => 'public', 'maxAge' => 3600]));
 ```

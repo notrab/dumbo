@@ -211,4 +211,48 @@ class RouterTest extends TestCase
         $this->assertEquals(["id" => "42"], $match["route"]["params"]);
         $this->assertNull($miss["route"]);
     }
+
+    private function params(string $route, string $path): ?array
+    {
+        $router = new Router();
+        $router->addRoute("GET", $route, fn(Context $c) => $c->text("ok"));
+
+        return $router->dispatch(new ServerRequest("GET", $path))["route"]["params"] ?? null;
+    }
+
+    public function testHonoStyleRegexParams()
+    {
+        $this->assertEquals(["id" => "42"], $this->params("/posts/:id{[0-9]+}", "/posts/42"));
+        $this->assertNull($this->params("/posts/:id{[0-9]+}", "/posts/abc"));
+        $this->assertEquals(["year" => "2026"], $this->params("/y/:year{[0-9]{4}}", "/y/2026"));
+        $this->assertEquals(["path" => "a/b.png"], $this->params("/img/:path{.+\\.png}", "/img/a/b.png"));
+    }
+
+    public function testOptionalParams()
+    {
+        $this->assertEquals([], $this->params("/animals/:type?", "/animals"));
+        $this->assertEquals(["type" => "cat"], $this->params("/animals/:type?", "/animals/cat"));
+        $this->assertEquals(["a" => "1", "b" => "2"], $this->params("/x/:a?/:b?", "/x/1/2"));
+    }
+
+    public function testOptionalParamsMustComeLast()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        (new Router())->addRoute("GET", "/x/:a?/y", fn() => null);
+    }
+
+    public function testWildcards()
+    {
+        $this->assertEquals([], $this->params("/static/*", "/static"));
+        $this->assertEquals([], $this->params("/static/*", "/static/css/app.css"));
+        $this->assertEquals([], $this->params("/wild/*/card", "/wild/any/thing/card"));
+        $this->assertNull($this->params("/wild/*/card", "/wild/card"));
+    }
+
+    public function testFastRoutePlaceholdersAreLeftAlone()
+    {
+        $this->assertEquals(["lang" => "en"], $this->params("/{lang:en|fr}", "/en"));
+        $this->assertEquals(["rest" => "a/b"], $this->params("/files/{rest:.*}", "/files/a/b"));
+    }
 }

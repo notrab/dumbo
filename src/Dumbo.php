@@ -47,44 +47,44 @@ class Dumbo implements RequestHandlerInterface
             (($_SERVER["DUMBO_ENV"] ?? null) ?: getenv("DUMBO_ENV") ?: self::ENV_DEVELOPMENT);
     }
 
-    public function get(string $path, callable $handler, array $middleware = []): void
+    public function get(string $path, callable $handler, array $middleware = []): static
     {
-        $this->on("GET", $path, $handler, $middleware);
+        return $this->on("GET", $path, $handler, $middleware);
     }
 
-    public function post(string $path, callable $handler, array $middleware = []): void
+    public function post(string $path, callable $handler, array $middleware = []): static
     {
-        $this->on("POST", $path, $handler, $middleware);
+        return $this->on("POST", $path, $handler, $middleware);
     }
 
-    public function put(string $path, callable $handler, array $middleware = []): void
+    public function put(string $path, callable $handler, array $middleware = []): static
     {
-        $this->on("PUT", $path, $handler, $middleware);
+        return $this->on("PUT", $path, $handler, $middleware);
     }
 
-    public function patch(string $path, callable $handler, array $middleware = []): void
+    public function patch(string $path, callable $handler, array $middleware = []): static
     {
-        $this->on("PATCH", $path, $handler, $middleware);
+        return $this->on("PATCH", $path, $handler, $middleware);
     }
 
-    public function delete(string $path, callable $handler, array $middleware = []): void
+    public function delete(string $path, callable $handler, array $middleware = []): static
     {
-        $this->on("DELETE", $path, $handler, $middleware);
+        return $this->on("DELETE", $path, $handler, $middleware);
     }
 
-    public function head(string $path, callable $handler, array $middleware = []): void
+    public function head(string $path, callable $handler, array $middleware = []): static
     {
-        $this->on("HEAD", $path, $handler, $middleware);
+        return $this->on("HEAD", $path, $handler, $middleware);
     }
 
-    public function options(string $path, callable $handler, array $middleware = []): void
+    public function options(string $path, callable $handler, array $middleware = []): static
     {
-        $this->on("OPTIONS", $path, $handler, $middleware);
+        return $this->on("OPTIONS", $path, $handler, $middleware);
     }
 
-    public function all(string $path, callable $handler, array $middleware = []): void
+    public function all(string $path, callable $handler, array $middleware = []): static
     {
-        $this->on(self::METHODS, $path, $handler, $middleware);
+        return $this->on(self::METHODS, $path, $handler, $middleware);
     }
 
     /**
@@ -93,13 +93,15 @@ class Dumbo implements RequestHandlerInterface
      * @param string|array<string> $methods
      * @param array<callable|MiddlewareInterface> $middleware
      */
-    public function on(string|array $methods, string $path, callable $handler, array $middleware = []): void
+    public function on(string|array $methods, string $path, callable $handler, array $middleware = []): static
     {
         $middleware = array_map(self::toCallable(...), $middleware);
 
         foreach ((array) $methods as $method) {
             $this->router->addRoute(strtoupper($method), $path, $handler, $middleware);
         }
+
+        return $this;
     }
 
     /**
@@ -111,7 +113,7 @@ class Dumbo implements RequestHandlerInterface
     public function use(
         string|callable|MiddlewareInterface $pathOrMiddleware,
         callable|MiddlewareInterface|null $middleware = null
-    ): void {
+    ): static {
         if (is_string($pathOrMiddleware) && $middleware !== null) {
             $this->groupMiddleware[$pathOrMiddleware][] = self::toCallable($middleware);
         } elseif (is_callable($pathOrMiddleware) || $pathOrMiddleware instanceof MiddlewareInterface) {
@@ -119,13 +121,15 @@ class Dumbo implements RequestHandlerInterface
         } else {
             throw new \InvalidArgumentException("Invalid middleware configuration");
         }
+
+        return $this;
     }
 
     /**
      * Mount another app's routes under a prefix. Routes added to the nested
      * app after mounting are not included.
      */
-    public function route(string $prefix, self $app): void
+    public function route(string $prefix, self $app): static
     {
         foreach ($app->router->getRoutes() as $route) {
             $this->router->addRoute(
@@ -135,23 +139,29 @@ class Dumbo implements RequestHandlerInterface
                 array_merge($app->getMiddlewareForPath($route["path"]), $route["middleware"])
             );
         }
+
+        return $this;
     }
 
     /**
      * Set a handler for uncaught exceptions, called with ($error, $context)
      */
-    public function onError(callable $handler): void
+    public function onError(callable $handler): static
     {
         $this->errorHandler = $handler;
+
+        return $this;
     }
 
     /**
      * Set the handler for requests that match no route, called with ($context).
      * It runs after middleware, like a route handler.
      */
-    public function notFound(callable $handler): void
+    public function notFound(callable $handler): static
     {
         $this->notFoundHandler = $handler;
+
+        return $this;
     }
 
     public function getEnvironment(): string
@@ -350,7 +360,8 @@ class Dumbo implements RequestHandlerInterface
         $middleware = $this->middleware;
 
         foreach ($this->groupMiddleware as $prefix => $group) {
-            $prefix = rtrim($prefix, "/");
+            // "/admin", "/admin/" and "/admin/*" all cover /admin and below
+            $prefix = rtrim(preg_replace('#(^|/)\*$#', "", $prefix), "/");
 
             if ($prefix === "" || $path === $prefix || str_starts_with($path, "$prefix/")) {
                 $middleware = array_merge($middleware, $group);
