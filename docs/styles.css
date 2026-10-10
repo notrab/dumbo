@@ -1,12 +1,16 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
-@source "./index.php";
+@source "./app.php";
 @source "./views";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
+    --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
     --color-brand-50: #f6f0fe;
     --color-brand-100: #ede0fc;
     --color-brand-200: #d9c0f9;
@@ -18,18 +22,122 @@
     --color-brand-800: #53168a;
     --color-brand-900: #441470;
     --color-brand-950: #2c0650;
+
+    /* Peanut yellow, for highlights and stickers */
+    --color-peanut-100: #fef6d8;
+    --color-peanut-200: #fdeaa5;
+    --color-peanut-300: #fcd96a;
+    --color-peanut-400: #f9c536;
+
+    /* Borders and hard shadows: near black, or near white in dark mode */
+    --color-ink: #1c1917;
+    --color-paper: #fffcf3;
+
+    --animate-wiggle: wiggle 0.5s ease-in-out;
+    --animate-float: float 4s ease-in-out infinite;
+    --animate-sway: sway 3s ease-in-out infinite;
+
+    @keyframes wiggle {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-12deg); }
+        75% { transform: rotate(12deg); }
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0) rotate(-3deg); }
+        50% { transform: translateY(-12px) rotate(3deg); }
+    }
+
+    @keyframes sway {
+        0%, 100% { transform: rotate(-6deg); }
+        50% { transform: rotate(6deg); }
+    }
+}
+
+.dark {
+    --color-ink: #e7e5e4;
+    --color-paper: #0c0a09;
+}
+
+/* A chunky outlined box with a hard offset shadow */
+@utility pop {
+    border: 2px solid var(--color-ink);
+    box-shadow: 4px 4px 0 0 var(--color-ink);
+}
+
+/* Lifts on hover and squashes on press */
+@utility pop-hover {
+    transition: transform 0.15s, box-shadow 0.15s;
+
+    &:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: 6px 6px 0 0 var(--color-ink);
+    }
+
+    &:active {
+        transform: translate(2px, 2px);
+        box-shadow: 1px 1px 0 0 var(--color-ink);
+    }
+}
+
+/* A marker-pen highlight behind text */
+@utility highlight {
+    background: linear-gradient(transparent 55%, var(--color-peanut-300) 55%, var(--color-peanut-300) 90%, transparent 90%);
+
+    .dark & {
+        background: linear-gradient(transparent 55%, color-mix(in oklab, var(--color-brand-500) 60%, transparent) 55%, color-mix(in oklab, var(--color-brand-500) 60%, transparent) 90%, transparent 90%);
+    }
+}
+
+@layer base {
+    button {
+        cursor: pointer;
+    }
+
+    ::selection {
+        background: var(--color-peanut-300);
+        color: var(--color-ink);
+    }
+
+    .dark ::selection {
+        background: var(--color-brand-500);
+        color: white;
+    }
+}
+
+.prose :where(h1, h2, h3) {
+    @apply font-display tracking-tight;
+}
+
+.prose h1 {
+    @apply highlight inline;
+}
+
+/* Code blocks are wrapped by layout.php so the label can poke out the top */
+.prose .code-block {
+    @apply relative my-8;
 }
 
 .prose pre {
-    @apply relative rounded-lg bg-zinc-900 ring-1 ring-zinc-800 dark:bg-zinc-900/70;
+    @apply pop rounded-xl bg-zinc-900 font-mono text-[0.8125rem] dark:bg-zinc-900;
 }
 
-.prose pre code.hljs {
+.prose .code-block pre {
+    @apply my-0;
+}
+
+/* Ligatures would turn PHP's -> and => into arrows */
+pre,
+code {
+    font-variant-ligatures: none;
+}
+
+pre code.hljs {
     @apply bg-transparent p-0;
 }
 
 .prose :not(pre) > code {
-    @apply rounded bg-zinc-100 px-1.5 py-0.5 font-medium before:content-none after:content-none dark:bg-zinc-800;
+    @apply rounded-md bg-brand-50 px-1.5 py-0.5 font-medium text-brand-700 before:content-none after:content-none dark:bg-brand-500/15 dark:text-brand-200;
 }
 
 .prose h2,
@@ -46,11 +154,19 @@
     @apply opacity-100;
 }
 
-.copy-button {
-    @apply absolute top-2 right-2 cursor-pointer rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs font-medium text-zinc-300 opacity-0 transition hover:text-white;
+.prose table {
+    @apply text-sm;
 }
 
-.prose pre:hover .copy-button,
+.code-label {
+    @apply absolute -top-3 left-4 z-10 rounded-md border-2 border-ink bg-peanut-300 px-2 py-0.5 font-mono text-[0.6875rem] font-bold tracking-wide text-[#1c1917] uppercase;
+}
+
+.copy-button {
+    @apply absolute top-3 right-3 z-10 rounded-md border border-zinc-600 bg-zinc-800 px-2 py-1 font-sans text-xs font-semibold text-zinc-200 opacity-0 transition hover:bg-zinc-700 hover:text-white;
+}
+
+.prose .code-block:hover .copy-button,
 .copy-button:focus {
     @apply opacity-100;
 }
@@ -61,8 +177,18 @@
     }
 }
 
-@layer base {
-    button {
-        cursor: pointer;
+/* Peanuts thrown by the elephant on the home page */
+.peanut {
+    position: fixed;
+    pointer-events: none;
+    z-index: 60;
+    font-size: 1.75rem;
+    animation: peanut 1.1s cubic-bezier(0.2, 0.6, 0.4, 1) forwards;
+}
+
+@keyframes peanut {
+    to {
+        transform: translate(var(--x), var(--y)) rotate(var(--r));
+        opacity: 0;
     }
 }

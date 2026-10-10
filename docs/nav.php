@@ -3,31 +3,31 @@
 // Sidebar groups, in reading order. Each slug maps to content/{slug}.md,
 // except examples, which lists the repo's examples directory
 return [
-    "Getting started" => [
+    "🚀 Getting started" => [
         "introduction" => "Introduction",
         "quickstart" => "Quickstart",
     ],
-    "Concepts" => [
+    "🧠 Concepts" => [
         "routing" => "Routing",
         "context" => "Context",
         "middleware" => "Middleware",
         "error-handling" => "Error handling",
     ],
-    "Middleware" => [
+    "🧩 Middleware" => [
         "built-in-middleware" => "Built-in middleware",
     ],
-    "Helpers" => [
+    "🧰 Helpers" => [
         "cookies" => "Cookies",
         "jwt" => "JWT",
         "static-files" => "Static files",
     ],
-    "Guides" => [
+    "🗺️ Guides" => [
         "templates" => "Templates",
         "environments" => "Environments",
         "deployment" => "Deployment",
         "upgrading" => "Upgrading from 1.x",
     ],
-    "Examples" => [
+    "🧪 Examples" => [
         "examples" => "All examples",
     ],
 ];

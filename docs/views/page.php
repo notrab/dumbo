@@ -1,6 +1,6 @@
 <!-- Mobile: menu bar under the header -->
-<div class="sticky top-16 z-30 flex items-center border-b border-zinc-200 bg-white/80 px-4 py-2 backdrop-blur sm:px-6 lg:hidden dark:border-zinc-800 dark:bg-zinc-950/80">
-    <button type="button" data-menu-open class="flex items-center gap-2 text-sm font-medium">
+<div class="sticky top-16 z-30 flex items-center border-b-2 border-ink bg-paper/90 px-4 py-2 backdrop-blur sm:px-6 lg:hidden">
+    <button type="button" data-menu-open class="flex items-center gap-2 text-sm font-bold text-ink">
         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
         Menu
     </button>
@@ -8,10 +8,10 @@
 
 <!-- Mobile: slide-out sidebar -->
 <div data-menu class="fixed inset-0 z-50 hidden lg:hidden">
-    <div data-menu-close class="absolute inset-0 bg-zinc-950/50 backdrop-blur-sm"></div>
-    <div class="absolute inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto bg-white p-4 shadow-xl dark:bg-zinc-950">
+    <div data-menu-close class="absolute inset-0 bg-stone-950/50 backdrop-blur-sm"></div>
+    <div class="absolute inset-y-0 left-0 w-72 max-w-[85vw] overflow-y-auto border-r-2 border-ink bg-paper p-4">
         <div class="mb-6 flex items-center justify-between px-3">
-            <a href="/" class="flex items-center gap-2 font-bold text-zinc-900 dark:text-white"><span class="text-xl">🐘</span> Dumbo</a>
+            <a href="/" class="flex items-center gap-2 font-display text-xl font-extrabold text-ink"><span class="text-2xl">🐘</span> Dumbo</a>
             <button type="button" data-menu-close class="rounded-md p-1" aria-label="Close menu">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" d="M6 6l12 12M18 6 6 18"/></svg>
             </button>
@@ -22,7 +22,7 @@
 
 <div class="mx-auto flex max-w-[90rem]">
     <!-- Desktop sidebar -->
-    <aside class="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 overflow-y-auto border-r border-zinc-200 px-4 py-8 lg:block dark:border-zinc-800">
+    <aside class="sticky top-16 hidden h-[calc(100vh-4rem)] w-64 shrink-0 overflow-y-auto border-r-2 border-ink px-4 py-8 lg:block">
         <?= view("sidebar", ["nav" => $nav, "slug" => $slug]) ?>
     </aside>
 
@@ -30,9 +30,9 @@
         <div class="mx-auto max-w-3xl">
             <?php if ($toc): ?>
                 <!-- Mobile and tablet: collapsible table of contents -->
-                <details class="mb-8 rounded-lg border border-zinc-200 text-sm xl:hidden dark:border-zinc-800">
-                    <summary class="cursor-pointer px-4 py-3 font-medium text-zinc-900 dark:text-white">On this page</summary>
-                    <ul class="space-y-1 border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
+                <details class="pop mb-8 rounded-xl bg-paper text-sm xl:hidden">
+                    <summary class="cursor-pointer px-4 py-3 font-display font-bold text-ink">📍 On this page</summary>
+                    <ul class="space-y-1 border-t-2 border-ink px-4 py-3">
                         <?php foreach ($toc as $item): ?>
                             <li class="<?= $item["level"] === 3 ? "pl-4" : "" ?>">
                                 <a href="#<?= e($item["id"]) ?>" class="block py-1 hover:text-brand-500"><?= e($item["text"]) ?></a>
@@ -42,30 +42,30 @@
                 </details>
             <?php endif ?>
 
-            <article class="prose prose-zinc max-w-none dark:prose-invert prose-headings:scroll-mt-24 prose-a:text-brand-600 prose-a:no-underline hover:prose-a:underline dark:prose-a:text-brand-300 prose-pre:p-4 prose-h1:text-3xl sm:prose-h1:text-4xl">
+            <article class="prose prose-stone max-w-none dark:prose-invert prose-headings:scroll-mt-24 prose-headings:text-ink prose-a:font-semibold prose-a:text-brand-600 prose-a:decoration-peanut-400 prose-a:decoration-2 prose-a:underline-offset-4 hover:prose-a:decoration-brand-500 dark:prose-a:text-brand-300 prose-pre:p-4 prose-pre:pt-5 prose-h1:text-4xl prose-h1:font-extrabold sm:prose-h1:text-5xl prose-th:text-ink">
                 <?= $content ?>
             </article>
 
-            <div class="mt-12 border-t border-zinc-200 pt-6 text-sm dark:border-zinc-800">
-                <a href="<?= e($editUrl) ?>" class="inline-flex items-center gap-1.5 font-medium text-brand-600 hover:underline dark:text-brand-300">
+            <div class="mt-14 border-t-2 border-dashed border-ink/30 pt-6 text-sm">
+                <a href="<?= e($editUrl) ?>" class="inline-flex items-center gap-1.5 font-semibold text-brand-600 hover:underline dark:text-brand-300">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m16.9 3.5 3.6 3.6L8 19.6l-4.5 1 1-4.5L16.9 3.5Z"/></svg>
-                    Edit this page on GitHub
+                    Spotted a typo? Edit this page on GitHub
                 </a>
             </div>
 
-            <nav class="mt-8 grid gap-4 sm:grid-cols-2">
+            <nav class="mt-8 grid gap-5 sm:grid-cols-2">
                 <?php if ($prev): ?>
-                    <a href="<?= e($prev["href"]) ?>" class="group rounded-lg border border-zinc-200 p-4 transition hover:border-brand-500 dark:border-zinc-800">
-                        <span class="text-xs text-zinc-500">Previous page</span>
-                        <span class="block font-medium text-zinc-900 group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-300">&larr; <?= e($prev["title"]) ?></span>
+                    <a href="<?= e($prev["href"]) ?>" class="pop pop-hover group rounded-xl bg-paper p-4">
+                        <span class="text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400">Previous</span>
+                        <span class="block font-display text-lg font-bold text-ink">&larr; <?= e($prev["title"]) ?></span>
                     </a>
                 <?php else: ?>
                     <span class="hidden sm:block"></span>
                 <?php endif ?>
                 <?php if ($next): ?>
-                    <a href="<?= e($next["href"]) ?>" class="group rounded-lg border border-zinc-200 p-4 text-right transition hover:border-brand-500 dark:border-zinc-800">
-                        <span class="text-xs text-zinc-500">Next page</span>
-                        <span class="block font-medium text-zinc-900 group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-300"><?= e($next["title"]) ?> &rarr;</span>
+                    <a href="<?= e($next["href"]) ?>" class="pop pop-hover group rounded-xl bg-peanut-200 p-4 text-right dark:bg-brand-900">
+                        <span class="text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-300">Up next</span>
+                        <span class="block font-display text-lg font-bold text-ink"><?= e($next["title"]) ?> &rarr;</span>
                     </a>
                 <?php endif ?>
             </nav>
@@ -75,12 +75,12 @@
     <!-- Desktop: table of contents -->
     <aside class="sticky top-16 hidden h-[calc(100vh-4rem)] w-56 shrink-0 overflow-y-auto py-10 pr-4 xl:block">
         <?php if ($toc): ?>
-            <h3 class="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">On this page</h3>
-            <ul class="space-y-1 border-l border-zinc-200 text-sm dark:border-zinc-800">
+            <h3 class="mb-3 font-display text-sm font-bold text-ink">📍 On this page</h3>
+            <ul class="space-y-1 border-l-2 border-ink/20 text-sm">
                 <?php foreach ($toc as $item): ?>
                     <li>
                         <a href="#<?= e($item["id"]) ?>" data-toc-link="<?= e($item["id"]) ?>"
-                           class="-ml-px block border-l border-transparent py-1 text-zinc-500 transition hover:text-zinc-900 dark:hover:text-white <?= $item["level"] === 3 ? "pl-6" : "pl-3" ?>">
+                           class="-ml-0.5 block border-l-2 border-transparent py-1 text-stone-500 transition hover:text-ink dark:text-stone-400 <?= $item["level"] === 3 ? "pl-6" : "pl-3" ?>">
                             <?= e($item["text"]) ?>
                         </a>
                     </li>
@@ -102,7 +102,7 @@
 
     // Highlight the heading currently in view
     const links = document.querySelectorAll("[data-toc-link]");
-    const active = ["text-brand-600", "border-brand-500", "dark:text-brand-300"];
+    const active = ["font-semibold", "text-brand-600", "border-brand-500", "dark:text-brand-300"];
     const observer = new IntersectionObserver((entries) => {
         entries.filter((entry) => entry.isIntersecting).slice(0, 1).forEach((entry) => {
             links.forEach((link) => active.forEach((c) => link.classList.toggle(c, link.dataset.tocLink === entry.target.id)));

@@ -1,6 +1,16 @@
-<main class="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-4 text-center">
-    <p class="text-6xl">🐘</p>
-    <h1 class="mt-6 text-3xl font-bold text-zinc-900 dark:text-white">Page not found</h1>
-    <p class="mt-3">Even elephants forget sometimes. This page doesn't exist.</p>
-    <a href="/docs" class="mt-8 rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-600">Back to the docs</a>
+<main class="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-4 py-16 text-center">
+    <div class="relative">
+        <p class="text-8xl motion-safe:animate-sway">🐘</p>
+        <span class="absolute -top-2 -right-10 rotate-12 rounded-lg border-2 border-ink bg-peanut-300 px-2 py-0.5 font-display text-lg font-extrabold text-[#1c1917]">404</span>
+    </div>
+    <h1 class="mt-8 font-display text-4xl font-extrabold tracking-tight text-ink sm:text-5xl">
+        This page <span class="highlight">wandered off</span>
+    </h1>
+    <p class="mt-4 text-lg text-stone-600 dark:text-stone-400">
+        Elephants never forget, but we can't remember this one. It might have moved, or it never existed.
+    </p>
+    <div class="mt-10 flex flex-wrap justify-center gap-4">
+        <a href="/docs" class="pop pop-hover rounded-full bg-brand-500 px-6 py-3 font-display font-bold text-white">Back to the docs</a>
+        <a href="/" class="pop pop-hover rounded-full bg-paper px-6 py-3 font-display font-bold text-ink">Take me home</a>
+    </div>
 </main>
