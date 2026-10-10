@@ -45,7 +45,6 @@
     <link rel="stylesheet" href="<?= e($site->asset("@fontsource-variable/instrument-sans", "index.css")) ?>">
     <link rel="stylesheet" href="<?= e($site->asset("@fontsource-variable/jetbrains-mono", "index.css")) ?>">
     <link rel="stylesheet" href="<?= e($site->file("/app.css")) ?>">
-    <style><?= $site->highlightStyles("github-dark") ?></style>
     <style>
         :root {
             --primary: <?= e($config["theme"]["primary"]) ?>;

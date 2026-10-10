@@ -128,7 +128,7 @@
 }
 
 .prose pre {
-    @apply pop rounded-xl bg-zinc-900 font-mono text-[0.8125rem] dark:bg-zinc-900;
+    @apply pop rounded-xl bg-zinc-900 font-mono text-[0.8125rem] text-[#c9d1d9] dark:bg-zinc-900;
 }
 
 .prose .code-block pre {
@@ -143,6 +143,64 @@ code {
 
 pre code {
     @apply bg-transparent p-0;
+}
+
+/* GitHub Dark colours for the hl-* classes Jumbo highlights code with */
+.hl-keyword {
+    color: #ff7b72;
+}
+
+.hl-property {
+    color: #d2a8ff;
+}
+
+.hl-type,
+.hl-generic {
+    color: #ffa657;
+}
+
+.hl-value {
+    color: #a5d6ff;
+}
+
+.hl-variable,
+.hl-literal,
+.hl-number {
+    color: #79c0ff;
+}
+
+.hl-comment {
+    color: #8b949e;
+}
+
+.hl-attribute {
+    color: #7ee787;
+}
+
+.hl-strong {
+    font-weight: bold;
+}
+
+.hl-em {
+    font-style: italic;
+}
+
+.hl-blur {
+    filter: blur(2px);
+}
+
+.hl-addition,
+.hl-deletion {
+    display: inline-block;
+    min-width: 100%;
+}
+
+.hl-addition {
+    background-color: #2ea04326;
+}
+
+.hl-deletion {
+    background-color: #f8514926;
 }
 
 .prose :not(pre) > code {
