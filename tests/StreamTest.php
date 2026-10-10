@@ -134,4 +134,56 @@ class StreamTest extends TestCase
         $this->assertFalse($response->hasHeader("Content-Encoding"));
         $this->assertFalse($response->hasHeader("ETag"));
     }
+
+    public function testCastingTwiceReturnsTheBodyTwice()
+    {
+        $stream = new CallbackStream(fn(StreamWriter $s) => $s->write("hello"));
+
+        $this->assertSame("hello", (string) $stream);
+        $this->assertSame("hello", (string) $stream);
+    }
+
+    public function testAnErrorEndsTheStream()
+    {
+        $stream = new CallbackStream(function (StreamWriter $s) {
+            $s->write("a");
+            throw new \RuntimeException("boom");
+        });
+
+        $this->assertSame("a", $stream->read(10));
+
+        try {
+            $stream->read(10);
+            $this->fail("Expected the callback's error");
+        } catch (\RuntimeException $e) {
+            $this->assertSame("boom", $e->getMessage());
+        }
+
+        $this->assertTrue($stream->eof());
+        $this->assertSame("", $stream->read(10));
+    }
+
+    public function testSuspendingTheFiberIsRejected()
+    {
+        $stream = new CallbackStream(function (StreamWriter $s) {
+            \Fiber::suspend();
+        });
+
+        $this->expectException(\LogicException::class);
+
+        $stream->read(10);
+    }
+
+    public function testWritingAfterTheCallbackReturnsIsRejected()
+    {
+        $kept = null;
+        $stream = new CallbackStream(function (StreamWriter $s) use (&$kept) {
+            $kept = $s;
+        });
+        $stream->getContents();
+
+        $this->expectException(\LogicException::class);
+
+        $kept->write("late");
+    }
 }

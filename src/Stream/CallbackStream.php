@@ -12,6 +12,11 @@ use Psr\Http\Message\StreamInterface;
 class CallbackStream implements StreamInterface
 {
     private ?\Fiber $fiber = null;
+
+    /** Holds the chunk the callback last wrote, shared with the fiber */
+    private \stdClass $written;
+
+    private ?string $contents = null;
     private string $pending = "";
     private bool $done = false;
     private int $position = 0;
@@ -21,6 +26,8 @@ class CallbackStream implements StreamInterface
      */
     public function __construct(private \Closure $callback)
     {
+        $this->written = new \stdClass();
+        $this->written->chunk = null;
     }
 
     /**
@@ -51,9 +58,12 @@ class CallbackStream implements StreamInterface
         return $contents;
     }
 
+    /**
+     * The rest of the body, kept so that casting again returns it again
+     */
     public function __toString(): string
     {
-        return $this->getContents();
+        return $this->contents ??= $this->getContents();
     }
 
     public function eof(): bool
@@ -108,9 +118,8 @@ class CallbackStream implements StreamInterface
 
     public function detach()
     {
-        $this->done = true;
+        $this->finish();
         $this->pending = "";
-        $this->fiber = null;
 
         return null;
     }
@@ -125,18 +134,52 @@ class CallbackStream implements StreamInterface
      */
     private function nextChunk(): string
     {
-        $this->fiber ??= new \Fiber(function () {
-            ($this->callback)(new StreamWriter(fn(string $chunk) => \Fiber::suspend($chunk)));
+        // Capture only what the fiber needs, so it doesn't keep $this alive
+        $callback = $this->callback;
+        $written = $this->written;
+
+        $this->fiber ??= new \Fiber(static function () use ($callback, $written) {
+            $fiber = \Fiber::getCurrent();
+
+            $callback(new StreamWriter(static function (string $chunk) use ($fiber, $written) {
+                if (\Fiber::getCurrent() !== $fiber) {
+                    throw new \LogicException("Write to a stream only from inside its callback");
+                }
+
+                $written->chunk = $chunk;
+                \Fiber::suspend();
+            }));
         });
 
-        $chunk = $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+        try {
+            $this->fiber->isStarted() ? $this->fiber->resume() : $this->fiber->start();
+        } catch (\Throwable $error) {
+            $this->finish();
+
+            throw $error;
+        }
 
         if ($this->fiber->isTerminated()) {
-            $this->done = true;
+            $this->finish();
 
             return "";
         }
 
+        if ($this->written->chunk === null) {
+            $this->finish();
+
+            throw new \LogicException("Stream callbacks run in a Fiber and can't suspend it, e.g. for async I/O");
+        }
+
+        $chunk = $this->written->chunk;
+        $this->written->chunk = null;
+
         return $chunk;
+    }
+
+    private function finish(): void
+    {
+        $this->done = true;
+        $this->fiber = null;
     }
 }

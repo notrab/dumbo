@@ -148,8 +148,8 @@ class Context
 
     /**
      * Stream the response body. The callback is called with a StreamWriter
-     * when the response is sent, and each write reaches the client straight
-     * away.
+     * and runs as the body is read, pausing at each write, so each write
+     * reaches the client as it happens. It runs inside a Fiber.
      *
      * @param Closure(StreamWriter): void $callback
      */

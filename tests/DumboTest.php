@@ -432,4 +432,70 @@ class DumboTest extends TestCase
         $this->assertSame('{"json":{"a":1},"form":[]}', (string) $json->getBody());
         $this->assertSame('{"json":[],"form":{"b":"2"}}', (string) $form->getBody());
     }
+
+    public function testMountingUnderAParamPrefixKeepsNestedMiddleware()
+    {
+        $nested = new Dumbo();
+        $nested->use(fn(Context $c, callable $next) => $c->text("global", 401));
+        $nested->get("/posts", fn(Context $c) => $c->text("posts"));
+
+        $scoped = new Dumbo();
+        $scoped->use("/admin", fn(Context $c, callable $next) => $c->text("scoped", 403));
+        $scoped->get("/admin/:id", fn(Context $c) => $c->text("admin"));
+
+        $app = (new Dumbo())->route("/orgs/:org", $nested)->route("/teams/:team", $scoped);
+
+        $this->assertSame(401, $app->request("/orgs/acme/posts")->getStatusCode());
+        $this->assertSame(403, $app->request("/teams/a/admin/1")->getStatusCode());
+    }
+
+    public function testNestedMiddlewareStaysOffParentAndSiblingRoutes()
+    {
+        $admin = new Dumbo();
+        $admin->use(fn(Context $c, callable $next) => $c->text("denied", 401));
+        $admin->get("/admin", fn(Context $c) => $c->text("admin"));
+
+        $posts = (new Dumbo())->get("/posts", fn(Context $c) => $c->text("posts"));
+
+        $app = (new Dumbo())
+            ->get("/public", fn(Context $c) => $c->text("public"))
+            ->route("/", $admin)
+            ->route("/", $posts);
+
+        $this->assertSame(401, $app->request("/admin")->getStatusCode());
+        $this->assertSame(200, $app->request("/public")->getStatusCode());
+        $this->assertSame(200, $app->request("/posts")->getStatusCode());
+    }
+
+    public function testParentScopedMiddlewareRunsBeforeNestedMiddleware()
+    {
+        $calls = [];
+        $nested = new Dumbo();
+        $nested->use(function (Context $c, callable $next) use (&$calls) {
+            $calls[] = "nested";
+            return $next($c);
+        });
+        $nested->get("/users", fn(Context $c) => $c->text("users"));
+
+        $app = (new Dumbo())->route("/api", $nested);
+        $app->use("/api", function (Context $c, callable $next) use (&$calls) {
+            $calls[] = "parent";
+            return $next($c);
+        });
+
+        $app->request("/api/users");
+
+        $this->assertSame(["parent", "nested"], $calls);
+    }
+
+    public function testScopedMiddlewareCanUseParamSegments()
+    {
+        $app = new Dumbo();
+        $app->use("/orgs/:org/admin", fn(Context $c, callable $next) => $c->text("denied", 403));
+        $app->get("/orgs/:org/admin", fn(Context $c) => $c->text("admin"));
+        $app->get("/orgs/:org", fn(Context $c) => $c->text("org"));
+
+        $this->assertSame(403, $app->request("/orgs/acme/admin")->getStatusCode());
+        $this->assertSame(200, $app->request("/orgs/acme")->getStatusCode());
+    }
 }

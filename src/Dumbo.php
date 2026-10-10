@@ -94,11 +94,12 @@ class Dumbo implements RequestHandlerInterface
      */
     public function on(string|array $methods, string $path, callable $handler, array $middleware = []): static
     {
-        $middleware = array_map(self::toCallable(...), $middleware);
-
-        foreach ((array) $methods as $method) {
-            $this->router->addRoute(strtoupper($method), $path, $handler, $middleware);
-        }
+        $this->router->addRoute(
+            array_map(strtoupper(...), (array) $methods),
+            $path,
+            $handler,
+            array_map(self::toCallable(...), $middleware)
+        );
 
         return $this;
     }
@@ -125,21 +126,17 @@ class Dumbo implements RequestHandlerInterface
     }
 
     /**
-     * Mount another app's routes under a prefix. Its middleware runs for
-     * every request under the prefix. Routes and middleware added to the
-     * nested app after mounting are not included.
+     * Mount another app's routes under a prefix, with its middleware. Routes
+     * and middleware added to the nested app after mounting are not included.
      */
     public function route(string $prefix, self $app): static
     {
         $prefix = self::normalizePrefix($prefix);
-
-        foreach ($app->middleware as $middleware) {
-            $this->groupMiddleware[$prefix][] = $middleware;
-        }
+        $scoped = [];
 
         foreach ($app->groupMiddleware as $groupPrefix => $group) {
             foreach ($group as $middleware) {
-                $this->groupMiddleware[$prefix . $groupPrefix][] = $middleware;
+                $scoped[] = new ScopedMiddleware($prefix . $groupPrefix, \Closure::fromCallable($middleware));
             }
         }
 
@@ -148,7 +145,10 @@ class Dumbo implements RequestHandlerInterface
                 $route["method"],
                 $prefix . "/" . ltrim($route["path"], "/"),
                 $route["handler"],
-                $route["middleware"]
+                array_merge($app->middleware, $scoped, array_map(
+                    fn($middleware) => $middleware instanceof ScopedMiddleware ? $middleware->under($prefix) : $middleware,
+                    $route["middleware"]
+                ))
             );
         }
 
@@ -413,11 +413,23 @@ class Dumbo implements RequestHandlerInterface
 
     /**
      * Whether a normalized middleware prefix covers a path: itself and
-     * everything below it
+     * everything below it. Param segments like :org match any segment.
+     *
+     * @internal
      */
-    private static function coversPath(string $prefix, string $path): bool
+    public static function coversPath(string $prefix, string $path): bool
     {
-        return $prefix === "" || $path === $prefix || str_starts_with($path, "$prefix/");
+        $segments = explode("/", $path);
+
+        foreach (explode("/", $prefix) as $i => $expected) {
+            $actual = $segments[$i] ?? null;
+
+            if ($actual === null || ($expected !== $actual && !in_array($expected[0] ?? "", [":", "{", "*"], true))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

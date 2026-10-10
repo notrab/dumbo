@@ -212,8 +212,9 @@ $nestedApp->get('/nested', function($context) {
 $app->route('/prefix', $nestedApp);
 ```
 
-The nested app's middleware runs for every request under the prefix. Add
-routes and middleware to it before mounting it.
+The nested app's middleware comes with its routes, and middleware it scopes
+to a path stays scoped under the new prefix. Add routes and middleware to it
+before mounting it.
 
 ### Context
 
@@ -318,6 +319,7 @@ $app->use(BodyLimit::bodyLimit(1024 * 1024));
 $app->use('/admin/*', BasicAuth::basicAuth('user:password'));
 $app->use('/api', BearerAuth::bearerAuth('secret-token'));
 $app->use('/blog', Cache::cache(['type' => 'public', 'maxAge' => 3600]));
+$app->use('/orgs/:org/admin', $requireOrgAdmin);
 ```
 
 #### Validation
