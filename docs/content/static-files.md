@@ -18,7 +18,7 @@ $app->use(StaticFiles::serve(__DIR__ . '/public'));
 $app->get('/', fn($context) => $context->text('Home'));
 ```
 
-A request for `/css/app.css` serves `public/css/app.css`. Directories serve their `index.html`.
+A request for `/css/app.css` serves `public/css/app.css`. Directories serve their `index.html`. As middleware it only answers `GET` and `HEAD` requests, so forms posting to your routes always reach them.
 
 ## As a route
 

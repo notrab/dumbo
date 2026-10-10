@@ -23,11 +23,20 @@ class StaticFiles
      * Serve files from a directory, as a route handler (using the "path"
      * route param) or as middleware (using the request path, and passing
      * through to the next handler when no file matches).
+     *
+     * As middleware it only answers GET and HEAD requests, and ignores route
+     * params, which belong to the route the request matched: a page at
+     * /docs/{path} is never answered with a file named after its param.
      */
     public static function serve(string $directory): callable
     {
         return function (Context $context, ?callable $next = null) use ($directory): ResponseInterface {
-            $file = self::resolve($directory, $context->req->param("path") ?? $context->req->path());
+            if ($next && !in_array($context->req->method(), ["GET", "HEAD"], true)) {
+                return $next($context);
+            }
+
+            $path = $next ? $context->req->path() : $context->req->param("path") ?? $context->req->path();
+            $file = self::resolve($directory, rawurldecode($path));
 
             if ($file === null) {
                 return $next ? $next($context) : $context->text("File not found", 404);
@@ -61,6 +70,11 @@ class StaticFiles
      */
     private static function resolve(string $directory, string $path): ?string
     {
+        // realpath() throws on null bytes, and no file has one
+        if (str_contains($path, "\0")) {
+            return null;
+        }
+
         $root = realpath($directory);
         $file = $directory . "/" . ltrim($path, "/");
 

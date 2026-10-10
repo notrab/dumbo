@@ -24,12 +24,13 @@ class StaticFilesTest extends TestCase
         file_put_contents($this->public . "/app.css", "body { color: red; }");
         file_put_contents($this->public . "/app.js", "console.log(1);");
         file_put_contents($this->root . "/public-private/secret.txt", "secret");
+        file_put_contents($this->public . "/my file.txt", "spaced");
     }
 
     protected function tearDown(): void
     {
         foreach (
-            ["/public/index.html", "/public/app.css", "/public/app.js", "/public-private/secret.txt"]
+            ["/public/index.html", "/public/app.css", "/public/app.js", "/public/my file.txt", "/public-private/secret.txt"]
             as $file
         ) {
             @unlink($this->root . $file);
@@ -116,5 +117,46 @@ class StaticFilesTest extends TestCase
         $response = $app->request("/public/index.html");
 
         $this->assertSame("<h1>Hello</h1>", (string) $response->getBody());
+    }
+
+    public function testMiddlewareIgnoresTheMatchedRoutesPathParam()
+    {
+        $app = new \Dumbo\Dumbo();
+        $app->use(StaticFiles::serve($this->public));
+        $app->get("/docs/{path:.+}", fn(Context $context) => $context->text("page " . $context->req->param("path")));
+
+        $this->assertSame("page app.css", (string) $app->request("/docs/app.css")->getBody());
+        $this->assertSame("body { color: red; }", (string) $app->request("/app.css")->getBody());
+    }
+
+    public function testMiddlewareOnlyServesGetAndHeadRequests()
+    {
+        $app = new \Dumbo\Dumbo();
+        $app->use(StaticFiles::serve($this->public));
+        $app->post("/app.css", fn(Context $context) => $context->text("posted"));
+
+        $this->assertSame("posted", (string) $app->request("/app.css", "POST")->getBody());
+        $this->assertSame(200, $app->request("/app.css", "HEAD")->getStatusCode());
+        $this->assertSame("text/css", $app->request("/app.css", "HEAD")->getHeaderLine("Content-Type"));
+    }
+
+    public function testDecodesEncodedPaths()
+    {
+        $app = new \Dumbo\Dumbo();
+        $app->use(StaticFiles::serve($this->public));
+        $app->get("/files/:path{.+}", StaticFiles::serve($this->public));
+
+        $this->assertSame("spaced", (string) $app->request("/my%20file.txt")->getBody());
+        $this->assertSame("spaced", (string) $app->request("/files/my%20file.txt")->getBody());
+        $this->assertSame(404, $app->request("/files/..%2Fpublic-private%2Fsecret.txt")->getStatusCode());
+    }
+
+    public function testRefusesNullBytes()
+    {
+        $app = new \Dumbo\Dumbo();
+        $app->use(StaticFiles::serve($this->public));
+
+        $this->assertSame(404, $app->request("/app.css%00.txt")->getStatusCode());
+        $this->assertSame(404, $this->serve("app.css\0")->getStatusCode());
     }
 }
