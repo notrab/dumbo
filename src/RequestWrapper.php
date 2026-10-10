@@ -11,6 +11,9 @@ class RequestWrapper
 {
     private ?array $parsedBody = null;
 
+    /** @var array<string, mixed> Data stored by the validator middleware */
+    private array $validated = [];
+
     /**
      * @param array $params The route parameters
      * @param string $routePath The registered route path, e.g. /posts/:id
@@ -31,13 +34,20 @@ class RequestWrapper
     }
 
     /**
-     * A copy wrapping a different request, keeping the route params
+     * A copy wrapping a different request, keeping the route params and
+     * validated data
      */
     public function withRequest(ServerRequestInterface $request): self
     {
-        return $request === $this->request
-            ? $this
-            : new self($request, $this->params, $this->routePath);
+        if ($request === $this->request) {
+            return $this;
+        }
+
+        $clone = clone $this;
+        $clone->request = $request;
+        $clone->parsedBody = null;
+
+        return $clone;
     }
 
     /**
@@ -64,9 +74,28 @@ class RequestWrapper
         return $this->routePath;
     }
 
-    public function param(string $name): ?string
+    /**
+     * Get all route params, or a single one by name
+     */
+    public function param(?string $name = null): array|string|null
     {
-        return $this->params[$name] ?? null;
+        return $name === null ? $this->params : $this->params[$name] ?? null;
+    }
+
+    /**
+     * Get the data the validator middleware stored for a target
+     */
+    public function valid(string $target): mixed
+    {
+        return $this->validated[$target] ?? null;
+    }
+
+    /**
+     * Store validated data for a target, read back with valid()
+     */
+    public function setValid(string $target, mixed $data): void
+    {
+        $this->validated[$target] = $data;
     }
 
     /**

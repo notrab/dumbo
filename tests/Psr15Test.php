@@ -96,4 +96,14 @@ class Psr15Test extends TestCase
 
         $this->assertSame("set jamie", (string) $app->handle(new ServerRequest("GET", "/"))->getBody());
     }
+
+    public function testValidatedDataSurvivesARequestChange()
+    {
+        $app = new Dumbo();
+        $app->use(\Dumbo\Middleware\Validator::validator("query", fn(array $q) => $q));
+        $app->use($this->attributeMiddleware());
+        $app->get("/", fn(Context $c) => $c->json($c->req->valid("query")));
+
+        $this->assertSame('{"a":"1"}', (string) $app->request("/?a=1")->getBody());
+    }
 }

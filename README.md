@@ -43,6 +43,7 @@
 - 🗜️ Response compression
 - 📦 Request body size limits
 - 🧬 Environment-based configuration
+- ✅ Request validation
 
 ## Install
 
@@ -302,6 +303,7 @@ use Dumbo\Middleware\CORS;
 use Dumbo\Middleware\Csrf;
 use Dumbo\Middleware\Logger;
 use Dumbo\Middleware\RequestId;
+use Dumbo\Middleware\Validator;
 
 $app->use(Logger::logger($psrLogger));
 $app->use(RequestId::requestId());
@@ -311,6 +313,34 @@ $app->use(BodyLimit::bodyLimit(1024 * 1024));
 $app->use('/admin/*', BasicAuth::basicAuth('user:password'));
 $app->use('/api', BearerAuth::bearerAuth('secret-token'));
 $app->use('/blog', Cache::cache(['type' => 'public', 'maxAge' => 3600]));
+```
+
+#### Validation
+
+`Validator::validator()` checks the `json`, `form`, `query`, `param`,
+`header` or `cookie` part of a request before your handler runs. Return a
+response to reject the request, or the validated data, which the handler
+reads with `$context->req->valid()`. Bring whichever validation library you
+like.
+
+```php
+<?php
+
+use Dumbo\Middleware\Validator;
+
+$app->post('/users', function ($context) {
+    $user = $context->req->valid('json');
+
+    return $context->json($user, 201);
+}, [
+    Validator::validator('json', function (array $value, $context) {
+        if (!filter_var($value['email'] ?? '', FILTER_VALIDATE_EMAIL)) {
+            return $context->json(['error' => 'A valid email is required'], 400);
+        }
+
+        return ['email' => strtolower($value['email'])];
+    }),
+]);
 ```
 
 #### PSR-15 middleware
