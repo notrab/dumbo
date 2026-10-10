@@ -35,13 +35,7 @@ class Cookie
      */
     public static function get(Context $context, ?string $name = null, ?string $prefix = null): array|string|null
     {
-        $cookies = self::parse($context->req->header("Cookie") ?? "");
-
-        if ($name === null) {
-            return $cookies;
-        }
-
-        return $cookies[self::getPrefixedName($name, $prefix)] ?? null;
+        return $context->req->cookie($name === null ? null : self::getPrefixedName($name, $prefix));
     }
 
     public static function set(Context $context, string $name, string $value, array $options = []): void
@@ -141,21 +135,6 @@ class Cookie
                 true
             );
         }
-    }
-
-    private static function parse(string $cookieString): array
-    {
-        $cookies = [];
-
-        foreach (explode(";", $cookieString) as $pair) {
-            $parts = explode("=", trim($pair), 2);
-
-            if (count($parts) === 2) {
-                $cookies[urldecode(trim($parts[0]))] = urldecode($parts[1]);
-            }
-        }
-
-        return $cookies;
     }
 
     private static function buildString(string $name, string $value, array $options): string

@@ -303,4 +303,51 @@ class DumboTest extends TestCase
         $this->assertSame(403, $app->handle(new ServerRequest("GET", "/admin/users"))->getStatusCode());
         $this->assertSame(200, $app->handle(new ServerRequest("GET", "/public"))->getStatusCode());
     }
+
+    public function testRequestHelperSendsQueryHeadersAndJson()
+    {
+        $app = new Dumbo();
+        $app->post("/users", fn(Context $c) => $c->json([
+            "page" => $c->req->query("page"),
+            "token" => $c->req->header("X-Token"),
+            "body" => $c->req->body(),
+        ]));
+
+        $response = $app->request("/users?page=2", "POST", ["X-Token" => "t"], ["name" => "Jamie"]);
+
+        $this->assertSame(
+            '{"page":"2","token":"t","body":{"name":"Jamie"}}',
+            (string) $response->getBody()
+        );
+    }
+
+    public function testStatusAppliesToLaterResponses()
+    {
+        $app = new Dumbo();
+        $app->post("/users", fn(Context $c) => $c->status(201)->json(["id" => 1]));
+        $app->get("/teapot", fn(Context $c) => $c->status(201)->text("no", 418));
+
+        $this->assertSame(201, $app->request("/users", "POST")->getStatusCode());
+        $this->assertSame(418, $app->request("/teapot")->getStatusCode());
+    }
+
+    public function testRequestTextUrlAndCookies()
+    {
+        $app = new Dumbo();
+        $app->post("/echo", fn(Context $c) => $c->json([
+            "text" => $c->req->text(),
+            "url" => $c->req->url(),
+            "theme" => $c->req->cookie("theme"),
+            "cookies" => $c->req->cookie(),
+        ]));
+
+        $response = $app->request("/echo?x=1", "POST", ["Cookie" => "theme=dark; lang=en%20GB"], "raw body");
+
+        $this->assertSame([
+            "text" => "raw body",
+            "url" => "/echo?x=1",
+            "theme" => "dark",
+            "cookies" => ["theme" => "dark", "lang" => "en GB"],
+        ], json_decode((string) $response->getBody(), true));
+    }
 }

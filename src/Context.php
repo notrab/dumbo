@@ -28,6 +28,8 @@ class Context
     /** @var callable|null */
     private $notFoundHandler;
 
+    private ?int $status = null;
+
     /**
      * @param array $params The route parameters
      * @param string $routePath The registered route path, e.g. /posts/:id
@@ -54,17 +56,27 @@ class Context
         return $this->variables[$key] ?? null;
     }
 
-    public function json(mixed $data = null, int $status = 200, array $headers = []): ResponseInterface
+    /**
+     * Set the status used by later responses that don't pass one
+     */
+    public function status(int $status): self
+    {
+        $this->status = $status;
+
+        return $this;
+    }
+
+    public function json(mixed $data = null, ?int $status = null, array $headers = []): ResponseInterface
     {
         return $this->send($data, "application/json", $status, $headers);
     }
 
-    public function text(string $text, int $status = 200, array $headers = []): ResponseInterface
+    public function text(string $text, ?int $status = null, array $headers = []): ResponseInterface
     {
         return $this->send($text, "text/plain", $status, $headers);
     }
 
-    public function html(string $html, int $status = 200, array $headers = []): ResponseInterface
+    public function html(string $html, ?int $status = null, array $headers = []): ResponseInterface
     {
         return $this->send($html, "text/html", $status, $headers);
     }
@@ -144,7 +156,7 @@ class Context
     public function stream(
         Closure $callback,
         string $contentType = "application/octet-stream",
-        int $status = 200,
+        ?int $status = null,
         array $headers = []
     ): ResponseInterface {
         return $this->send(new CallbackStream($callback), $contentType, $status, $headers);
@@ -157,7 +169,7 @@ class Context
      */
     public function streamSSE(Closure $callback, array $headers = []): ResponseInterface
     {
-        return $this->stream($callback, "text/event-stream", 200, $headers + [
+        return $this->stream($callback, "text/event-stream", null, $headers + [
             "Cache-Control" => "no-cache",
             "X-Accel-Buffering" => "no",
         ]);
@@ -171,11 +183,11 @@ class Context
     public function send(
         mixed $body = "",
         string $contentType = "text/plain",
-        int $status = 200,
+        ?int $status = null,
         array $headers = []
     ): ResponseInterface {
         $this->response = $this->response
-            ->withStatus($status)
+            ->withStatus($status ?? $this->status ?? 200)
             ->withHeader("Content-Type", $contentType);
 
         foreach ($headers as $name => $value) {

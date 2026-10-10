@@ -223,6 +223,27 @@ class Dumbo implements RequestHandlerInterface
     }
 
     /**
+     * Send a request to the app without a server, e.g. in tests. Arrays and
+     * objects are sent as a JSON body.
+     */
+    public function request(
+        string $path,
+        string $method = "GET",
+        array $headers = [],
+        mixed $body = null
+    ): ResponseInterface {
+        if (is_array($body) || is_object($body)) {
+            $body = json_encode($body);
+            $headers += ["Content-Type" => "application/json"];
+        }
+
+        $request = new ServerRequest($method, $path, $headers, $body);
+        parse_str($request->getUri()->getQuery(), $query);
+
+        return $this->handle($request->withQueryParams($query));
+    }
+
+    /**
      * Handle the request from PHP's globals and send the response
      */
     public function run(): void

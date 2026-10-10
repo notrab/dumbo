@@ -223,6 +223,9 @@ $app->get('/', function($context) {
     $queryParam = $context->req->query('param');
     $tags = $context->req->queries('tags');
     $body = $context->req->body();
+    $rawBody = $context->req->text();
+    $url = $context->req->url();
+    $theme = $context->req->cookie('theme');
     $userAgent = $context->req->header('User-Agent');
     $psrRequest = $context->req->raw();
 });
@@ -238,6 +241,9 @@ return $context->text('Hello, World!');
 return $context->html('<h1>Hello, World!</h1>');
 return $context->redirect('/new-url');
 return $context->send($csv, 'text/csv');
+
+// Set the status for responses that don't pass one
+return $context->status(201)->json($user);
 ```
 
 #### Streaming
@@ -366,6 +372,20 @@ $app->get('/api/data', function ($context) {
 });
 
 $app->run();
+```
+
+### Testing
+
+`$app->request()` sends a request straight to your app, without a server.
+Arrays are sent as JSON.
+
+```php
+<?php
+
+$response = $app->request('/users?page=2');
+$response = $app->request('/users', 'POST', ['Authorization' => 'Bearer token'], ['name' => 'Jamie']);
+
+$this->assertSame(201, $response->getStatusCode());
 ```
 
 ### Errors and 404s

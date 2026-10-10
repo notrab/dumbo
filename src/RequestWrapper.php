@@ -9,7 +9,7 @@ use Psr\Http\Message\ServerRequestInterface;
  */
 class RequestWrapper
 {
-    private array $parsedBody;
+    private ?array $parsedBody = null;
 
     /**
      * @param array $params The route parameters
@@ -20,7 +20,6 @@ class RequestWrapper
         private array $params,
         private string $routePath
     ) {
-        $this->parsedBody = $this->parseBody();
     }
 
     /**
@@ -39,6 +38,14 @@ class RequestWrapper
         return $request === $this->request
             ? $this
             : new self($request, $this->params, $this->routePath);
+    }
+
+    /**
+     * The full request URL
+     */
+    public function url(): string
+    {
+        return (string) $this->request->getUri();
     }
 
     /**
@@ -89,7 +96,33 @@ class RequestWrapper
      */
     public function body(): array
     {
-        return $this->parsedBody;
+        return $this->parsedBody ??= $this->parseBody();
+    }
+
+    /**
+     * The raw request body
+     */
+    public function text(): string
+    {
+        return (string) $this->request->getBody();
+    }
+
+    /**
+     * Get all cookies, or a single one by name
+     */
+    public function cookie(?string $name = null): array|string|null
+    {
+        $cookies = [];
+
+        foreach (explode(";", $this->header("Cookie") ?? "") as $pair) {
+            $parts = explode("=", trim($pair), 2);
+
+            if (count($parts) === 2) {
+                $cookies[urldecode(trim($parts[0]))] = urldecode($parts[1]);
+            }
+        }
+
+        return $name === null ? $cookies : $cookies[$name] ?? null;
     }
 
     public function method(): string
@@ -123,7 +156,7 @@ class RequestWrapper
     private function parseBody(): array
     {
         $contentType = $this->request->getHeaderLine("Content-Type");
-        $body = (string) $this->request->getBody();
+        $body = $this->text();
 
         if (str_contains($contentType, "application/json")) {
             $decoded = json_decode($body, true);
