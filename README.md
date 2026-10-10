@@ -29,7 +29,7 @@
 ## Features
 
 - 🚀 Lightweight and fast
-- 🧩 Middleware support
+- 🧩 Middleware support, including PSR-15
 - 🛣️ Flexible routing with parameters
 - 🔒 Built-in security features (CSRF, JWT)
 - 🍪 Cookie management
@@ -125,6 +125,10 @@ $app->get('/users', function($context) { /* ... */ });
 $app->post('/users', function($context) { /* ... */ });
 $app->put('/users/:id', function($context) { /* ... */ });
 $app->delete('/users/:id', function($context) { /* ... */ });
+
+// Several methods, or every method
+$app->on(['GET', 'POST'], '/form', function($context) { /* ... */ });
+$app->all('/anything', function($context) { /* ... */ });
 ```
 
 #### Params
@@ -183,6 +187,7 @@ $app->get('/', function($context) {
     $tags = $context->req->queries('tags');
     $body = $context->req->body();
     $userAgent = $context->req->header('User-Agent');
+    $psrRequest = $context->req->raw();
 });
 ```
 
@@ -233,6 +238,25 @@ $app->use('/admin', BasicAuth::basicAuth('user:password'));
 $app->use('/api', BearerAuth::bearerAuth('secret-token'));
 $app->use('/blog', Cache::cache(['type' => 'public', 'maxAge' => 3600]));
 ```
+
+#### PSR-15 middleware
+
+Any [PSR-15](https://www.php-fig.org/psr/psr-15/) middleware works anywhere
+Dumbo middleware does. Request attributes it adds are available from
+`$context->req->raw()`.
+
+```php
+<?php
+
+$app->use(new Middlewares\ClientIp());
+
+$app->get('/', function ($context) {
+    return $context->text($context->req->raw()->getAttribute('client-ip'));
+});
+```
+
+Dumbo is also a PSR-15 request handler, so `$app->handle($request)` works
+with any PSR-7 server request.
 
 Helpers for cookies, JWTs and static files live in `Dumbo\Helpers`. The JWT
 helper needs `firebase/php-jwt`:

@@ -24,6 +24,24 @@ class RequestWrapper
     }
 
     /**
+     * The underlying PSR-7 request
+     */
+    public function raw(): ServerRequestInterface
+    {
+        return $this->request;
+    }
+
+    /**
+     * A copy wrapping a different request, keeping the route params
+     */
+    public function withRequest(ServerRequestInterface $request): self
+    {
+        return $request === $this->request
+            ? $this
+            : new self($request, $this->params, $this->routePath);
+    }
+
+    /**
      * The request path, without a trailing slash
      */
     public function path(): string

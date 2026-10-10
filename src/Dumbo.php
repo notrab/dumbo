@@ -6,11 +6,13 @@ use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Dumbo - A lightweight, friendly PHP framework for HTTP
  */
-class Dumbo
+class Dumbo implements RequestHandlerInterface
 {
     public const ENV_PRODUCTION = "production";
     public const ENV_DEVELOPMENT = "development";
@@ -46,57 +48,73 @@ class Dumbo
 
     public function get(string $path, callable $handler, array $middleware = []): void
     {
-        $this->router->addRoute("GET", $path, $handler, $middleware);
+        $this->on("GET", $path, $handler, $middleware);
     }
 
     public function post(string $path, callable $handler, array $middleware = []): void
     {
-        $this->router->addRoute("POST", $path, $handler, $middleware);
+        $this->on("POST", $path, $handler, $middleware);
     }
 
     public function put(string $path, callable $handler, array $middleware = []): void
     {
-        $this->router->addRoute("PUT", $path, $handler, $middleware);
+        $this->on("PUT", $path, $handler, $middleware);
     }
 
     public function patch(string $path, callable $handler, array $middleware = []): void
     {
-        $this->router->addRoute("PATCH", $path, $handler, $middleware);
+        $this->on("PATCH", $path, $handler, $middleware);
     }
 
     public function delete(string $path, callable $handler, array $middleware = []): void
     {
-        $this->router->addRoute("DELETE", $path, $handler, $middleware);
+        $this->on("DELETE", $path, $handler, $middleware);
     }
 
     public function head(string $path, callable $handler, array $middleware = []): void
     {
-        $this->router->addRoute("HEAD", $path, $handler, $middleware);
+        $this->on("HEAD", $path, $handler, $middleware);
     }
 
     public function options(string $path, callable $handler, array $middleware = []): void
     {
-        $this->router->addRoute("OPTIONS", $path, $handler, $middleware);
+        $this->on("OPTIONS", $path, $handler, $middleware);
     }
 
     public function all(string $path, callable $handler, array $middleware = []): void
     {
-        foreach (self::METHODS as $method) {
-            $this->router->addRoute($method, $path, $handler, $middleware);
+        $this->on(self::METHODS, $path, $handler, $middleware);
+    }
+
+    /**
+     * Add a route for one or more methods
+     *
+     * @param string|array<string> $methods
+     * @param array<callable|MiddlewareInterface> $middleware
+     */
+    public function on(string|array $methods, string $path, callable $handler, array $middleware = []): void
+    {
+        $middleware = array_map(self::toCallable(...), $middleware);
+
+        foreach ((array) $methods as $method) {
+            $this->router->addRoute(strtoupper($method), $path, $handler, $middleware);
         }
     }
 
     /**
-     * Add middleware to every route, or only to routes under a path prefix
+     * Add middleware to every route, or only to routes under a path prefix.
+     * Middleware is a callable($context, $next) or a PSR-15 middleware.
      *
-     * @param string|callable $pathOrMiddleware A path prefix, or the middleware itself
+     * @param string|callable|MiddlewareInterface $pathOrMiddleware A path prefix, or the middleware itself
      */
-    public function use(string|callable $pathOrMiddleware, ?callable $middleware = null): void
-    {
+    public function use(
+        string|callable|MiddlewareInterface $pathOrMiddleware,
+        callable|MiddlewareInterface|null $middleware = null
+    ): void {
         if (is_string($pathOrMiddleware) && $middleware !== null) {
-            $this->groupMiddleware[$pathOrMiddleware][] = $middleware;
-        } elseif (is_callable($pathOrMiddleware)) {
-            $this->middleware[] = $pathOrMiddleware;
+            $this->groupMiddleware[$pathOrMiddleware][] = self::toCallable($middleware);
+        } elseif (is_callable($pathOrMiddleware) || $pathOrMiddleware instanceof MiddlewareInterface) {
+            $this->middleware[] = self::toCallable($pathOrMiddleware);
         } else {
             throw new \InvalidArgumentException("Invalid middleware configuration");
         }
@@ -205,6 +223,33 @@ class Dumbo
         }
 
         $this->send($response);
+    }
+
+    /**
+     * Adapt a PSR-15 middleware to a Dumbo callable. A request it passes on,
+     * e.g. with added attributes, replaces the context's request.
+     */
+    private static function toCallable(callable|MiddlewareInterface $middleware): callable
+    {
+        if (!$middleware instanceof MiddlewareInterface) {
+            return $middleware;
+        }
+
+        return fn(Context $context, callable $next) => $middleware->process(
+            $context->req->raw(),
+            new class ($context, $next) implements RequestHandlerInterface {
+                public function __construct(private Context $context, private \Closure $next)
+                {
+                }
+
+                public function handle(ServerRequestInterface $request): ResponseInterface
+                {
+                    $this->context->req = $this->context->req->withRequest($request);
+
+                    return ($this->next)($this->context);
+                }
+            }
+        );
     }
 
     private function runMiddleware(Context $context, callable $handler, array $middleware): ResponseInterface

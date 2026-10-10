@@ -269,4 +269,14 @@ class DumboTest extends TestCase
         $this->assertSame(404, $response->getStatusCode());
         $this->assertSame("404 Not Found", (string) $response->getBody());
     }
+
+    public function testOnRegistersSeveralMethods()
+    {
+        $app = new Dumbo();
+        $app->on(["GET", "post"], "/form", fn(Context $c) => $c->text($c->req->method()));
+
+        $this->assertSame("GET", (string) $app->handle(new ServerRequest("GET", "/form"))->getBody());
+        $this->assertSame("POST", (string) $app->handle(new ServerRequest("POST", "/form"))->getBody());
+        $this->assertSame(405, $app->handle(new ServerRequest("PUT", "/form"))->getStatusCode());
+    }
 }
