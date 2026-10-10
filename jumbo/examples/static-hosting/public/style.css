@@ -1,0 +1,3 @@
+body { max-width: 38rem; margin: 2rem auto; padding: 0 1rem; font: 17px/1.6 Georgia, serif; color: #292524; }
+nav { display: flex; gap: 1rem; margin-bottom: 2rem; font-family: system-ui, sans-serif; }
+a { color: #9a3412; }

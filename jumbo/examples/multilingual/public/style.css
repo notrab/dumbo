@@ -1,0 +1,5 @@
+body { max-width: 40rem; margin: 2rem auto; padding: 0 1rem; font: 17px/1.6 system-ui, sans-serif; color: #1c1917; background: #fbfaf5; }
+header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 3rem; }
+nav a { margin-right: 1rem; color: #3f6212; }
+nav a[aria-current] { font-weight: 700; text-decoration: none; }
+.note { padding: 0.5rem 1rem; border-radius: 0.5rem; background: #fef9c3; }

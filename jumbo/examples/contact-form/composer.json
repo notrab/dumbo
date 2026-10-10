@@ -1,0 +1,27 @@
+{
+  "require": {
+    "notrab/dumbo": "@dev",
+    "notrab/jumbo": "@dev"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../../../"
+    },
+    {
+      "type": "path",
+      "url": "../../"
+    }
+  ],
+  "scripts": {
+    "dev": [
+      "Composer\\Config::disableProcessTimeout",
+      "jumbo dev"
+    ],
+    "build": "jumbo build",
+    "preview": [
+      "Composer\\Config::disableProcessTimeout",
+      "jumbo preview"
+    ]
+  }
+}

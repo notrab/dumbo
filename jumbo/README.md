@@ -34,7 +34,7 @@ vendor/bin/jumbo preview  # Serve dist/ like a static host, on localhost:4000
 vendor/bin/jumbo routes   # List the pages and redirects
 ```
 
-The Dumbo app is `$site->app`, so middleware and API routes work as usual.
+The Dumbo app is `$site->app`, so middleware and API routes work as usual. There are runnable sites in [`examples/`](examples).
 
 ## Pages
 
