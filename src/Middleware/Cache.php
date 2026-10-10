@@ -33,7 +33,8 @@ class Cache
 
             $response = $next($context);
 
-            if ($response->getStatusCode() !== 200) {
+            // Hashing a body that can't be rewound, like a stream, would consume it
+            if ($response->getStatusCode() !== 200 || !$response->getBody()->isSeekable()) {
                 return $response;
             }
 
