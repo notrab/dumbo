@@ -240,10 +240,10 @@ class Dumbo implements RequestHandlerInterface
             return $this->runMiddleware(
                 $context,
                 $handler,
-                array_merge(
+                array_values(array_merge(
                     $this->getMiddlewareForPath($context->req->path()),
                     $route["middleware"] ?? []
-                )
+                ))
             );
         } catch (\Throwable $error) {
             return $this->handleError($error, $request);
@@ -312,23 +312,26 @@ class Dumbo implements RequestHandlerInterface
         );
     }
 
-    private function runMiddleware(Context $context, callable $handler, array $middleware): ResponseInterface
+    /**
+     * Run the middleware from $index on, then the handler
+     *
+     * @param array<callable> $middleware
+     */
+    private function runMiddleware(Context $context, callable $handler, array $middleware, int $index = 0): ResponseInterface
     {
-        $next = fn(Context $context) => $this->toResponse($context, $handler($context));
-
-        foreach (array_reverse($middleware) as $mw) {
-            $next = function (Context $context) use ($mw, $next): ResponseInterface {
-                $response = null;
-                $result = $mw($context, function (Context $context) use ($next, &$response) {
-                    return $response = $next($context);
-                });
-
-                // Returning nothing continues the chain, unless the middleware already did
-                return $this->toResponse($context, $result ?? $response ?? $next($context));
-            };
+        if (!isset($middleware[$index])) {
+            return $this->toResponse($context, $handler($context));
         }
 
-        return $next($context);
+        $response = null;
+        $next = function (Context $context) use ($handler, $middleware, $index, &$response): ResponseInterface {
+            return $response = $this->runMiddleware($context, $handler, $middleware, $index + 1);
+        };
+
+        $result = $middleware[$index]($context, $next);
+
+        // Returning nothing continues the chain, unless the middleware already did
+        return $this->toResponse($context, $result ?? $response ?? $next($context));
     }
 
     /**
