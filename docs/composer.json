@@ -14,6 +14,10 @@
       "Composer\\Config::disableProcessTimeout",
       "npm run build",
       "php -S localhost:8000 index.php"
+    ],
+    "build": [
+      "npm run build",
+      "@php build.php"
     ]
   }
 }
