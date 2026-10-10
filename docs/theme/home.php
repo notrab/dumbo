@@ -8,6 +8,10 @@ $tints = ["bg-accent-100", "bg-primary-100", "bg-white"];
 
 // *Words in asterisks* get a marker-pen highlight
 $highlight = fn(string $text) => preg_replace('/\*(.+?)\*/', '<span class="highlight">$1</span>', e($text));
+
+// Code is highlighted on the server like fenced code in Markdown, and escaped
+$highlighter = new \Tempest\Highlight\Highlighter();
+$code = fn(string $source, string $language) => $highlighter->parse(rtrim($source), $language);
 ?>
 <main class="overflow-hidden">
     <section class="relative border-b-2 border-ink bg-[radial-gradient(var(--color-ink)_1px,transparent_1px)] [background-size:22px_22px]">
@@ -45,7 +49,7 @@ $highlight = fn(string $text) => preg_replace('/\*(.+?)\*/', '<span class="highl
 
                 <?php if (!empty($hero["install"])): ?>
                     <div class="prose mx-auto mt-10 max-w-md lg:mx-0 [&_.code-block]:my-0">
-                        <pre class="my-0! py-3! pt-4! text-left"><code class="language-bash"><?= e($hero["install"]) ?></code></pre>
+                        <pre class="my-0! py-3! pt-4! text-left"><code class="language-bash"><?= $code($hero["install"], "bash") ?></code></pre>
                     </div>
                 <?php endif ?>
             </div>
@@ -60,16 +64,16 @@ $highlight = fn(string $text) => preg_replace('/\*(.+?)\*/', '<span class="highl
                         </div>
                     <?php endif ?>
 
-                    <div class="pop overflow-hidden rounded-2xl bg-zinc-900">
-                        <div class="flex items-center gap-2 border-b-2 border-ink bg-zinc-800 px-4 py-2.5">
+                    <div class="pop overflow-hidden rounded-2xl bg-code">
+                        <div class="flex items-center gap-2 border-b-2 border-ink bg-code-bar px-4 py-2.5">
                             <span class="h-3 w-3 rounded-full border border-black/30 bg-[#ff5f57]"></span>
                             <span class="h-3 w-3 rounded-full border border-black/30 bg-[#febc2e]"></span>
                             <span class="h-3 w-3 rounded-full border border-black/30 bg-[#28c840]"></span>
                             <?php if (!empty($hero["code"]["file"])): ?>
-                                <span class="ml-2 font-mono text-xs text-zinc-400"><?= e($hero["code"]["file"]) ?></span>
+                                <span class="ml-2 font-mono text-xs text-code-comment"><?= e($hero["code"]["file"]) ?></span>
                             <?php endif ?>
                         </div>
-                        <pre class="overflow-x-auto p-5 font-mono text-[0.8125rem] leading-relaxed"><code class="language-<?= e($hero["code"]["language"] ?? "plaintext") ?>"><?= e(rtrim($hero["code"]["source"] ?? "")) ?></code></pre>
+                        <pre class="overflow-x-auto p-5 font-mono text-[0.8125rem] leading-relaxed text-code-text"><code class="language-<?= e($hero["code"]["language"] ?? "plaintext") ?>"><?= $code($hero["code"]["source"] ?? "", $hero["code"]["language"] ?? "plaintext") ?></code></pre>
                     </div>
                 </div>
             <?php endif ?>
@@ -94,7 +98,7 @@ $highlight = fn(string $text) => preg_replace('/\*(.+?)\*/', '<span class="highl
                         <h3 class="font-display text-xl font-bold text-[#1c1917] dark:text-white"><?= e($feature["title"]) ?></h3>
                         <p class="mt-2 text-sm leading-relaxed opacity-80"><?= e($feature["details"] ?? "") ?></p>
                         <?php if (!empty($feature["code"])): ?>
-                            <pre class="mt-5 overflow-x-auto rounded-xl border-2 border-ink bg-zinc-900 p-4 font-mono text-xs leading-relaxed"><code class="language-<?= e($feature["language"] ?? "php") ?>"><?= e(rtrim($feature["code"])) ?></code></pre>
+                            <pre class="mt-5 overflow-x-auto rounded-xl border-2 border-ink bg-code p-4 font-mono text-xs leading-relaxed text-code-text"><code class="language-<?= e($feature["language"] ?? "php") ?>"><?= $code($feature["code"], $feature["language"] ?? "php") ?></code></pre>
                         <?php endif ?>
                         <?php if (!empty($feature["href"])): ?>
                             <a href="<?= e($feature["href"]) ?>" class="mt-auto inline-flex items-center gap-1 self-start pt-5 text-sm font-bold text-primary-700 underline decoration-accent-400 decoration-2 underline-offset-4 hover:decoration-primary-500 dark:text-primary-300"><?= e($feature["link"] ?? "Learn more") ?> &rarr;</a>

@@ -42,6 +42,18 @@
     --color-ink: #1c1917;
     --color-paper: #fffcf3;
 
+    /* Code blocks: a deep purple panel, with syntax colours that read on it */
+    --color-code: #1d1530;
+    --color-code-bar: #2a1f42;
+    --color-code-text: #e9e1fb;
+    --color-code-keyword: #ff7ac6;
+    --color-code-property: #c9a8ff;
+    --color-code-type: #fcd96a;
+    --color-code-string: #9ff0c8;
+    --color-code-variable: #a9c4ff;
+    --color-code-number: #ffb27a;
+    --color-code-comment: #9a8bbf;
+
     --animate-wiggle: wiggle 0.5s ease-in-out;
     --animate-float: float 4s ease-in-out infinite;
     --animate-sway: sway 3s ease-in-out infinite;
@@ -128,7 +140,7 @@
 }
 
 .prose pre {
-    @apply pop rounded-xl bg-zinc-900 font-mono text-[0.8125rem] text-[#c9d1d9] dark:bg-zinc-900;
+    @apply pop rounded-xl bg-code font-mono text-[0.8125rem] text-code-text;
 }
 
 .prose .code-block pre {
@@ -145,36 +157,41 @@ pre code {
     @apply bg-transparent p-0;
 }
 
-/* GitHub Dark colours for the hl-* classes Jumbo highlights code with */
+/* Syntax colours for the hl-* classes Jumbo highlights code with */
 .hl-keyword {
-    color: #ff7b72;
+    color: var(--color-code-keyword);
 }
 
 .hl-property {
-    color: #d2a8ff;
+    color: var(--color-code-property);
 }
 
 .hl-type,
 .hl-generic {
-    color: #ffa657;
+    color: var(--color-code-type);
 }
 
 .hl-value {
-    color: #a5d6ff;
+    color: var(--color-code-string);
 }
 
-.hl-variable,
+.hl-variable {
+    color: var(--color-code-variable);
+}
+
 .hl-literal,
 .hl-number {
-    color: #79c0ff;
+    color: var(--color-code-number);
 }
 
 .hl-comment {
-    color: #8b949e;
+    color: var(--color-code-comment);
+    font-style: italic;
 }
 
 .hl-attribute {
-    color: #7ee787;
+    color: var(--color-code-property);
+    font-style: italic;
 }
 
 .hl-strong {
@@ -230,7 +247,7 @@ pre code {
 }
 
 .copy-button {
-    @apply absolute top-3 right-3 z-10 rounded-md border border-zinc-600 bg-zinc-800 px-2 py-1 font-sans text-xs font-semibold text-zinc-200 opacity-0 transition hover:bg-zinc-700 hover:text-white;
+    @apply absolute top-3 right-3 z-10 rounded-md border border-white/15 bg-code-bar px-2 py-1 font-sans text-xs font-semibold text-code-text opacity-0 transition hover:bg-primary-900 hover:text-white;
 }
 
 .prose .code-block:hover .copy-button,
