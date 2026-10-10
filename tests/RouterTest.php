@@ -329,6 +329,64 @@ class RouterTest extends TestCase
         $this->assertEquals("/users/:id", $this->routePath("/users/1"));
     }
 
+    public function testManyRoutesWithParamsUnderOnePrefix()
+    {
+        for ($i = 0; $i < 120; $i++) {
+            $this->router->addRoute("GET", "/api/r$i/:id", fn() => null);
+        }
+
+        $route = $this->router->dispatch(new ServerRequest("GET", "/api/r119/7"))["route"];
+
+        $this->assertEquals("/api/r119/:id", $route["routePath"]);
+        $this->assertEquals(["id" => "7"], $route["params"]);
+        $this->assertEquals("/api/r60/:id", $this->routePath("/api/r60/1"));
+    }
+
+    public function testHeadFallsBackToGet()
+    {
+        $this->router->addRoute("GET", "/users/:id", fn() => null);
+
+        $route = $this->router->dispatch(new ServerRequest("HEAD", "/users/1"))["route"];
+
+        $this->assertEquals("/users/:id", $route["routePath"]);
+    }
+
+    public function testFirstRouteAddedWinsForTheSamePath()
+    {
+        $this->router->addRoute("GET", "/users/:id", fn() => "first");
+        $this->router->addRoute("GET", "/users/:userId", fn() => "second");
+        $this->router->addRoute("GET", "/about", fn() => "first");
+        $this->router->addRoute("GET", "/about", fn() => "second");
+
+        $this->assertEquals("first", $this->router->dispatch(new ServerRequest("GET", "/users/1"))["route"]["handler"]());
+        $this->assertEquals("first", $this->router->dispatch(new ServerRequest("GET", "/about"))["route"]["handler"]());
+    }
+
+    public function testParamRegexesCannotHaveCapturingGroups()
+    {
+        $this->router->addRoute("GET", "/:lang{(en|fr)}", fn() => null);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->routePath("/en");
+    }
+
+    public function testParamRegexesCanHaveNonCapturingGroups()
+    {
+        $this->router->addRoute("GET", "/:lang{(?:en|fr)}/:page", fn() => null);
+
+        $route = $this->router->dispatch(new ServerRequest("GET", "/fr/about"))["route"];
+
+        $this->assertEquals(["lang" => "fr", "page" => "about"], $route["params"]);
+    }
+
+    public function testMalformedOptionalPartsThrowWhenAdded()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->router->addRoute("GET", "/users[/{id}]/posts", fn() => null);
+    }
+
     private function routePath(string $path): ?string
     {
         return $this->router->dispatch(new ServerRequest("GET", $path))["route"]["routePath"] ?? null;

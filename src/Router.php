@@ -2,10 +2,13 @@
 
 namespace Dumbo;
 
-use FastRoute\Dispatcher;
-use FastRoute\RouteCollector;
 use Psr\Http\Message\ServerRequestInterface;
 
+/**
+ * Matches requests to routes. Paths are compiled to FastRoute's syntax and
+ * matched the way FastRoute matches them: paths without params first, then
+ * the rest in the order they were added.
+ */
 class Router
 {
     private const WILDCARD = "__wildcard";
@@ -13,14 +16,30 @@ class Router
     /** Key for routes whose first segment isn't fixed, e.g. /:lang or /* */
     private const ANY = "*";
 
-    /** @var array<string, Dispatcher> Built on demand, one per first path segment */
-    private array $dispatchers = [];
+    /** A {name} or {name:regex} placeholder */
+    private const PLACEHOLDER = '\{\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*(?::\s*([^{}]*(?:\{(?-1)\}[^{}]*)*))?\}';
+
+    /** Routes combined into one regex, which keeps it under PCRE's size limit */
+    private const CHUNK_SIZE = 50;
 
     /** @var array<array{method: string, path: string, compiled: string, handler: callable, middleware: array<callable>}> */
     private array $routes = [];
 
-    /** @var array<string, array<int>> Indexes into $routes, by the first path segment they match */
-    private array $segments = [self::ANY => []];
+    /** @var array<string, array<string, int>> Indexes into $routes for paths without params, by method and path */
+    private array $static = [];
+
+    /**
+     * @var array<string, array<int, array{int, string}>> Index into $routes and
+     * compiled path for paths with params, by the first path segment they
+     * match, keyed in the order they were added
+     */
+    private array $variable = [self::ANY => []];
+
+    /** @var array<string, array<string, array>> Regexes by first segment and method, built on demand */
+    private array $matchers = [];
+
+    /** Orders $variable entries across segments */
+    private int $sequence = 0;
 
     /**
      * @param string|array<string> $methods
@@ -28,10 +47,10 @@ class Router
     public function addRoute(string|array $methods, string $path, callable $handler, array $middleware = []): void
     {
         $compiled = self::compile($path);
-        $segment = self::firstSegment($compiled);
+        $variants = self::variants($compiled, $path);
 
         foreach ((array) $methods as $method) {
-            $this->segments[$segment][] = count($this->routes);
+            $index = count($this->routes);
             $this->routes[] = [
                 "method" => $method,
                 "path" => $path,
@@ -39,9 +58,17 @@ class Router
                 "handler" => $handler,
                 "middleware" => $middleware,
             ];
+
+            foreach ($variants as $variant) {
+                if (!str_contains($variant, "{")) {
+                    $this->static[$method][$variant] ??= $index;
+                } else {
+                    $this->variable[self::firstSegment($variant)][$this->sequence++] = [$index, $variant];
+                }
+            }
         }
 
-        $this->dispatchers = [];
+        $this->matchers = [];
     }
 
     public function getRoutes(): array
@@ -58,70 +85,205 @@ class Router
      */
     public function dispatch(ServerRequestInterface $request): array
     {
+        $method = $request->getMethod();
         $path = self::normalize($request->getUri()->getPath());
         $segment = substr($path, 1, strcspn($path, "/", 1));
 
-        if (!isset($this->segments[$segment])) {
+        if (!isset($this->variable[$segment])) {
             $segment = self::ANY;
         }
 
-        $result = ($this->dispatchers[$segment] ??= $this->buildDispatcher($segment))
-            ->dispatch($request->getMethod(), $path);
+        $matchers = $this->matchers[$segment] ??= $this->buildMatchers($segment);
 
-        return match ($result[0]) {
-            Dispatcher::FOUND => [
+        // HEAD falls back to GET, and any method to routes added for "*"
+        $found = $this->find($method, $path, $matchers)
+            ?? ($method === "HEAD" ? $this->find("GET", $path, $matchers) : null)
+            ?? $this->find("*", $path, $matchers);
+
+        if ($found !== null) {
+            [$index, $params] = $found;
+
+            return [
                 "route" => [
-                    "handler" => $result[1]["handler"],
+                    "handler" => $this->routes[$index]["handler"],
                     "params" => array_filter(
-                        $result[2],
+                        $params,
                         fn($name) => !str_starts_with($name, self::WILDCARD),
                         ARRAY_FILTER_USE_KEY
                     ),
-                    "routePath" => $result[1]["path"],
-                    "middleware" => $result[1]["middleware"],
+                    "routePath" => $this->routes[$index]["path"],
+                    "middleware" => $this->routes[$index]["middleware"],
                 ],
                 "allowedMethods" => [],
-            ],
-            Dispatcher::METHOD_NOT_ALLOWED => [
-                "route" => null,
-                "allowedMethods" => array_values(array_unique($result[1])),
-            ],
-            default => ["route" => null, "allowedMethods" => []],
-        };
-    }
+            ];
+        }
 
-    /**
-     * Build a dispatcher with only the routes that can match paths starting
-     * with this segment, so a request doesn't pay to compile every route.
-     * Registration order is kept, as FastRoute matches in that order.
-     */
-    private function buildDispatcher(string $segment): Dispatcher
-    {
-        $indexes = $segment === self::ANY
-            ? $this->segments[self::ANY]
-            : array_merge($this->segments[$segment], $this->segments[self::ANY]);
+        $allowed = [];
 
-        sort($indexes);
-
-        return \FastRoute\simpleDispatcher(function (RouteCollector $r) use ($indexes) {
-            foreach ($indexes as $i) {
-                $r->addRoute($this->routes[$i]["method"], $this->routes[$i]["compiled"], $this->routes[$i]);
+        foreach ($this->static as $other => $paths) {
+            if ($other !== $method && isset($paths[$path])) {
+                $allowed[] = $other;
             }
-        });
+        }
+
+        foreach (array_keys($matchers) as $other) {
+            if ($other !== $method && $this->find($other, $path, $matchers) !== null) {
+                $allowed[] = $other;
+            }
+        }
+
+        return ["route" => null, "allowedMethods" => array_values(array_unique($allowed))];
     }
 
     /**
-     * The fixed first segment of a compiled route, e.g. "users" for
-     * /users/{id}, or ANY when it varies, as in /{lang} or /[{id}]
+     * @return array{int, array<string, string>}|null The route index and params
      */
-    private static function firstSegment(string $compiled): string
+    private function find(string $method, string $path, array $matchers): ?array
     {
-        $end = strcspn($compiled, "/[{", 1) + 1;
-        $next = substr($compiled, $end, 2);
+        if (isset($this->static[$method][$path])) {
+            return [$this->static[$method][$path], []];
+        }
 
-        return $next === "" || $next[0] === "/" || $next === "[/"
-            ? substr($compiled, 1, $end - 1)
-            : self::ANY;
+        foreach ($matchers[$method] ?? [] as [$regex, $routes]) {
+            if (preg_match($regex, $path, $matches)) {
+                [$index, $names] = $routes[$matches["MARK"]];
+                $params = [];
+
+                foreach ($names as $i => $name) {
+                    $params[$name] = $matches[$i + 1];
+                }
+
+                return [$index, $params];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Combine the regexes of routes with params that can match paths
+     * starting with this segment, by method, so a request only compiles the
+     * routes it might match. Each alternative is tagged with a MARK naming
+     * the route, and the order they were added in is kept.
+     */
+    private function buildMatchers(string $segment): array
+    {
+        $entries = $segment === self::ANY
+            ? $this->variable[self::ANY]
+            : $this->variable[$segment] + $this->variable[self::ANY];
+
+        ksort($entries);
+
+        $byMethod = [];
+
+        foreach ($entries as [$index, $variant]) {
+            $byMethod[$this->routes[$index]["method"]][] = [$index, $variant];
+        }
+
+        $matchers = [];
+
+        foreach ($byMethod as $method => $variants) {
+            foreach (array_chunk($variants, self::CHUNK_SIZE) as $chunk) {
+                $regexes = [];
+                $routes = [];
+
+                foreach ($chunk as $mark => [$index, $variant]) {
+                    [$regex, $names] = $this->toRegex($variant, $index);
+                    $regexes[] = "$regex(*MARK:$mark)";
+                    $routes[$mark] = [$index, $names];
+                }
+
+                $matchers[$method][] = ["~^(?|" . implode("|", $regexes) . ")$~", $routes];
+            }
+        }
+
+        return $matchers;
+    }
+
+    /**
+     * Turn a compiled path without optional parts, like /users/{id:[0-9]+},
+     * into a regex and its param names
+     *
+     * @return array{string, array<string>}
+     * @throws \InvalidArgumentException If a param's regex has a capturing group
+     */
+    private function toRegex(string $variant, int $index): array
+    {
+        preg_match_all("~" . self::PLACEHOLDER . "~", $variant, $placeholders, PREG_OFFSET_CAPTURE | PREG_SET_ORDER);
+
+        $regex = "";
+        $names = [];
+        $offset = 0;
+
+        foreach ($placeholders as $placeholder) {
+            $pattern = isset($placeholder[2]) ? trim($placeholder[2][0]) : "[^/]+";
+
+            if (self::hasCapturingGroup($pattern)) {
+                throw new \InvalidArgumentException(
+                    "The regex for :{$placeholder[1][0]} in {$this->routes[$index]["path"]} can't have a capturing group, use (?:...) instead"
+                );
+            }
+
+            $regex .= preg_quote(substr($variant, $offset, $placeholder[0][1] - $offset), "~") . "($pattern)";
+            $names[] = $placeholder[1][0];
+            $offset = $placeholder[0][1] + strlen($placeholder[0][0]);
+        }
+
+        return [$regex . preg_quote(substr($variant, $offset), "~"), $names];
+    }
+
+    /**
+     * The paths a compiled route matches: /users[/{id}] is /users and
+     * /users/{id}
+     *
+     * @return array<string>
+     * @throws \InvalidArgumentException If the optional parts are malformed
+     */
+    private static function variants(string $compiled, string $path): array
+    {
+        if (!str_contains($compiled, "[")) {
+            return [$compiled];
+        }
+
+        $required = rtrim($compiled, "]");
+        $parts = preg_split("~" . self::PLACEHOLDER . "(*SKIP)(*F)|\\[~", $required);
+
+        if (count($parts) - 1 !== strlen($compiled) - strlen($required) || in_array("", array_slice($parts, 1), true)) {
+            throw new \InvalidArgumentException("Optional route parts must come last and not be empty in $path");
+        }
+
+        $variants = [];
+        $current = "";
+
+        foreach ($parts as $part) {
+            $variants[] = $current .= $part;
+        }
+
+        return $variants;
+    }
+
+    /**
+     * The fixed first segment of a compiled path, e.g. "users" for
+     * /users/{id}, or ANY when it varies, as in /{lang}
+     */
+    private static function firstSegment(string $variant): string
+    {
+        $end = strcspn($variant, "/{", 1) + 1;
+
+        return ($variant[$end] ?? "/") === "/" ? substr($variant, 1, $end - 1) : self::ANY;
+    }
+
+    /**
+     * Whether a regex has a capturing group, which would shift the params.
+     * Escapes, character classes and (?...) groups other than named ones
+     * don't count.
+     */
+    private static function hasCapturingGroup(string $regex): bool
+    {
+        return str_contains($regex, "(") && preg_match(
+            '~(?:\(\?\(|\[[^\]\\\\]*(?:\\\\.[^\]\\\\]*)*\]|\\\\.)(*SKIP)(*FAIL)|\((?!\?(?!<(?![!=])|P<|\')|\*)~',
+            $regex
+        ) === 1;
     }
 
     /**
