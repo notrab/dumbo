@@ -1,19 +1,18 @@
 # Jumbo
 
-Content sites on [Dumbo](../README.md), named after his mum. Pages are files, templates are plain PHP with layouts, Markdown has components, and the same app serves pages on demand or builds them to static files for any host.
+Content sites on [Dumbo](../README.md), named after his mum. Pages are files, templates are plain PHP, and the same app serves pages on demand or builds them to static files.
 
-Dumbo's own docs in [`docs/`](../docs) are built with it.
+Dumbo's [docs](../docs) are built with it.
 
-## A site
+## Quickstart
 
 ```
-app.php          Returns the site
-index.php        Runs it as a server
-pages/           One file per route
-views/           Layouts and templates
-components/      Markdown components
-content/         Markdown to load in pages
-public/          Files served as-is
+app.php       Returns the site
+pages/        One file per route
+views/        Layouts and templates
+components/   Markdown components
+content/      Markdown to load in pages
+public/       Files served as-is
 ```
 
 ```php
@@ -21,162 +20,69 @@ public/          Files served as-is
 
 require __DIR__ . "/vendor/autoload.php";
 
-return new Dumbo\Jumbo\Site(__DIR__, [
-    "name" => "Acme",
-    "url" => "https://acme.dev",
-    "seo" => ["titleTemplate" => "%s - Acme"],
-]);
+return new Dumbo\Jumbo\Site(__DIR__, ["name" => "Acme", "url" => "https://acme.dev"]);
 ```
 
-```php
-<?php // index.php
-
-$site = require __DIR__ . "/app.php";
-
-$site->run();
+```bash
+vendor/bin/jumbo dev      # Serve on localhost:8000
+vendor/bin/jumbo build    # Build to dist/
+vendor/bin/jumbo routes   # List the pages
 ```
 
-The site is a Dumbo app underneath, as `$site->app`, so middleware and API routes work as usual:
-
-```php
-$site->app->use(Dumbo\Middleware\Compress::compress());
-$site->app->post("/api/subscribe", fn($context) => $context->json(["ok" => true]));
-```
+The Dumbo app is `$site->app`, so middleware and API routes work as usual.
 
 ## Pages
-
-Every `.php` and `.md` file in `pages/` is a route:
 
 | File | Route |
 | --- | --- |
 | `pages/index.php` | `/` |
 | `pages/about.md` | `/about` |
-| `pages/blog/index.php` | `/blog` |
 | `pages/blog/[slug].php` | `/blog/:slug` |
-| `pages/docs/[...path].php` | `/docs/*`, at any depth |
+| `pages/docs/[...path].php` | `/docs/*` |
 | `pages/sitemap.xml.php` | `/sitemap.xml`, sent as XML |
-| `pages/404.php` | Any route that isn't found, and `404.html` in builds |
+| `pages/404.php` | Not found, and `404.html` in builds |
 
-Files and folders starting with `_` aren't routes, so helpers can sit next to the pages that use them.
+Files and folders starting with `_` are skipped.
 
-### Templates
-
-A page that's just markup is a template. It gets `$site`, `$context` and the route's `$params`:
-
-```php
-<?php $this->layout("base", ["title" => "About"]) ?>
-
-<h1>About <?= e($site->config["name"]) ?></h1>
-```
-
-### Markdown
-
-A Markdown page is rendered in the view named by its `layout` front matter, which gets the page as `$page` (with `meta`, `title`, `html` and `toc`) and its meta tags as `$seo`:
-
-```markdown
----
-layout: article
-title: About us
-description: Who we are
----
-
-# About us
-```
-
-### Pages with data
-
-A page that loads data, has params, or shouldn't be built ahead of time returns a `Page`:
+- **Templates** are plain PHP and get `$site`, `$context` and `$params`.
+- **Markdown** is rendered in the view named by its `layout` front matter, as `$page` and `$seo`.
+- **Pages with data** return a `Page`:
 
 ```php
 <?php // pages/blog/[slug].php
 
-use Dumbo\Context;
 use Dumbo\Jumbo\Page;
-use Dumbo\Jumbo\Site;
 
 return new Page(
-    // The params to build, one page each
-    paths: fn(Site $site) => array_map(fn($slug) => ["slug" => $slug], $site->slugs()),
-    render: function (Context $context, Site $site) {
-        $post = $site->find($context->req->param("slug"));
-
-        return $post ? $site->view("post", ["post" => $post]) : $context->notFound();
-    },
+    paths: fn($site) => array_map(fn($slug) => ["slug" => $slug], $site->slugs()),
+    render: fn($context, $site) => $site->view("post", [
+        "post" => $site->find($context->req->param("slug")),
+    ]),
 );
 ```
 
-| Option | Does |
-| --- | --- |
-| `render` | Called with the context and site. Returns HTML, a response, or null for the context's response |
-| `paths` | The params to build for a page with `[params]` in its name |
-| `prerender` | `false`, or a closure returning it, to render the page on each request and leave it out of builds |
-| `middleware` | Dumbo middleware for the page |
+`paths` lists the params to build. Set `prerender: false` to render a page on each request instead, and `middleware` to add Dumbo middleware.
 
-## Views and layouts
-
-Views are PHP templates in `views/`, rendered with `$site->view("name", [...])`. Inside any template, `$this` picks a layout and fills its slots:
+## Layouts
 
 ```php
 <?php $this->layout("base", ["title" => "Pricing"]) ?>
 
-<?php $this->start("head") ?>
-    <link rel="stylesheet" href="/pricing.css">
-<?php $this->end() ?>
+<?php $this->start("head") ?><link rel="stylesheet" href="/pricing.css"><?php $this->end() ?>
 
 <h1>Pricing</h1>
 ```
 
-The layout gets the template's output as `$slot`, named slots from `$this->slot("head")`, and the template's variables. Layouts can have layouts, so a docs layout can sit inside the site's base layout:
+The layout gets the output as `$slot` and named slots from `$this->slot("head")`. Layouts can have layouts. Escape values with `e()`.
 
-```php
-<?php // views/base.php ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <title><?= e($title) ?></title>
-    <?= $this->slot("head") ?>
-</head>
-<body><?= $slot ?></body>
-</html>
-```
+## Content
 
-Escape values with `e()`.
+`$site->find("hello")` loads `content/hello.md` with its front matter, HTML, title and table of contents, and `$site->slugs()` lists them all. In Markdown, `::: name key="value"` renders `components/name.php` with `$attributes` and `$slot`.
 
-## Content and components
+## Builds
 
-`$site->find("hello")` loads `content/hello.md` with its front matter, HTML, title and a table of contents from its `##` and `###` headings. `$site->slugs()` lists every file in `content/`.
-
-Components drop richer blocks into Markdown. `::: name key="value"` renders `components/name.php` with `$attributes` and the Markdown inside as `$slot`:
-
-```markdown
-::: callout type="tip"
-Any **Markdown**.
-:::
-```
-
-Give the outer fence more colons to nest components.
-
-## Commands
-
-```bash
-vendor/bin/jumbo dev                         # Serve on localhost:8000
-vendor/bin/jumbo routes                      # List the pages and how each renders
-vendor/bin/jumbo build                       # Build to dist/
-vendor/bin/jumbo build --url=https://acme.dev/blog
-```
-
-A build sends each page through the app, so the files match what the server sends. Pages become `path/index.html`, redirects become meta refresh pages, the 404 page becomes `404.html`, and `public/` is copied over. Any sub-path in `--url`, or `--base`, is added to every link. `--out` sets the folder.
+Each page is requested through the app, so builds match what the server sends. Pages become `path/index.html`, redirects become meta refreshes, and `public/` is copied over. Pass `--url` for canonical URLs and any sub-path, or `--base` and `--out` on their own.
 
 ## Config
 
-| Key | Does |
-| --- | --- |
-| `name` | The site's name |
-| `url` | Where the site is hosted, for canonical URLs and the build's sub-path |
-| `locale` | The site's language |
-| `seo` | Defaults for `$site->seo()`: `title`, `titleTemplate`, `description`, `image`, `twitter` |
-| `assets` | `"cdn"` or `"local"` for `$site->asset()`. CDN in development, local in production |
-| `cdn` | The npm CDN for `$site->asset()` |
-| `dirs` | Folder names for `pages`, `views`, `components`, `content` and `public` |
-
-Extend `Dumbo\Jumbo\Site` to add defaults for your own config and helpers for your templates, as the docs do in [`docs/src/Site.php`](../docs/src/Site.php).
+`name`, `url`, `locale`, `seo` defaults, `assets` (`"cdn"` or `"local"`), and `dirs` to rename folders. Extend `Dumbo\Jumbo\Site` for your own defaults and template helpers, as [`docs/src/Site.php`](../docs/src/Site.php) does.
