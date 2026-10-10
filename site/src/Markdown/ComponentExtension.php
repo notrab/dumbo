@@ -1,6 +1,6 @@
 <?php
 
-namespace Docs\Markdown;
+namespace Dumbo\Site\Markdown;
 
 use League\CommonMark\Environment\EnvironmentBuilderInterface;
 use League\CommonMark\Extension\ExtensionInterface;

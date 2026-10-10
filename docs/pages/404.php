@@ -1,3 +1,4 @@
+<?php $this->layout("layout", ["seo" => $site->seo(["noindex" => true], "/404", "Page not found")]) ?>
 <main class="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-4 py-16 text-center">
     <div class="relative">
         <p class="text-8xl"><?= $site->view("logo", ["class" => "motion-safe:animate-sway"]) ?></p>

@@ -1,32 +1,32 @@
 {
   "require": {
     "notrab/dumbo": "@dev",
-    "league/commonmark": "^2.5",
-    "symfony/yaml": "^7.4"
+    "notrab/dumbo-site": "@dev"
   },
   "repositories": [
     {
       "type": "path",
       "url": "../"
+    },
+    {
+      "type": "path",
+      "url": "../site"
     }
   ],
   "scripts": {
     "start": [
       "Composer\\Config::disableProcessTimeout",
       "npm run build",
-      "php -S localhost:8000 index.php"
+      "dumbo-site dev"
     ],
     "build": [
       "npm run build",
-      "@php build.php"
+      "dumbo-site build"
     ]
   },
   "autoload": {
     "psr-4": {
       "Docs\\": "src/"
-    },
-    "files": [
-      "src/helpers.php"
-    ]
+    }
   }
 }

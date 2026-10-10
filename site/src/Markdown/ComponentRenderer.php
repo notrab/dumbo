@@ -1,6 +1,6 @@
 <?php
 
-namespace Docs\Markdown;
+namespace Dumbo\Site\Markdown;
 
 use League\CommonMark\Node\Node;
 use League\CommonMark\Renderer\ChildNodeRendererInterface;

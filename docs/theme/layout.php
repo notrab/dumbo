@@ -84,7 +84,7 @@
         </div>
     </header>
 
-    <?= $body ?>
+    <?= $slot ?>
 
     <?php if ($config["footer"]["title"] || $config["footer"]["text"]): ?>
         <footer class="border-t-2 border-ink bg-accent-200 px-4 py-8 text-center text-sm text-[#1c1917] dark:bg-primary-950 dark:text-stone-300">

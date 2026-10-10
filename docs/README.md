@@ -1,6 +1,6 @@
 # Dumbo Docs
 
-The Dumbo documentation site, and a small docs starter you can copy for your own project. It's a Dumbo app that renders Markdown, runs as a server or builds to static files for any CDN, and ships with a playful theme.
+The Dumbo documentation site, and a small docs starter you can copy for your own project. It's built on [`notrab/dumbo-site`](../site), so it renders Markdown, runs as a server or builds to static files for any CDN, and ships with a playful theme.
 
 ## Quickstart
 
@@ -15,9 +15,9 @@ Then open [http://localhost:8000](http://localhost:8000).
 ## Using it for your own project
 
 1. Copy this `docs/` folder into your project.
-2. In `composer.json`, remove the `repositories` block and require `notrab/dumbo` from Packagist.
+2. In `composer.json`, remove the `repositories` block and require `notrab/dumbo` and `notrab/dumbo-site` from Packagist.
 3. Edit `config.php`: name, logo, colours, SEO, links and sidebar.
-4. Replace the pages in `content/`. `content/index.md` is the home page.
+4. Replace the pages in `content/`. `pages/index.md` is the home page.
 5. Delete `components/examples.php` and `content/examples.md`, which are specific to Dumbo.
 
 ## Folders
@@ -25,14 +25,14 @@ Then open [http://localhost:8000](http://localhost:8000).
 | Path | What's in it |
 | --- | --- |
 | `config.php` | Everything specific to your docs |
-| `content/` | Markdown pages, plus `index.md` for the home page |
+| `pages/` | One file per route: the home page, `/docs/{slug}`, the sitemap, robots.txt and the 404 page |
+| `content/` | The docs pages, in Markdown |
 | `components/` | Markdown components, built in and your own |
 | `theme/` | The layout, page templates and Tailwind styles |
 | `public/` | Files served as-is, like images |
-| `src/` | The engine: Markdown, components, SEO and assets |
-| `app.php` | The routes |
-| `index.php` | Runs the app as a server |
-| `build.php` | Renders the app to static files |
+| `src/` | The sidebar and previous and next links |
+| `app.php` | Creates the site |
+| `index.php` | Runs the site as a server |
 
 ## Pages
 
@@ -57,11 +57,11 @@ description: Register routes for every HTTP method.
 | `image` | The social card image |
 | `canonical` | The canonical URL |
 | `noindex` | `true` hides the page from search engines and the sitemap |
-| `layout` | A template in `theme/`, `page` by default and `home` for the home page |
+| `layout` | A template in `theme/`, `page` by default |
 
 ### The home page
 
-`content/index.md` describes the home page in front matter. Every section is optional. See Dumbo's for a full example.
+`pages/index.md` describes the home page in front matter, and `theme/home.php` renders it. Every section is optional. See Dumbo's for a full example.
 
 ```yaml
 ---
@@ -189,7 +189,7 @@ Point your web server at `index.php`, as with any Dumbo app, and set `DUMBO_ENV=
 composer build
 ```
 
-This builds the CSS, then renders every page to `dist/` by running each one through the app, so both modes produce the same HTML. Upload `dist/` to Netlify, Cloudflare Pages, GitHub Pages, S3 or any static host.
+This builds the CSS, then runs `dumbo-site build`, which renders every page to `dist/` by running each one through the app, so both modes produce the same HTML. Upload `dist/` to Netlify, Cloudflare Pages, GitHub Pages, S3 or any static host.
 
 - Pages are written as `path/index.html`, so links like `/docs/routing` work without a server.
 - `/docs` becomes a page that redirects to the first page in the sidebar.

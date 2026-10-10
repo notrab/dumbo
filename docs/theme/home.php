@@ -1,3 +1,4 @@
+<?php $this->layout("layout") ?>
 <?php
 $hero = $page["meta"]["hero"] ?? [];
 $features = $page["meta"]["features"] ?? [];

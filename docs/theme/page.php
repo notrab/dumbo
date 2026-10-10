@@ -1,3 +1,4 @@
+<?php $this->layout("layout") ?>
 <!-- Mobile: menu bar under the header -->
 <div class="sticky top-16 z-30 flex items-center border-b-2 border-ink bg-paper/90 px-4 py-2 backdrop-blur sm:px-6 lg:hidden">
     <button type="button" data-menu-open class="flex items-center gap-2 text-sm font-bold text-ink">

@@ -1,6 +1,6 @@
 <?php
 
-namespace Docs\Markdown;
+namespace Dumbo\Site\Markdown;
 
 use League\CommonMark\Parser\Block\BlockStart;
 use League\CommonMark\Parser\Block\BlockStartParserInterface;
