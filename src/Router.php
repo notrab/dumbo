@@ -93,16 +93,17 @@ class Router
         $optional = [];
 
         foreach ($segments as $i => $segment) {
-            $isLast = $i === count($segments) - 1;
-            $isOptional = str_ends_with($segment, "?") || ($segment === "*" && $isLast);
+            $isOptional = str_ends_with($segment, "?") || ($segment === "*" && $i === count($segments) - 1);
 
             $segment = preg_replace_callback(
                 '/\{(?:[^{}]|\{[^{}]*})*}|\*|:(\w+)(?:\{((?:[^{}]|\{[^{}]*})+)})?\??/',
-                fn($m) => match (true) {
-                    $m[0][0] === "{" => $m[0],
-                    $m[0] === "*" => "{" . self::WILDCARD . $wildcards++ . ($isOptional ? ":.*}" : ":.+}"),
-                    isset($m[2]) => "{{$m[1]}:{$m[2]}}",
-                    default => "{{$m[1]}}",
+                function (array $m) use (&$wildcards, $isOptional): string {
+                    return match (true) {
+                        $m[0][0] === "{" => $m[0],
+                        $m[0] === "*" => "{" . self::WILDCARD . $wildcards++ . ($isOptional ? ":.*}" : ":.+}"),
+                        isset($m[2]) => "{{$m[1]}:{$m[2]}}",
+                        default => "{{$m[1]}}",
+                    };
                 },
                 $segment
             );
@@ -119,7 +120,15 @@ class Router
         $compiled = "/" . implode("/", $required);
 
         if ($optional !== []) {
-            $compiled = rtrim($compiled, "/") . "[/" . implode("[/", $optional) . str_repeat("]", count($optional));
+            $compiled = ($required === [] ? "/[" : $compiled . "[/")
+                . implode("[/", $optional)
+                . str_repeat("]", count($optional));
+        }
+
+        preg_match_all('/\{([a-zA-Z_][\w-]*)/', $compiled, $names);
+
+        if (count($names[1]) !== count(array_unique($names[1]))) {
+            throw new \InvalidArgumentException("Route params must have unique names in $path");
         }
 
         return $compiled;

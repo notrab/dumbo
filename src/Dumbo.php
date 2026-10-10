@@ -131,12 +131,28 @@ class Dumbo implements RequestHandlerInterface
      */
     public function route(string $prefix, self $app): static
     {
+        $prefix = rtrim($prefix, "/");
+
+        // The nested app's scoped middleware, checked against the request path
+        // so it also covers routes with params and wildcards
+        $scoped = [];
+
+        foreach ($app->groupMiddleware as $groupPrefix => $group) {
+            $groupPrefix = $prefix . "/" . ltrim($groupPrefix, "/");
+
+            foreach ($group as $middleware) {
+                $scoped[] = fn(Context $context, callable $next) => self::coversPath($groupPrefix, $context->req->path())
+                    ? $middleware($context, $next)
+                    : $next($context);
+            }
+        }
+
         foreach ($app->router->getRoutes() as $route) {
             $this->router->addRoute(
                 $route["method"],
-                rtrim($prefix, "/") . "/" . ltrim($route["path"], "/"),
+                $prefix . "/" . ltrim($route["path"], "/"),
                 $route["handler"],
-                array_merge($app->getMiddlewareForPath($route["path"]), $route["middleware"])
+                array_merge($app->middleware, $scoped, $route["middleware"])
             );
         }
 
@@ -144,22 +160,30 @@ class Dumbo implements RequestHandlerInterface
     }
 
     /**
-     * Set a handler for uncaught exceptions, called with ($error, $context)
+     * Set a handler for uncaught exceptions, called with ($error, $context).
+     * Responses it sends default to the HTTPException's status, or 500.
      */
     public function onError(callable $handler): static
     {
-        $this->errorHandler = $handler;
+        $this->errorHandler = fn(\Throwable $error, Context $context) => $this->toResponse(
+            $context->status($error instanceof HTTPException ? $error->getStatusCode() : 500),
+            $handler($error, $context)
+        );
 
         return $this;
     }
 
     /**
      * Set the handler for requests that match no route, called with ($context).
-     * It runs after middleware, like a route handler.
+     * It runs after middleware, like a route handler, and its responses
+     * default to a 404 status.
      */
     public function notFound(callable $handler): static
     {
-        $this->notFoundHandler = $handler;
+        $this->notFoundHandler = fn(Context $context) => $this->toResponse(
+            $context->status(404),
+            $handler($context)
+        );
 
         return $this;
     }
@@ -289,22 +313,28 @@ class Dumbo implements RequestHandlerInterface
         $next = fn(Context $context) => $this->toResponse($context, $handler($context));
 
         foreach (array_reverse($middleware) as $mw) {
-            $next = fn(Context $context) => $this->toResponse($context, $mw($context, $next), $next);
+            $next = function (Context $context) use ($mw, $next): ResponseInterface {
+                $response = null;
+                $result = $mw($context, function (Context $context) use ($next, &$response) {
+                    return $response = $next($context);
+                });
+
+                // Returning nothing continues the chain, unless the middleware already did
+                return $this->toResponse($context, $result ?? $response ?? $next($context));
+            };
         }
 
         return $next($context);
     }
 
     /**
-     * Turn whatever a handler or middleware returned into a response. A null
-     * from middleware continues to the next one; a null from a handler sends
-     * the context's response; anything else is sent as JSON.
+     * Turn whatever a handler returned into a response: null sends the
+     * context's response and anything else is sent as JSON
      */
-    private function toResponse(Context $context, mixed $result, ?callable $next = null): ResponseInterface
+    private function toResponse(Context $context, mixed $result): ResponseInterface
     {
         return match (true) {
             $result instanceof ResponseInterface => $result,
-            $result === null && $next !== null => $next($context),
             $result === null => $context->getResponse(),
             default => $context->json($result),
         };
@@ -323,8 +353,11 @@ class Dumbo implements RequestHandlerInterface
         $body = $response->getBody();
 
         if ($body instanceof CallbackStream) {
+            // Send output buffers on, stopping at one that can't be removed
             while (ob_get_level() > 0) {
-                ob_end_flush();
+                if (!@ob_end_flush()) {
+                    break;
+                }
             }
 
             $body->pipe(function (string $chunk) {
@@ -381,15 +414,23 @@ class Dumbo implements RequestHandlerInterface
         $middleware = $this->middleware;
 
         foreach ($this->groupMiddleware as $prefix => $group) {
-            // "/admin", "/admin/" and "/admin/*" all cover /admin and below
-            $prefix = rtrim(preg_replace('#(^|/)\*$#', "", $prefix), "/");
-
-            if ($prefix === "" || $path === $prefix || str_starts_with($path, "$prefix/")) {
+            if (self::coversPath($prefix, $path)) {
                 $middleware = array_merge($middleware, $group);
             }
         }
 
         return $middleware;
+    }
+
+    /**
+     * Whether a middleware prefix covers a path. "/admin", "/admin/" and
+     * "/admin/*" all cover /admin and everything below it.
+     */
+    private static function coversPath(string $prefix, string $path): bool
+    {
+        $prefix = rtrim(preg_replace('#(^|/)\*$#', "", $prefix), "/");
+
+        return $prefix === "" || $path === $prefix || str_starts_with($path, "$prefix/");
     }
 
     private function renderErrorPage(\Throwable $error): string

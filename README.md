@@ -362,8 +362,23 @@ $app->get('/', function ($context) {
 Dumbo is also a PSR-15 request handler, so `$app->handle($request)` works
 with any PSR-7 server request.
 
-Helpers for cookies, JWTs and static files live in `Dumbo\Helpers`. The JWT
-helper needs `firebase/php-jwt`:
+Helpers for cookies, JWTs and static files live in `Dumbo\Helpers`.
+`StaticFiles::serve()` uses the `path` route param when there is one, and
+the full request path otherwise:
+
+```php
+<?php
+
+use Dumbo\Helpers\StaticFiles;
+
+// /assets/app.css serves ./public/app.css
+$app->get('/assets/:path{.+}', StaticFiles::serve(__DIR__ . '/public'));
+
+// /static/app.css serves ./public/static/app.css
+$app->get('/static/*', StaticFiles::serve(__DIR__ . '/public'));
+```
+
+The JWT helper needs `firebase/php-jwt`:
 
 ```bash
 composer require firebase/php-jwt

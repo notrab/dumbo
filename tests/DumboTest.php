@@ -350,4 +350,62 @@ class DumboTest extends TestCase
             "cookies" => ["theme" => "dark", "lang" => "en GB"],
         ], json_decode((string) $response->getBody(), true));
     }
+
+    public function testMiddlewareReturningNothingAfterNextRunsTheHandlerOnce()
+    {
+        $calls = 0;
+        $app = new Dumbo();
+        $app->use(function (Context $c, callable $next) {
+            $next($c);
+        });
+        $app->get("/", function (Context $c) use (&$calls) {
+            $calls++;
+            return $c->text("ok");
+        });
+
+        $response = $app->request("/");
+
+        $this->assertSame(1, $calls);
+        $this->assertSame("ok", (string) $response->getBody());
+    }
+
+    public function testMiddlewareReturningNothingWithoutNextContinues()
+    {
+        $app = new Dumbo();
+        $app->use(function (Context $c, callable $next) {
+            $c->set("seen", "yes");
+        });
+        $app->get("/", fn(Context $c) => $c->text($c->get("seen")));
+
+        $this->assertSame("yes", (string) $app->request("/")->getBody());
+    }
+
+    public function testNotFoundAndErrorHandlersCanReturnArrays()
+    {
+        $app = new Dumbo();
+        $app->notFound(fn(Context $c) => ["error" => "missing"]);
+        $app->onError(fn(\Throwable $e, Context $c) => ["error" => $e->getMessage()]);
+        $app->get("/boom", fn() => throw new \RuntimeException("boom"));
+
+        $missing = $app->request("/nope");
+        $boom = $app->request("/boom");
+
+        $this->assertSame(404, $missing->getStatusCode());
+        $this->assertSame('{"error":"missing"}', (string) $missing->getBody());
+        $this->assertSame(500, $boom->getStatusCode());
+        $this->assertSame('{"error":"boom"}', (string) $boom->getBody());
+    }
+
+    public function testNestedScopedMiddlewareCoversRoutesWithParams()
+    {
+        $api = new Dumbo();
+        $api->use("/admin", fn(Context $c, callable $next) => $c->text("denied", 403));
+        $api->get("/:page", fn(Context $c) => $c->text("page"));
+
+        $app = new Dumbo();
+        $app->route("/api", $api);
+
+        $this->assertSame(403, $app->request("/api/admin")->getStatusCode());
+        $this->assertSame(200, $app->request("/api/about")->getStatusCode());
+    }
 }

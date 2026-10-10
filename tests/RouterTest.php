@@ -255,4 +255,23 @@ class RouterTest extends TestCase
         $this->assertEquals(["lang" => "en"], $this->params("/{lang:en|fr}", "/en"));
         $this->assertEquals(["rest" => "a/b"], $this->params("/files/{rest:.*}", "/files/a/b"));
     }
+
+    public function testSeveralWildcardsInOneRoute()
+    {
+        $this->assertEquals([], $this->params("/a/*/b/*", "/a/x/b/y/z"));
+        $this->assertEquals([], $this->params("/a/*/b/*", "/a/x/b"));
+    }
+
+    public function testOptionalParamAtTheRoot()
+    {
+        $this->assertEquals([], $this->params("/:id?", "/"));
+        $this->assertEquals(["id" => "5"], $this->params("/:id?", "/5"));
+    }
+
+    public function testDuplicateParamNamesThrowWhenAdded()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        (new Router())->addRoute("GET", "/:id/:id", fn() => null);
+    }
 }

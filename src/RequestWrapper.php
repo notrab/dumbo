@@ -10,6 +10,7 @@ use Psr\Http\Message\ServerRequestInterface;
 class RequestWrapper
 {
     private ?array $parsedBody = null;
+    private ?array $cookies = null;
 
     /** @var array<string, mixed> Data stored by the validator middleware */
     private array $validated = [];
@@ -46,6 +47,7 @@ class RequestWrapper
         $clone = clone $this;
         $clone->request = $request;
         $clone->parsedBody = null;
+        $clone->cookies = null;
 
         return $clone;
     }
@@ -141,17 +143,9 @@ class RequestWrapper
      */
     public function cookie(?string $name = null): array|string|null
     {
-        $cookies = [];
+        $this->cookies ??= self::parseCookies($this->header("Cookie") ?? "");
 
-        foreach (explode(";", $this->header("Cookie") ?? "") as $pair) {
-            $parts = explode("=", trim($pair), 2);
-
-            if (count($parts) === 2) {
-                $cookies[urldecode(trim($parts[0]))] = urldecode($parts[1]);
-            }
-        }
-
-        return $name === null ? $cookies : $cookies[$name] ?? null;
+        return $name === null ? $this->cookies : $this->cookies[$name] ?? null;
     }
 
     public function method(): string
@@ -180,6 +174,21 @@ class RequestWrapper
     public function getUploadedFiles(): array
     {
         return $this->request->getUploadedFiles();
+    }
+
+    private static function parseCookies(string $header): array
+    {
+        $cookies = [];
+
+        foreach (explode(";", $header) as $pair) {
+            $parts = explode("=", trim($pair), 2);
+
+            if (count($parts) === 2) {
+                $cookies[urldecode(trim($parts[0]))] = urldecode($parts[1]);
+            }
+        }
+
+        return $cookies;
     }
 
     private function parseBody(): array
