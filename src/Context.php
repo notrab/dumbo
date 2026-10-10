@@ -18,7 +18,8 @@ class Context
 {
     public RequestWrapper $req;
 
-    private ResponseInterface $response;
+    /** Created when first needed, as most handlers send their own */
+    private ?ResponseInterface $response = null;
 
     /** @var array<string, mixed> */
     private array $variables = [];
@@ -42,7 +43,6 @@ class Context
         ?callable $notFoundHandler = null
     ) {
         $this->notFoundHandler = $notFoundHandler;
-        $this->response = new Response();
         $this->req = new RequestWrapper($request, $params, $routePath);
     }
 
@@ -83,7 +83,7 @@ class Context
 
     public function redirect(string $url, int $status = 302): ResponseInterface
     {
-        return $this->response = $this->response
+        return $this->response = $this->getResponse()
             ->withStatus($status)
             ->withHeader("Location", $url);
     }
@@ -107,15 +107,15 @@ class Context
     public function header(string $name, string $value, bool $append = false): self
     {
         $this->response = $append
-            ? $this->response->withAddedHeader($name, $value)
-            : $this->response->withHeader($name, $value);
+            ? $this->getResponse()->withAddedHeader($name, $value)
+            : $this->getResponse()->withHeader($name, $value);
 
         return $this;
     }
 
     public function getResponse(): ResponseInterface
     {
-        return $this->response;
+        return $this->response ??= new Response();
     }
 
     /**
@@ -186,20 +186,26 @@ class Context
         ?int $status = null,
         array $headers = []
     ): ResponseInterface {
-        $this->response = $this->response
-            ->withStatus($status ?? $this->status ?? 200)
-            ->withHeader("Content-Type", $contentType);
-
-        foreach ($headers as $name => $value) {
-            $this->response = $this->response->withHeader($name, $value);
-        }
-
+        $status ??= $this->status ?? 200;
         $body = match (true) {
             $body instanceof StreamInterface => $body,
             is_string($body) || is_numeric($body) => (string) $body,
             is_array($body) || is_object($body) => (string) json_encode($body),
             default => "",
         };
+
+        // Build the response in one go when nothing has been set on it yet
+        if ($this->response === null && $headers === []) {
+            return $this->response = new Response($status, ["Content-Type" => $contentType], Utils::streamFor($body));
+        }
+
+        $this->response = $this->getResponse()
+            ->withStatus($status)
+            ->withHeader("Content-Type", $contentType);
+
+        foreach ($headers as $name => $value) {
+            $this->response = $this->response->withHeader($name, $value);
+        }
 
         return $this->response = $this->response->withBody(Utils::streamFor($body));
     }
