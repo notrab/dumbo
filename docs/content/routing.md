@@ -1,3 +1,7 @@
+---
+description: Register routes for every HTTP method, capture params and mount nested apps.
+---
+
 # Routing
 
 ## Basic routes
@@ -50,7 +54,9 @@ $app->route('/api', $api);
 // GET /api/users/:id
 ```
 
+::: callout type="warning" title="Mount after registering"
 Routes added to the nested app after it's mounted are not included, so register them first.
+:::
 
 ## Route middleware
 

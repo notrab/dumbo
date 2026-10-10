@@ -1,3 +1,7 @@
+---
+description: Run Dumbo in development, production or testing mode.
+---
+
 # Environments
 
 Dumbo runs in one of three environments: `development`, `production` or `testing`.
@@ -35,4 +39,6 @@ $app->get('/', fn($context) => $context->text($context->get('environment')));
 
 In `development`, uncaught errors render an HTML page with the stack trace. In every other environment they respond with a generic JSON `500`. See [error handling](/docs/error-handling).
 
+::: callout title="PHP's own settings"
 Dumbo doesn't change PHP's `error_reporting` or `display_errors`. Configure those in `php.ini` as usual.
+:::

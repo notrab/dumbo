@@ -1,3 +1,7 @@
+---
+description: Read, set, sign and delete cookies with the Cookie helper.
+---
+
 # Cookies
 
 The `Dumbo\Helpers\Cookie` helper reads request cookies and sets response cookies.

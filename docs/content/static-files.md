@@ -1,3 +1,7 @@
+---
+description: Serve files from a directory with the right content type and caching headers.
+---
+
 # Static files
 
 The `Dumbo\Helpers\StaticFiles` helper serves files from a directory, with the right `Content-Type`, an `ETag` and `304 Not Modified` responses. These docs serve their CSS with it.
@@ -26,6 +30,6 @@ $app->get('/assets/:path', StaticFiles::serve(__DIR__ . '/assets'));
 
 Unknown files respond with a `404`.
 
-## Security
-
+::: callout type="tip" title="Safe by default"
 Requests can't escape the directory. Paths like `/../secret.txt` resolve outside it and are refused.
+:::

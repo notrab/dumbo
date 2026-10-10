@@ -1,3 +1,7 @@
+---
+description: Write middleware that runs before and after handlers, globally or per path.
+---
+
 # Middleware
 
 Middleware runs before and after your handlers. It receives the `$context` and a `$next` callable that runs the rest of the chain.

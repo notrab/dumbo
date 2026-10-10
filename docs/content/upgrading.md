@@ -1,3 +1,7 @@
+---
+description: What changed since Dumbo 1.x and how to update your app.
+---
+
 # Upgrading from 1.x
 
 Here's what changed since Dumbo 1.x and how to update your app.

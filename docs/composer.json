@@ -1,7 +1,8 @@
 {
   "require": {
     "notrab/dumbo": "@dev",
-    "league/commonmark": "^2.5"
+    "league/commonmark": "^2.5",
+    "symfony/yaml": "^7.4"
   },
   "repositories": [
     {
@@ -18,6 +19,14 @@
     "build": [
       "npm run build",
       "@php build.php"
+    ]
+  },
+  "autoload": {
+    "psr-4": {
+      "Docs\\": "src/"
+    },
+    "files": [
+      "src/helpers.php"
     ]
   }
 }

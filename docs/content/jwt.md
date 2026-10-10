@@ -1,10 +1,18 @@
+---
+description: Sign, verify and decode JSON Web Tokens, and protect routes with them.
+---
+
 # JWT
 
-The `Dumbo\Helpers\JWT` helper signs and verifies JSON Web Tokens. It uses `firebase/php-jwt`, which you need to install yourself:
+The `Dumbo\Helpers\JWT` helper signs and verifies JSON Web Tokens.
+
+::: callout type="warning" title="Install firebase/php-jwt first"
+The helper uses `firebase/php-jwt`, which isn't installed with Dumbo:
 
 ```bash
 composer require firebase/php-jwt
 ```
+:::
 
 ## Sign
 

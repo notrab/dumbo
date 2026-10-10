@@ -1,3 +1,7 @@
+---
+description: Throw HTTP exceptions, customise error responses and handle uncaught errors.
+---
+
 # Error handling
 
 ## HTTPException
@@ -69,4 +73,6 @@ Without an `onError` handler, any other exception responds with a `500`. In deve
 {"error":"Internal Server Error"}
 ```
 
-See [environments](/docs/environments) to switch modes.
+::: callout type="danger" title="Don't leak stack traces"
+Set `DUMBO_ENV=production` in production, or anyone can see your stack traces. See [environments](/docs/environments).
+:::

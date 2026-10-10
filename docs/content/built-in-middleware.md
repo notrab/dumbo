@@ -1,3 +1,7 @@
+---
+description: Auth, CORS, CSRF, body limits, caching, compression, logging and request IDs.
+---
+
 # Built-in middleware
 
 Built-in middleware lives in the `Dumbo\Middleware` namespace. Each one is a static factory that returns a middleware callable.

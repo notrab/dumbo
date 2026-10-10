@@ -1,3 +1,7 @@
+---
+description: Deploy Dumbo with Nginx, Apache, FrankenPHP or Docker.
+---
+
 # Deployment
 
 A Dumbo app is a regular PHP app. Point your web server at a front controller that calls `$app->run()`, and send every request to it.
@@ -10,10 +14,12 @@ PHP's built-in server is great for local development:
 php -S localhost:8000 index.php
 ```
 
-## Nginx and PHP-FPM
+## Web servers
 
 Send every request that isn't a real file to `index.php`:
 
+:::: tabs
+::: tab title="Nginx"
 ```nginx
 server {
     listen 80;
@@ -31,9 +37,8 @@ server {
     }
 }
 ```
-
-## Apache
-
+:::
+::: tab title="Apache"
 Add an `.htaccess` file next to `index.php`:
 
 ```apache
@@ -41,9 +46,8 @@ RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.php [QSA,L]
 ```
-
-## FrankenPHP
-
+:::
+::: tab title="FrankenPHP"
 [FrankenPHP](https://frankenphp.dev) bundles a web server and PHP in a single binary or Docker image:
 
 ```dockerfile
@@ -57,12 +61,16 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 RUN composer install --no-dev --optimize-autoloader
 ```
+:::
+::::
 
 ## Production checklist
 
-- Set `DUMBO_ENV=production` so errors don't leak stack traces.
-- Install with `composer install --no-dev --optimize-autoloader`.
-- Enable OPcache.
+::: steps
+1. Set `DUMBO_ENV=production` so errors don't leak stack traces.
+2. Install with `composer install --no-dev --optimize-autoloader`.
+3. Enable OPcache.
+:::
 
 ## Docker examples
 

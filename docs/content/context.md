@@ -1,3 +1,7 @@
+---
+description: Read the request, build the response and share values between middleware.
+---
+
 # Context
 
 Every handler and middleware receives a `$context`. It holds the request, the response being built, and any variables shared between middleware.

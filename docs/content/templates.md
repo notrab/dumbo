@@ -1,3 +1,7 @@
+---
+description: Render Twig, Blade, Latte, Smarty or plain PHP templates from your handlers.
+---
+
 # Templates
 
 Dumbo doesn't ship a template engine. Instead, give the context a render closure with `render()`, then call `view()` from your handlers. The result is sent as HTML.

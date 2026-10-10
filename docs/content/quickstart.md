@@ -1,43 +1,49 @@
+---
+description: Install Dumbo with Composer and serve your first route in about a minute.
+---
+
 # Quickstart
-
-## Install
-
-Create a new project and require Dumbo with Composer:
-
-```bash
-mkdir my-app && cd my-app
-composer require notrab/dumbo
-```
 
 ## Hello world
 
-Create an `index.php` file:
+::: steps
+1. Create a project and require Dumbo with Composer:
 
-```php
-<?php
+   ```bash
+   mkdir my-app && cd my-app
+   composer require notrab/dumbo
+   ```
 
-require __DIR__ . '/vendor/autoload.php';
+2. Create an `index.php` file:
 
-use Dumbo\Dumbo;
+   ```php
+   <?php
 
-$app = new Dumbo();
+   require __DIR__ . '/vendor/autoload.php';
 
-$app->get('/', function ($context) {
-    return $context->text('Hello Dumbo!');
-});
+   use Dumbo\Dumbo;
 
-$app->run();
-```
+   $app = new Dumbo();
 
-## Run it
+   $app->get('/', function ($context) {
+       return $context->text('Hello Dumbo!');
+   });
 
-Start PHP's built-in server, using `index.php` as the router:
+   $app->run();
+   ```
 
-```bash
-php -S localhost:8000 index.php
-```
+3. Start PHP's built-in server, using `index.php` as the router:
 
-Then open [http://localhost:8000](http://localhost:8000).
+   ```bash
+   php -S localhost:8000 index.php
+   ```
+
+4. Open [http://localhost:8000](http://localhost:8000) and say hello. 🐘
+:::
+
+::: callout type="tip" title="Dumbo needs PHP 8.3"
+Check your version with `php -v` before you start.
+:::
 
 ## A bigger example
 
