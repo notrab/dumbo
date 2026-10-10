@@ -89,6 +89,12 @@ class Site
         "prefetch" => false,
         // Animate between pages with cross-document view transitions
         "viewTransitions" => false,
+        "actions" => [
+            // Refuse forms posted from other sites, as browsers report them
+            "checkOrigin" => true,
+            // Other origins allowed to post, like "https://admin.example.com"
+            "origins" => [],
+        ],
         "dirs" => [
             "pages" => "pages",
             "views" => "views",
@@ -99,7 +105,7 @@ class Site
     ];
 
     /** Config values that are lists, so they replace the defaults rather than merge */
-    private const LISTS = [["markdown", "extensions"], ["images", "widths"], ["i18n", "locales"]];
+    private const LISTS = [["markdown", "extensions"], ["images", "widths"], ["i18n", "locales"], ["actions", "origins"]];
 
     private const LIVE_RELOAD = <<<'HTML'
 <script>(() => { let last; const check = async () => { try { const version = await (await fetch("/_jumbo/changes", { cache: "no-store" })).text(); if (last && version !== last) return location.reload(); last = version; } catch {} setTimeout(check, 1000); }; check(); })();</script>
@@ -403,6 +409,18 @@ HTML;
         }
 
         return $path . (str_contains($path, "?") ? "&" : "?") . "v=" . substr(md5_file($file), 0, 8);
+    }
+
+    /**
+     * What a page's action did with the form just posted, or null if none
+     * ran. Pass a name to only get that action's result, for pages with
+     * more than one form.
+     */
+    public function action(Context $context, ?string $name = null): ?Action
+    {
+        $action = $context->get("action");
+
+        return $action instanceof Action && ($name === null || $action->name === $name) ? $action : null;
     }
 
     /**
@@ -718,11 +736,13 @@ HTML;
 
         foreach ($this->locales() ?: ["" => ""] as $locale => $prefix) {
             foreach ($this->routes as $route) {
-                $this->app->get(
-                    $prefix === "" ? $route->path : $prefix . ($route->path === "/" ? "" : $route->path),
-                    fn(Context $context) => $this->respond($route, $context, (string) $locale),
-                    $route->page->middleware ?? []
-                );
+                $path = $prefix === "" ? $route->path : $prefix . ($route->path === "/" ? "" : $route->path);
+
+                $this->app->get($path, fn(Context $context) => $this->respond($route, $context, (string) $locale), $route->page->middleware ?? []);
+
+                if ($route->page?->actions) {
+                    $this->app->post($path, fn(Context $context) => $this->act($route, $context, (string) $locale), $route->page->middleware);
+                }
             }
         }
 
@@ -770,6 +790,81 @@ HTML;
             : $this->renderFile($route->file, $context, $context->req->path());
 
         return is_string($result) ? $context->send($result, $route->contentType()) : $result;
+    }
+
+    /**
+     * Run the action a form asked for, then render the page with what it did,
+     * unless it returned a response of its own
+     */
+    private function act(Route $route, Context $context, string $locale): mixed
+    {
+        if ($this->config["actions"]["checkOrigin"] && !$this->sameOrigin($context)) {
+            return $context->send("Forms can't be posted here from other sites", "text/plain", 403);
+        }
+
+        $input = $context->req->body();
+        $name = $context->req->query("_action") ?? $input["_action"] ?? "default";
+        $handler = is_string($name) ? $route->page->actions[$name] ?? null : null;
+        unset($input["_action"]);
+
+        if ($handler === null) {
+            return $context->send("This page has no \"" . (is_string($name) ? $name : "") . "\" action", "text/plain", 400);
+        }
+
+        $result = $handler($input, $context, $this);
+
+        if ($result instanceof ResponseInterface) {
+            return $result;
+        }
+
+        $action = $result instanceof Failure
+            ? new Action($name, $input, $result->data, $result->errors, $result->status)
+            : new Action($name, $input, $result);
+
+        // Forms sent with fetch() get the result itself
+        if (self::wantsJson($context)) {
+            return $context->json(["ok" => $action->ok(), "data" => $action->data, "errors" => (object) $action->errors], $action->status);
+        }
+
+        $context->set("action", $action);
+        $context->status($action->status);
+
+        return $this->respond($route, $context, $locale);
+    }
+
+    /**
+     * Whether a form was posted from this site. Browsers say where a request
+     * came from with Sec-Fetch-Site, or failing that Origin.
+     */
+    private function sameOrigin(Context $context): bool
+    {
+        $origin = $context->req->header("Origin");
+
+        if ($origin !== null && in_array(rtrim($origin, "/"), array_map(fn($o) => rtrim($o, "/"), $this->config["actions"]["origins"]), true)) {
+            return true;
+        }
+
+        $site = $context->req->header("Sec-Fetch-Site");
+
+        if ($site !== null) {
+            return in_array(strtolower($site), ["same-origin", "none"], true);
+        }
+
+        if ($origin === null) {
+            return true;
+        }
+
+        $host = parse_url($origin, PHP_URL_HOST);
+        $port = parse_url($origin, PHP_URL_PORT);
+
+        return $host !== null && strcasecmp($host . ($port ? ":$port" : ""), $context->req->raw()->getUri()->getAuthority()) === 0;
+    }
+
+    private static function wantsJson(Context $context): bool
+    {
+        $accept = $context->req->header("Accept") ?? "";
+
+        return str_contains($accept, "application/json") && !str_contains($accept, "text/html");
     }
 
     /**

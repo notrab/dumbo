@@ -102,6 +102,16 @@ switch ($command) {
 
         echo "\nBuilt " . (count($files) - $vendor - $images) . " files, $images resized images and $vendor from node_modules to " . basename($out) . "/\n";
 
+        $actions = array_filter($site->routes(), fn($route) => $route->page?->actions);
+
+        if ($actions !== []) {
+            echo "\nThese pages take forms, which need the PHP server rather than a static host:\n";
+
+            foreach ($actions as $route) {
+                echo "  $route->path\n";
+            }
+        }
+
         if ($builder->broken() !== []) {
             fwrite(STDERR, "\nBroken links:\n");
 
@@ -152,6 +162,10 @@ switch ($command) {
                 $route->params !== [] && !$route->page?->paths => "on demand (no paths)",
                 default => "prerendered",
             };
+
+            if ($route->page?->actions) {
+                $mode .= " + actions";
+            }
 
             printf("  %-28s %-22s %s\n", $route->path, $mode, substr($route->file, strlen("$root/")));
         }

@@ -72,6 +72,47 @@ return new Page(
 
 `$site->paginate($items, 10)` makes the paths for `pages/blog/[page].php`, with a `Pagination` as the `page` prop: its `items`, `current` and `last`, and `url()`, `previous()` and `next()` for links.
 
+## Actions
+
+Pages handle their own forms with actions. A form posts back to the page, the action runs, and the page renders again with what happened:
+
+```php
+<?php // pages/contact.php
+
+use Dumbo\Jumbo\Action;
+use Dumbo\Jumbo\Page;
+
+return new Page(
+    render: fn($context, $site) => $site->view("contact", ["action" => $site->action($context)]),
+    actions: [
+        "default" => function (array $input, $context, $site) {
+            if (!filter_var($input["email"] ?? "", FILTER_VALIDATE_EMAIL)) {
+                return Action::fail(["email" => "Enter an email address"]);
+            }
+
+            // ...send the message
+            return $context->redirect("/contact/thanks", 303);
+        },
+    ],
+);
+```
+
+```php
+<?php // views/contact.php ?>
+<form method="post">
+    <input name="email" value="<?= e($action?->old("email")) ?>">
+    <?php if ($error = $action?->error("email")): ?><p><?= e($error) ?></p><?php endif ?>
+    <button>Send</button>
+</form>
+```
+
+- **Results:** return a response, like a redirect, to send it. Return data to show it on the page as `$action->data`, or `Action::fail($errors)` to show the page again with a 422, the errors and what was sent.
+- **More than one form:** name the actions and add `<input type="hidden" name="_action" value="subscribe">`, or post to `?_action=subscribe`. `$site->action($context, "subscribe")` is only that action's result.
+- **Without reloading:** a `fetch()` with `Accept: application/json` gets `{"ok", "data", "errors"}` back instead of the page.
+- **Security:** forms posted from other sites are refused, using the `Sec-Fetch-Site` and `Origin` headers browsers send. Allow other origins with `actions.origins`, or turn it off with `actions.checkOrigin`.
+
+Actions need the PHP server, as static hosts can't take a POST. The page itself still builds for GET. For API routes that aren't pages, add them to `$site->app` as usual.
+
 ## Layouts
 
 ```php
@@ -144,4 +185,4 @@ $site->on("build:done", fn(string $out, array $files) => print(count($files) . "
 
 ## Config
 
-`name`, `url`, `locale`, `seo` defaults, `assets` (`"cdn"` or `"local"`), `markdown`, `images`, `redirects`, `i18n`, `build`, `sitemap`, `prefetch` (prefetch links with speculation rules), `viewTransitions` (animate between pages), and `dirs` to rename folders. See `Site::DEFAULTS` for every option. Extend `Dumbo\Jumbo\Site` for your own defaults and template helpers, as [`docs/src/Site.php`](../docs/src/Site.php) does.
+`name`, `url`, `locale`, `seo` defaults, `assets` (`"cdn"` or `"local"`), `markdown`, `images`, `redirects`, `i18n`, `build`, `sitemap`, `actions`, `prefetch` (prefetch links with speculation rules), `viewTransitions` (animate between pages), and `dirs` to rename folders. See `Site::DEFAULTS` for every option. Extend `Dumbo\Jumbo\Site` for your own defaults and template helpers, as [`docs/src/Site.php`](../docs/src/Site.php) does.
