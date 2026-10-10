@@ -6,7 +6,7 @@ namespace Docs;
  * The docs' own config defaults and the helpers its templates use for the
  * sidebar and previous and next links
  */
-class Site extends \Dumbo\Site\Site
+class Site extends \Dumbo\Jumbo\Site
 {
     public const DEFAULTS = [
         ...parent::DEFAULTS,

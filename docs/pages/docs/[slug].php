@@ -2,7 +2,7 @@
 
 use Docs\Site;
 use Dumbo\Context;
-use Dumbo\Site\Page;
+use Dumbo\Jumbo\Page;
 
 // Every Markdown file in content/ is a page at /docs/{file name}
 return new Page(

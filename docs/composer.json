@@ -1,7 +1,7 @@
 {
   "require": {
     "notrab/dumbo": "@dev",
-    "notrab/dumbo-site": "@dev"
+    "notrab/jumbo": "@dev"
   },
   "repositories": [
     {
@@ -10,18 +10,18 @@
     },
     {
       "type": "path",
-      "url": "../site"
+      "url": "../jumbo"
     }
   ],
   "scripts": {
     "start": [
       "Composer\\Config::disableProcessTimeout",
       "npm run build",
-      "dumbo-site dev"
+      "jumbo dev"
     ],
     "build": [
       "npm run build",
-      "dumbo-site build"
+      "jumbo build"
     ]
   },
   "autoload": {

@@ -2,7 +2,7 @@
 
 use Docs\Site;
 use Dumbo\Context;
-use Dumbo\Site\Page;
+use Dumbo\Jumbo\Page;
 
 // Sitemaps need absolute URLs, so this is only built with a url in config.php
 return new Page(

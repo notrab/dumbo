@@ -2,7 +2,7 @@
 
 use Docs\Site;
 use Dumbo\Context;
-use Dumbo\Site\Page;
+use Dumbo\Jumbo\Page;
 
 // /docs goes to the first page in the sidebar
 return new Page(

@@ -1,0 +1,81 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * jumbo build [--url=https://example.com] [--base=/sub] [--out=dist]
+ *     Render every prerendered page to static files
+ *
+ * jumbo dev [--host=localhost] [--port=8000]
+ *     Serve the site, rendering each page on request
+ *
+ * jumbo routes
+ *     List the pages and how each is rendered
+ *
+ * Run it from the project, where app.php returns the site.
+ */
+
+use Dumbo\Jumbo\Builder;
+use Dumbo\Jumbo\Site;
+
+$root = getcwd();
+
+require $GLOBALS["_composer_autoload_path"] ?? (is_file("$root/vendor/autoload.php") ? "$root/vendor/autoload.php" : __DIR__ . "/../vendor/autoload.php");
+
+$command = $argv[1] ?? "help";
+$options = [];
+
+foreach (array_slice($argv, 2) as $arg) {
+    if (!preg_match('/^--(url|base|out|host|port)=(.*)$/', $arg, $match)) {
+        fwrite(STDERR, "Unknown option $arg\n");
+        exit(1);
+    }
+
+    $options[$match[1]] = $match[2];
+}
+
+switch ($command) {
+    case "build":
+        $_SERVER["DUMBO_ENV"] = "production";
+        putenv("DUMBO_ENV=production");
+
+        $site = Site::load($root);
+
+        if (isset($options["url"])) {
+            $site->config["url"] = $options["url"];
+        }
+
+        $out = $options["out"] ?? "dist";
+        $out = str_starts_with($out, "/") ? $out : "$root/$out";
+
+        $files = (new Builder($site, $out, $options["base"] ?? null))->build(fn($path) => print("  $path\n"));
+        $vendor = count(array_filter($files, fn($file) => str_starts_with($file, "vendor/")));
+
+        echo "\nBuilt " . (count($files) - $vendor) . " files and $vendor from node_modules to " . basename($out) . "/\n";
+        break;
+
+    case "dev":
+        $address = ($options["host"] ?? "localhost") . ":" . ($options["port"] ?? "8000");
+        putenv("JUMBO_ROOT=$root");
+
+        echo "Serving on http://$address\n";
+        passthru(escapeshellarg(PHP_BINARY) . " -S " . escapeshellarg($address) . " " . escapeshellarg(dirname(__DIR__) . "/src/server.php"), $code);
+        exit($code);
+
+    case "routes":
+        $site = Site::load($root);
+
+        foreach ($site->routes() as $route) {
+            $mode = match (true) {
+                $route->page && !$route->page->prerenders($site) => "on demand",
+                $route->params !== [] && !$route->page?->paths => "on demand (no paths)",
+                default => "prerendered",
+            };
+
+            printf("  %-28s %-22s %s\n", $route->path, $mode, substr($route->file, strlen("$root/")));
+        }
+        break;
+
+    default:
+        fwrite(STDERR, "Usage: jumbo build|dev|routes\n");
+        exit($command === "help" ? 0 : 1);
+}
