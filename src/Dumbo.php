@@ -97,10 +97,10 @@ class Dumbo implements RequestHandlerInterface
     public function on(string|array $methods, string $path, callable $handler, array $middleware = []): static
     {
         $this->router->addRoute(
-            array_map(strtoupper(...), (array) $methods),
+            is_string($methods) ? strtoupper($methods) : array_map(strtoupper(...), $methods),
             $path,
             $handler,
-            array_map(self::toCallable(...), $middleware)
+            $middleware === [] ? [] : array_map(self::toCallable(...), $middleware)
         );
 
         return $this;

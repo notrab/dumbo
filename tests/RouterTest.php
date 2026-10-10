@@ -274,4 +274,63 @@ class RouterTest extends TestCase
 
         (new Router())->addRoute("GET", "/:id/:id", fn() => null);
     }
+
+    public function testRoutesWithAVariableFirstSegmentStillMatchInOrder()
+    {
+        $this->router->addRoute("GET", "/:lang/about", fn() => null);
+        $this->router->addRoute("GET", "/en/:page", fn() => null);
+        $this->router->addRoute("GET", "/*", fn() => null);
+
+        $this->assertEquals("/:lang/about", $this->routePath("/en/about"));
+        $this->assertEquals("/en/:page", $this->routePath("/en/contact"));
+        $this->assertEquals("/*", $this->routePath("/fr/contact"));
+        $this->assertEquals("/*", $this->routePath("/"));
+    }
+
+    public function testStaticRoutesAndVariableFirstSegmentsMix()
+    {
+        $this->router->addRoute("GET", "/about", fn() => null);
+        $this->router->addRoute("GET", "/:page", fn() => null);
+
+        $this->assertEquals("/about", $this->routePath("/about"));
+        $this->assertEquals("/:page", $this->routePath("/contact"));
+    }
+
+    public function testOptionalFirstSegmentAndTheRoot()
+    {
+        $this->router->addRoute("GET", "/", fn() => null);
+        $this->router->addRoute("GET", "/users/:id?", fn() => null);
+        $this->router->addRoute("GET", "/{lang:en|fr}", fn() => null);
+
+        $this->assertEquals("/", $this->routePath("/"));
+        $this->assertEquals("/users/:id?", $this->routePath("/users"));
+        $this->assertEquals("/users/:id?", $this->routePath("/users/1"));
+        $this->assertEquals("/{lang:en|fr}", $this->routePath("/fr"));
+        $this->assertNull($this->routePath("/de"));
+    }
+
+    public function testAllowedMethodsIncludeRoutesWithAVariableFirstSegment()
+    {
+        $this->router->addRoute("GET", "/users/:id", fn() => null);
+        $this->router->addRoute("DELETE", "/:type/:id", fn() => null);
+
+        $result = $this->router->dispatch(new ServerRequest("POST", "/users/1"));
+
+        $this->assertNull($result["route"]);
+        $this->assertEqualsCanonicalizing(["GET", "DELETE"], $result["allowedMethods"]);
+    }
+
+    public function testRoutesAddedAfterDispatchingAreMatched()
+    {
+        $this->router->addRoute("GET", "/users", fn() => null);
+        $this->assertNull($this->routePath("/users/1"));
+
+        $this->router->addRoute("GET", "/users/:id", fn() => null);
+        $this->assertEquals("/users/:id", $this->routePath("/users/1"));
+    }
+
+    private function routePath(string $path): ?string
+    {
+        return $this->router->dispatch(new ServerRequest("GET", $path))["route"]["routePath"] ?? null;
+    }
 }
