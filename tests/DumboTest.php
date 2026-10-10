@@ -220,4 +220,53 @@ class DumboTest extends TestCase
         $this->assertSame(308, $response->getStatusCode());
         $this->assertSame("/users", $response->getHeaderLine("Location"));
     }
+
+    public function testNotFoundHandlerReplacesDefault404()
+    {
+        $app = new Dumbo();
+        $app->notFound(fn(Context $c) => $c->json(["error" => "missing"], 404));
+
+        $response = $app->handle(new ServerRequest("GET", "/nope"));
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame('{"error":"missing"}', (string) $response->getBody());
+    }
+
+    public function testNotFoundHandlerRunsAfterMiddleware()
+    {
+        $app = new Dumbo();
+        $app->use(function (Context $c, callable $next) {
+            $c->set("user", "jamie");
+            return $next($c)->withHeader("X-Middleware", "ran");
+        });
+        $app->notFound(fn(Context $c) => $c->text("no page for " . $c->get("user"), 404));
+
+        $response = $app->handle(new ServerRequest("GET", "/nope"));
+
+        $this->assertSame("no page for jamie", (string) $response->getBody());
+        $this->assertSame("ran", $response->getHeaderLine("X-Middleware"));
+    }
+
+    public function testContextNotFoundUsesTheAppHandler()
+    {
+        $app = new Dumbo();
+        $app->notFound(fn(Context $c) => $c->text("custom", 404));
+        $app->get("/users/:id", fn(Context $c) => $c->notFound());
+
+        $response = $app->handle(new ServerRequest("GET", "/users/1"));
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame("custom", (string) $response->getBody());
+    }
+
+    public function testContextNotFoundDefaultsToPlain404()
+    {
+        $app = new Dumbo();
+        $app->get("/users/:id", fn(Context $c) => $c->notFound());
+
+        $response = $app->handle(new ServerRequest("GET", "/users/1"));
+
+        $this->assertSame(404, $response->getStatusCode());
+        $this->assertSame("404 Not Found", (string) $response->getBody());
+    }
 }

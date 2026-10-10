@@ -275,3 +275,38 @@ $app->get('/api/data', function ($context) {
 
 $app->run();
 ```
+
+### Errors and 404s
+
+Throw an `HTTPException` to respond with a JSON error, or handle every
+uncaught exception yourself with `onError()`. Requests that match no route go
+to `notFound()`, which runs after middleware like any route handler. Call
+`$context->notFound()` from a handler to send the same response.
+
+```php
+<?php
+
+use Dumbo\HTTPException;
+
+$app->onError(function ($error, $context) {
+    return $context->json(['error' => $error->getMessage()], 500);
+});
+
+$app->notFound(function ($context) {
+    return $context->json(['error' => 'Not found'], 404);
+});
+
+$app->get('/users/:id', function ($context) {
+    $user = findUser($context->req->param('id'));
+
+    if (!$user) {
+        return $context->notFound();
+    }
+
+    if (!$user->active) {
+        throw new HTTPException(403, 'User is disabled', 'USER_DISABLED');
+    }
+
+    return $context->json($user);
+});
+```

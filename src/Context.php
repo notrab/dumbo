@@ -23,12 +23,21 @@ class Context
 
     private ?Closure $viewBuilder = null;
 
+    /** @var callable|null */
+    private $notFoundHandler;
+
     /**
      * @param array $params The route parameters
      * @param string $routePath The registered route path, e.g. /posts/:id
+     * @param callable|null $notFoundHandler The app's notFound() handler
      */
-    public function __construct(ServerRequestInterface $request, array $params, string $routePath)
-    {
+    public function __construct(
+        ServerRequestInterface $request,
+        array $params,
+        string $routePath,
+        ?callable $notFoundHandler = null
+    ) {
+        $this->notFoundHandler = $notFoundHandler;
         $this->response = new Response();
         $this->req = new RequestWrapper($request, $params, $routePath);
     }
@@ -63,6 +72,16 @@ class Context
         return $this->response = $this->response
             ->withStatus($status)
             ->withHeader("Location", $url);
+    }
+
+    /**
+     * Respond with the app's notFound() handler, or a plain 404
+     */
+    public function notFound(): ResponseInterface
+    {
+        return $this->notFoundHandler
+            ? ($this->notFoundHandler)($this)
+            : $this->text("404 Not Found", 404);
     }
 
     /**

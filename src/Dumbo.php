@@ -30,6 +30,9 @@ class Dumbo
     /** @var callable|null */
     private $errorHandler = null;
 
+    /** @var callable|null */
+    private $notFoundHandler = null;
+
     /**
      * @param string|null $environment Defaults to the DUMBO_ENV variable, then development
      */
@@ -123,6 +126,15 @@ class Dumbo
         $this->errorHandler = $handler;
     }
 
+    /**
+     * Set the handler for requests that match no route, called with ($context).
+     * It runs after middleware, like a route handler.
+     */
+    public function notFound(callable $handler): void
+    {
+        $this->notFoundHandler = $handler;
+    }
+
     public function getEnvironment(): string
     {
         return $this->environment;
@@ -150,7 +162,12 @@ class Dumbo
         try {
             ["route" => $route, "allowedMethods" => $allowed] = $this->router->dispatch($request);
 
-            $context = new Context($request, $route["params"] ?? [], $route["routePath"] ?? "");
+            $context = new Context(
+                $request,
+                $route["params"] ?? [],
+                $route["routePath"] ?? "",
+                $this->notFoundHandler
+            );
             $context->set("environment", $this->environment);
 
             $handler = match (true) {
@@ -160,7 +177,7 @@ class Dumbo
                     ["Allow" => implode(", ", $allowed)],
                     "405 Method Not Allowed"
                 ),
-                default => fn() => new Response(404, [], "404 Not Found"),
+                default => fn(Context $context) => $context->notFound(),
             };
 
             return $this->runMiddleware(
