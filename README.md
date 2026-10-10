@@ -39,6 +39,7 @@
 - 📝 Logging support
 - 🗃️ HTTP caching
 - 🔄 CORS support
+- 📡 Streaming and server-sent events
 - 🗜️ Response compression
 - 📦 Request body size limits
 - 🧬 Environment-based configuration
@@ -88,6 +89,26 @@ $app->run();
 ```
 
 See the [examples](/examples) directory for more quickstarts.
+
+## FrankenPHP worker mode
+
+Keep your app in memory between requests by running it in a
+[FrankenPHP worker](https://frankenphp.dev/docs/worker/):
+
+```php
+<?php
+
+$app = new Dumbo();
+// ...routes
+
+if (function_exists('frankenphp_handle_request')) {
+    while (frankenphp_handle_request(fn() => $app->run())) {
+        gc_collect_cycles();
+    }
+} else {
+    $app->run();
+}
+```
 
 ## Upgrading from 1.x
 
@@ -200,6 +221,37 @@ return $context->json(['key' => 'value']);
 return $context->text('Hello, World!');
 return $context->html('<h1>Hello, World!</h1>');
 return $context->redirect('/new-url');
+return $context->send($csv, 'text/csv');
+```
+
+#### Streaming
+
+`stream()` sends the body as you write it, and `streamSSE()` sends
+[server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events).
+The callback runs when the response is sent, so middleware that reads the
+whole body, like `Compress` and `Cache`, leaves streams alone.
+
+```php
+<?php
+
+use Dumbo\Stream\StreamWriter;
+
+$app->get('/events', function ($context) {
+    return $context->streamSSE(function (StreamWriter $stream) {
+        for ($i = 1; !$stream->aborted() && $i <= 10; $i++) {
+            $stream->writeSSE(['tick' => $i], event: 'tick', id: (string) $i);
+            $stream->sleep(1);
+        }
+    });
+});
+
+$app->get('/export', function ($context) {
+    return $context->stream(function (StreamWriter $stream) {
+        foreach (fetchRows() as $row) {
+            $stream->writeln(implode(',', $row));
+        }
+    }, 'text/csv');
+});
 ```
 
 ### Middleware

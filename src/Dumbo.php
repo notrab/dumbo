@@ -2,6 +2,7 @@
 
 namespace Dumbo;
 
+use Dumbo\Stream\CallbackStream;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\ServerRequest;
 use Psr\Http\Message\ResponseInterface;
@@ -288,7 +289,28 @@ class Dumbo implements RequestHandlerInterface
             }
         }
 
-        echo $response->getBody();
+        $body = $response->getBody();
+
+        if ($body instanceof CallbackStream) {
+            while (ob_get_level() > 0) {
+                ob_end_flush();
+            }
+
+            $body->pipe(function (string $chunk) {
+                echo $chunk;
+                flush();
+            });
+
+            return;
+        }
+
+        if ($body->isSeekable()) {
+            $body->rewind();
+        }
+
+        while (!$body->eof()) {
+            echo $body->read(8192);
+        }
     }
 
     private function handleError(\Throwable $error, ServerRequestInterface $request): ResponseInterface

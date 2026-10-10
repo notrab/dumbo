@@ -4,6 +4,8 @@ namespace Dumbo;
 
 use Closure;
 use GuzzleHttp\Psr7\Response;
+use Dumbo\Stream\CallbackStream;
+use Dumbo\Stream\StreamWriter;
 use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -130,6 +132,35 @@ class Context
         }
 
         return $this->html(($this->viewBuilder)(...$params));
+    }
+
+    /**
+     * Stream the response body. The callback is called with a StreamWriter
+     * when the response is sent, and each write reaches the client straight
+     * away.
+     *
+     * @param Closure(StreamWriter): void $callback
+     */
+    public function stream(
+        Closure $callback,
+        string $contentType = "application/octet-stream",
+        int $status = 200,
+        array $headers = []
+    ): ResponseInterface {
+        return $this->send(new CallbackStream($callback), $contentType, $status, $headers);
+    }
+
+    /**
+     * Stream server-sent events, written with $stream->writeSSE()
+     *
+     * @param Closure(StreamWriter): void $callback
+     */
+    public function streamSSE(Closure $callback, array $headers = []): ResponseInterface
+    {
+        return $this->stream($callback, "text/event-stream", 200, $headers + [
+            "Cache-Control" => "no-cache",
+            "X-Accel-Buffering" => "no",
+        ]);
     }
 
     /**

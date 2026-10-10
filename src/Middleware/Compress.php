@@ -33,6 +33,7 @@ class Compress
 
             if (
                 $context->req->method() === "HEAD" ||
+                !$response->getBody()->isSeekable() ||
                 $response->hasHeader("Content-Encoding") ||
                 ($size !== null && $size < $threshold) ||
                 !preg_match(self::STR_REGEX, $response->getHeaderLine("Content-Type")) ||
