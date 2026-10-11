@@ -12,10 +12,6 @@
           "notrab/dumbo": "1.x-dev"
         }
       }
-    },
-    {
-      "type": "vcs",
-      "url": "https://github.com/notrab/jumbo"
     }
   ],
   "scripts": {
