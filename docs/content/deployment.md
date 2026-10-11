@@ -60,6 +60,9 @@ COPY . /app
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 RUN composer install --no-dev --optimize-autoloader
+
+# Optional: keep the app in memory with worker mode, below
+ENV FRANKENPHP_CONFIG="worker ./public/index.php"
 ```
 :::
 ::::
@@ -69,8 +72,10 @@ RUN composer install --no-dev --optimize-autoloader
 ::: steps
 1. Set `DUMBO_ENV=production` so errors don't leak stack traces.
 2. Install with `composer install --no-dev --optimize-autoloader`.
-3. Enable OPcache.
+3. Enable OPcache, and set `opcache.validate_timestamps=0` so PHP stops checking files for changes. Restart PHP after each deploy.
 4. Preload Dumbo with OPcache, below.
+5. Leave the JIT off. Requests are too short to benefit, and it made Dumbo slower in our benchmarks.
+6. Use worker mode if your server supports it, below.
 :::
 
 ## Preloading
@@ -83,6 +88,66 @@ opcache.preload_user=www-data
 ```
 
 Preloaded code only changes when PHP restarts, so restart PHP-FPM after each deploy.
+
+## Worker mode
+
+Worker mode boots your app once and keeps it in memory, instead of loading Dumbo and adding your routes on every request. It handled about 50% more requests per second than FrankenPHP's default mode in our benchmarks, and the number of routes stops mattering.
+
+:::: tabs
+::: tab title="FrankenPHP"
+Start your front controller as a [FrankenPHP worker](https://frankenphp.dev/docs/worker/). `$app->run()` notices it's running in a worker and handles every request the worker receives, so `index.php` doesn't change:
+
+```dockerfile
+ENV FRANKENPHP_CONFIG="worker ./public/index.php"
+```
+
+Or in a `Caddyfile`:
+
+```caddyfile
+{
+    frankenphp {
+        worker ./public/index.php
+    }
+}
+
+:8080 {
+    root public/
+    php_server
+}
+```
+:::
+::: tab title="RoadRunner"
+Your app is a PSR-15 request handler, so [RoadRunner](https://roadrunner.dev) can pass requests to it directly:
+
+```bash
+composer require spiral/roadrunner-http
+```
+
+```php
+<?php
+
+use Dumbo\Dumbo;
+use Nyholm\Psr7\Factory\Psr17Factory;
+use Spiral\RoadRunner\Http\PSR7Worker;
+use Spiral\RoadRunner\Worker;
+
+require __DIR__ . '/vendor/autoload.php';
+
+$app = new Dumbo();
+
+$app->get('/', fn($context) => $context->text('Hello Dumbo!'));
+
+$factory = new Psr17Factory();
+$worker = new PSR7Worker(Worker::create(), $factory, $factory, $factory);
+
+while ($request = $worker->waitRequest()) {
+    $worker->respond($app->handle($request));
+}
+```
+:::
+::::
+
+Anything you store outside a request, like a static property or a variable your handlers capture, now lives across requests. Keep per-request data in the context.
 
 ## Docker examples
 

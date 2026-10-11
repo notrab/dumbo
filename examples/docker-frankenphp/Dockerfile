@@ -32,5 +32,5 @@ RUN install-php-extensions \
     pdo_mysql \
     opcache
 
-# Optional: Set the FRANKENPHP_CONFIG environment variable to start FrankenPHP with a specific worker script
-# ENV FRANKENPHP_CONFIG="worker ./public/index.php"
+# Run index.php as a worker, so the app stays in memory between requests
+ENV FRANKENPHP_CONFIG="worker ./public/index.php"

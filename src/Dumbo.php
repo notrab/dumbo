@@ -272,9 +272,27 @@ class Dumbo implements RequestHandlerInterface
     }
 
     /**
-     * Handle the request from PHP's globals and send the response
+     * Handle the request from PHP's globals and send the response. Started
+     * by a FrankenPHP worker, it keeps the app in memory and handles every
+     * request the worker receives.
      */
     public function run(): void
+    {
+        // Workers boot without a request, so REQUEST_URI is empty until the
+        // first one arrives. Inside a request, run() handles just that one.
+        if (getenv("FRANKENPHP_WORKER") === "1" && ($_SERVER["REQUEST_URI"] ?? "") === "") {
+            while (\frankenphp_handle_request($this->respond(...))) {
+                // FrankenPHP recommends collecting garbage between requests
+                gc_collect_cycles();
+            }
+
+            return;
+        }
+
+        $this->respond();
+    }
+
+    private function respond(): void
     {
         try {
             $response = $this->handle(Globals::request());
