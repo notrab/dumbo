@@ -16,14 +16,11 @@ require file_exists(__DIR__ . "/vendor/autoload.php")
     : dirname(__DIR__, 2) . "/autoload.php";
 
 $classes = [
-    \GuzzleHttp\Psr7\CachingStream::class,
-    \GuzzleHttp\Psr7\LazyOpenStream::class,
-    \GuzzleHttp\Psr7\Response::class,
-    \GuzzleHttp\Psr7\Rfc7230::class,
-    \GuzzleHttp\Psr7\ServerRequest::class,
-    \GuzzleHttp\Psr7\Stream::class,
-    \GuzzleHttp\Psr7\Uri::class,
-    \GuzzleHttp\Psr7\Utils::class,
+    \Nyholm\Psr7\Response::class,
+    \Nyholm\Psr7\ServerRequest::class,
+    \Nyholm\Psr7\Stream::class,
+    \Nyholm\Psr7\UploadedFile::class,
+    \Nyholm\Psr7\Uri::class,
 ];
 
 $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(__DIR__ . "/src", FilesystemIterator::SKIP_DOTS));

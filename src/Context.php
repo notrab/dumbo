@@ -3,10 +3,10 @@
 namespace Dumbo;
 
 use Closure;
-use GuzzleHttp\Psr7\Response;
+use Nyholm\Psr7\Response;
 use Dumbo\Stream\CallbackStream;
 use Dumbo\Stream\StreamWriter;
-use GuzzleHttp\Psr7\Utils;
+use Nyholm\Psr7\Stream;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
@@ -196,7 +196,7 @@ class Context
 
         // Build the response in one go when nothing has been set on it yet
         if ($this->response === null && $headers === []) {
-            return $this->response = new Response($status, ["Content-Type" => $contentType], Utils::streamFor($body));
+            return $this->response = new Response($status, ["Content-Type" => $contentType], Stream::create($body));
         }
 
         $this->response = $this->getResponse()
@@ -207,6 +207,6 @@ class Context
             $this->response = $this->response->withHeader($name, $value);
         }
 
-        return $this->response = $this->response->withBody(Utils::streamFor($body));
+        return $this->response = $this->response->withBody(Stream::create($body));
     }
 }

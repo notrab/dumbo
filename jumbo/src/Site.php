@@ -8,7 +8,6 @@ use Dumbo\Helpers\StaticFiles;
 use Dumbo\HTTPException;
 use Dumbo\Jumbo\Markdown\CodeRenderer;
 use Dumbo\Jumbo\Markdown\ComponentExtension;
-use GuzzleHttp\Psr7\Utils;
 use League\CommonMark\Environment\Environment;
 use League\CommonMark\Extension\CommonMark\CommonMarkCoreExtension;
 use League\CommonMark\Extension\CommonMark\Node\Block\FencedCode;
@@ -17,6 +16,7 @@ use League\CommonMark\Extension\FrontMatter\Output\RenderedContentWithFrontMatte
 use League\CommonMark\Extension\GithubFlavoredMarkdownExtension;
 use League\CommonMark\Extension\HeadingPermalink\HeadingPermalinkExtension;
 use League\CommonMark\MarkdownConverter;
+use Nyholm\Psr7\Stream;
 use Psr\Http\Message\ResponseInterface;
 use Tempest\Highlight\Highlighter;
 use Tempest\Highlight\Themes\InlineTheme;
@@ -960,7 +960,7 @@ HTML;
             return $response;
         }
 
-        return $response->withBody(Utils::streamFor($change((string) $response->getBody())));
+        return $response->withBody(Stream::create($change((string) $response->getBody())));
     }
 
     /**

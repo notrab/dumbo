@@ -5,7 +5,7 @@ namespace Dumbo\Tests\Middleware;
 use PHPUnit\Framework\TestCase;
 use Dumbo\Dumbo;
 use Dumbo\Middleware\RequestId;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\ServerRequest;
 
 class RequestIdTest extends TestCase
 {

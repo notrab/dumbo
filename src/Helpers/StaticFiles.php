@@ -3,7 +3,7 @@
 namespace Dumbo\Helpers;
 
 use Dumbo\Context;
-use GuzzleHttp\Psr7\Utils;
+use Nyholm\Psr7\Stream;
 use Psr\Http\Message\ResponseInterface;
 
 class StaticFiles
@@ -45,7 +45,7 @@ class StaticFiles
                 return $response->withStatus(304);
             }
 
-            return $response->withBody(Utils::streamFor(Utils::tryFopen($file, "r")));
+            return $response->withBody(Stream::create(fopen($file, "r")));
         };
     }
 

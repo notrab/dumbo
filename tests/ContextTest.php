@@ -3,8 +3,8 @@
 namespace Dumbo\Tests;
 
 use Dumbo\Context;
-use GuzzleHttp\Psr7\ServerRequest;
-use GuzzleHttp\Psr7\Utils;
+use Nyholm\Psr7\ServerRequest;
+use Nyholm\Psr7\Stream;
 use PHPUnit\Framework\TestCase;
 
 class ContextTest extends TestCase
@@ -54,7 +54,7 @@ class ContextTest extends TestCase
     public function testSendWritesAStreamBody()
     {
         $response = $this->context()->send(
-            Utils::streamFor("streamed"),
+            Stream::create("streamed"),
             "text/plain"
         );
 

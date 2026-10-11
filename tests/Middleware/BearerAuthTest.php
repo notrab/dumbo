@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 use Dumbo\Middleware\BearerAuth;
 use Dumbo\Context;
 use Psr\Http\Message\ServerRequestInterface;
-use GuzzleHttp\Psr7\Response;
+use Nyholm\Psr7\Response;
 
 class BearerAuthTest extends TestCase
 {

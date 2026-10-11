@@ -5,9 +5,9 @@ namespace Dumbo\Tests\Middleware;
 use PHPUnit\Framework\TestCase;
 use Dumbo\Context;
 use Dumbo\Middleware\Csrf;
-use GuzzleHttp\Psr7\ServerRequest;
-use GuzzleHttp\Psr7\Response;
-use GuzzleHttp\Psr7\Utils;
+use Nyholm\Psr7\ServerRequest;
+use Nyholm\Psr7\Response;
+use Nyholm\Psr7\Stream;
 
 class CsrfTest extends TestCase
 {
@@ -21,7 +21,7 @@ class CsrfTest extends TestCase
     private function createContext($method, $body = [], $headers = []): Context
     {
         $jsonBody = json_encode($body);
-        $stream = Utils::streamFor($jsonBody);
+        $stream = Stream::create($jsonBody);
         $request = new ServerRequest($method, '/', $headers, $stream);
         return new Context($request, [], '/');
     }

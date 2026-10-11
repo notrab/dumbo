@@ -42,7 +42,7 @@ By default it's sent as JSON with the exception's status code:
 Pass a response as the fifth argument to send it instead:
 
 ```php
-use GuzzleHttp\Psr7\Response;
+use Nyholm\Psr7\Response;
 
 throw new HTTPException(401, 'Unauthorized', customResponse: new Response(
     401,

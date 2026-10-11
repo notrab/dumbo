@@ -5,7 +5,7 @@ namespace Dumbo\Tests;
 use PHPUnit\Framework\TestCase;
 use Dumbo\Router;
 use Dumbo\Context;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\ServerRequest;
 
 class RouterTest extends TestCase
 {

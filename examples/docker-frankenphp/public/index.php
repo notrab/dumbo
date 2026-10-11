@@ -107,11 +107,6 @@ $app->get("/error", function ($c) {
     );
 });
 
-// In worker mode, keep the app in memory and handle requests in a loop
-if (function_exists("frankenphp_handle_request")) {
-    while (frankenphp_handle_request(fn() => $app->run())) {
-        gc_collect_cycles();
-    }
-} else {
-    $app->run();
-}
+// In FrankenPHP worker mode, run() keeps the app in memory and handles
+// every request; otherwise it handles this one
+$app->run();

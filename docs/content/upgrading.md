@@ -35,6 +35,18 @@ CORS options are now camelCase: `allowMethods`, `allowHeaders`, `exposeHeaders` 
 composer require firebase/php-jwt
 ```
 
+## PSR-7
+
+Dumbo now uses [nyholm/psr7](https://github.com/Nyholm/psr7) instead of `guzzlehttp/psr7`, which makes each request cheaper. If your app creates Guzzle responses, requests or streams itself, switch to the Nyholm classes:
+
+| guzzlehttp/psr7 | nyholm/psr7 |
+| --- | --- |
+| `GuzzleHttp\Psr7\Response` | `Nyholm\Psr7\Response` |
+| `GuzzleHttp\Psr7\ServerRequest` | `Nyholm\Psr7\ServerRequest` |
+| `GuzzleHttp\Psr7\Utils::streamFor($body)` | `Nyholm\Psr7\Stream::create($body)` |
+
+Or keep using Guzzle with `composer require guzzlehttp/psr7`. Dumbo accepts any PSR-7 response from your handlers.
+
 ## Environments
 
 Pass the environment to `new Dumbo('production')` or set `DUMBO_ENV`. These methods were removed:

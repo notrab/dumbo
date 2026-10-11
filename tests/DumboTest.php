@@ -3,7 +3,7 @@
 use PHPUnit\Framework\TestCase;
 use Dumbo\Context;
 use Dumbo\Dumbo;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\ServerRequest;
 
 class DumboTest extends TestCase
 {

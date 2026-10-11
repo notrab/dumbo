@@ -5,7 +5,7 @@ namespace Dumbo\Tests\Middleware;
 use Dumbo\Context;
 use Dumbo\Dumbo;
 use Dumbo\Middleware\BodyLimit;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
 
 class BodyLimitTest extends TestCase
