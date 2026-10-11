@@ -510,4 +510,20 @@ class DumboTest extends TestCase
         $this->assertSame(403, $app->request("/orgs/acme/admin")->getStatusCode());
         $this->assertSame(200, $app->request("/orgs/acme")->getStatusCode());
     }
+
+    public function testRouteMiddlewareCanHaveNamedKeys()
+    {
+        $app = new Dumbo();
+        $app->get("/", fn($context) => $context->text("ok"), [
+            "first" => function ($context, $next) {
+                $context->header("X-First", "1");
+            },
+            "second" => fn($context, $next) => $next($context)->withHeader("X-Second", "1"),
+        ]);
+
+        $response = $app->request("/");
+
+        $this->assertEquals("ok", (string) $response->getBody());
+        $this->assertEquals("1", $response->getHeaderLine("X-Second"));
+    }
 }

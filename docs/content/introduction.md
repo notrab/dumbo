@@ -20,7 +20,7 @@ $app->run();
 
 ## Features
 
-- **Lightweight and fast** — built on [FastRoute](https://github.com/nikic/FastRoute) and PSR-7.
+- **Lightweight and fast** — a small, built-in router and PSR-7.
 - **Flexible routing** — route params, nested apps and every HTTP method.
 - **Middleware** — global or scoped to a path prefix.
 - **Security** — CSRF, JWT, Basic and Bearer auth, and body size limits.
