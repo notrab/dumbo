@@ -1,6 +1,6 @@
 # Dumbo Docs
 
-The Dumbo documentation site, built with [Jumbo](../jumbo). Copy this folder to start docs for your own project.
+The Dumbo documentation site, built with [Jumbo](https://notrab.github.io/jumbo). Copy this folder to start docs for your own project.
 
 ## Run it
 

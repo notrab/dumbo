@@ -1,3 +1,0 @@
-# Second post
-
-Yo

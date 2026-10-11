@@ -1,16 +1,21 @@
 {
   "require": {
     "notrab/dumbo": "@dev",
-    "notrab/jumbo": "@dev"
+    "notrab/jumbo": "^0.1"
   },
   "repositories": [
     {
       "type": "path",
-      "url": "../"
+      "url": "../",
+      "options": {
+        "versions": {
+          "notrab/dumbo": "1.x-dev"
+        }
+      }
     },
     {
-      "type": "path",
-      "url": "../jumbo"
+      "type": "vcs",
+      "url": "https://github.com/notrab/jumbo"
     }
   ],
   "scripts": {

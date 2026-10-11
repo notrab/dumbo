@@ -45,14 +45,6 @@ jobs:
       - name: Run tests
         run: vendor/bin/phpunit
 
-      - name: Install site dependencies
-        working-directory: jumbo
-        run: composer install --no-progress --prefer-dist
-
-      - name: Run site tests
-        working-directory: jumbo
-        run: vendor/bin/phpunit
-
   audit:
     name: Security audit
     runs-on: ubuntu-latest
