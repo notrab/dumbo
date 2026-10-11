@@ -38,6 +38,7 @@ return [
     "links" => [
         ["text" => "Docs", "href" => "/docs"],
         ["text" => "Examples", "href" => "/docs/examples"],
+        ["text" => "Jumbo", "href" => "https://notrab.github.io/jumbo"],
     ],
 
     // Icons in the header: github, discord, x or bluesky

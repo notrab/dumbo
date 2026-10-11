@@ -56,6 +56,8 @@ php -S localhost:8000 index.php
 
 Routing, middleware, helpers, deployment and upgrading from 1.x are all in the [docs](https://notrab.github.io/dumbo). There are runnable apps in [`examples/`](examples).
 
+For content sites, [Jumbo](https://github.com/notrab/jumbo) adds pages from files, Markdown and static builds on top of Dumbo.
+
 ## License
 
 Dumbo is open-sourced software licensed under the [MIT license](LICENSE).
