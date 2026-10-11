@@ -12,6 +12,7 @@ $words = [
     "html" => "HTML", "htmx" => "HTMX", "http" => "HTTP", "id" => "ID", "json" => "JSON",
     "jwt" => "JWT", "nginx" => "Nginx", "php" => "PHP", "txt" => "TXT", "blade" => "Blade",
     "latte" => "Latte", "smarty" => "Smarty", "turso" => "Turso", "twig" => "Twig",
+    "bunny" => "Bunny", "magic" => "Magic", "containers" => "Containers", "optimizer" => "Optimizer",
 ];
 $examples = [];
 

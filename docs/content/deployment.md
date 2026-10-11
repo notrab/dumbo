@@ -1,5 +1,5 @@
 ---
-description: Deploy Dumbo with Nginx, Apache, FrankenPHP or Docker.
+description: Deploy Dumbo with Nginx, Apache, FrankenPHP, Docker or bunny.net Magic Containers.
 ---
 
 # Deployment
@@ -149,6 +149,10 @@ while ($request = $worker->waitRequest()) {
 
 Anything you store outside a request, like a static property or a variable your handlers capture, now lives across requests. Keep per-request data in the context.
 
+## Hosting on bunny.net
+
+[Magic Containers](/docs/magic-containers) runs your Docker image in regions around the world, behind bunny.net's CDN. The guide takes you from a `Dockerfile` to an app that deploys on every push.
+
 ## Docker examples
 
 The repo includes ready-to-run Docker setups:
@@ -156,3 +160,4 @@ The repo includes ready-to-run Docker setups:
 - [FrankenPHP](https://github.com/notrab/dumbo/tree/main/examples/docker-frankenphp)
 - [Nginx](https://github.com/notrab/dumbo/tree/main/examples/docker-nginx)
 - [PHP-FPM](https://github.com/notrab/dumbo/tree/main/examples/docker-php-fpm)
+- [bunny.net Magic Containers](https://github.com/notrab/dumbo/tree/main/examples/bunny-magic-containers)

@@ -1,0 +1,13 @@
+{
+  "require": {
+    "notrab/dumbo": "dev-main"
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "scripts": {
+    "start": [
+      "Composer\\Config::disableProcessTimeout",
+      "php -S localhost:8000 -t public public/index.php"
+    ]
+  }
+}

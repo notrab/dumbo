@@ -53,7 +53,7 @@ return [
         "🧠 Concepts" => ["routing", "context", "middleware", "error-handling"],
         "🧩 Middleware" => ["built-in-middleware"],
         "🧰 Helpers" => ["cookies", "jwt", "static-files"],
-        "🗺️ Guides" => ["templates", "environments", "deployment", "upgrading"],
+        "🗺️ Guides" => ["templates", "environments", "deployment", "magic-containers", "upgrading"],
         "🧪 Examples" => ["examples"],
     ],
 
