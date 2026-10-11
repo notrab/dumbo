@@ -1,7 +1,7 @@
 {
   "require": {
     "notrab/dumbo": "@dev",
-    "notrab/jumbo": "^0.1"
+    "notrab/jumbo": "^0.2"
   },
   "repositories": [
     {
