@@ -8,7 +8,7 @@ use Dumbo\Middleware\Cache;
 use Dumbo\Middleware\Compress;
 use Dumbo\Stream\CallbackStream;
 use Dumbo\Stream\StreamWriter;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
 
 class StreamTest extends TestCase

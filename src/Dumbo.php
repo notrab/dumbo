@@ -2,8 +2,8 @@
 
 namespace Dumbo;
 
-use GuzzleHttp\Psr7\Response;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\Response;
+use Nyholm\Psr7\ServerRequest;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
@@ -277,7 +277,7 @@ class Dumbo implements RequestHandlerInterface
     public function run(): void
     {
         try {
-            $response = $this->handle(ServerRequest::fromGlobals());
+            $response = $this->handle(Globals::request());
         } catch (\Throwable $error) {
             $response = $this->errorResponse($error);
         }

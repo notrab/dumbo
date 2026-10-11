@@ -4,8 +4,8 @@ namespace Dumbo\Tests\Middleware;
 
 use Dumbo\Context;
 use Dumbo\Middleware\Cache;
-use GuzzleHttp\Psr7\Response;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\Response;
+use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
 
 class CacheTest extends TestCase

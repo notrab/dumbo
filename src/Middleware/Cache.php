@@ -3,7 +3,7 @@
 namespace Dumbo\Middleware;
 
 use Dumbo\Context;
-use GuzzleHttp\Psr7\Utils;
+use Nyholm\Psr7\Stream;
 use Psr\Http\Message\ResponseInterface;
 
 class Cache
@@ -48,7 +48,7 @@ class Cache
             }
 
             return self::notModified($context, $response)
-                ? $response->withStatus(304)->withBody(Utils::streamFor(""))
+                ? $response->withStatus(304)->withBody(Stream::create(""))
                 : $response;
         };
     }

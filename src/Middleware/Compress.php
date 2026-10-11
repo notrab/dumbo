@@ -3,7 +3,7 @@
 namespace Dumbo\Middleware;
 
 use Dumbo\Context;
-use GuzzleHttp\Psr7\Utils;
+use Nyholm\Psr7\Stream;
 use Psr\Http\Message\ResponseInterface;
 
 class Compress
@@ -56,7 +56,7 @@ class Compress
                 : gzencode($contents);
 
             return $response
-                ->withBody(Utils::streamFor($compressed))
+                ->withBody(Stream::create($compressed))
                 ->withoutHeader("Content-Length")
                 ->withHeader("Content-Encoding", $encoding)
                 ->withAddedHeader("Vary", "Accept-Encoding");

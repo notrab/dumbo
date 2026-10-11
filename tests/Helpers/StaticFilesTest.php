@@ -4,7 +4,7 @@ namespace Dumbo\Tests\Helpers;
 
 use Dumbo\Context;
 use Dumbo\Helpers\StaticFiles;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
 
 class StaticFilesTest extends TestCase

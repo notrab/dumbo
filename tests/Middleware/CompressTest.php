@@ -4,8 +4,8 @@ namespace Dumbo\Tests\Middleware;
 
 use Dumbo\Context;
 use Dumbo\Middleware\Compress;
-use GuzzleHttp\Psr7\Response;
-use GuzzleHttp\Psr7\ServerRequest;
+use Nyholm\Psr7\Response;
+use Nyholm\Psr7\ServerRequest;
 use PHPUnit\Framework\TestCase;
 
 class CompressTest extends TestCase
