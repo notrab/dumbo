@@ -3,7 +3,7 @@
 namespace Dumbo\Jumbo;
 
 use Dumbo\Context;
-use GuzzleHttp\Psr7\Utils;
+use Nyholm\Psr7\Stream;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -128,7 +128,7 @@ final class Images
             $this->resize($file, $cache, $width, $format);
         }
 
-        return $context->send(Utils::streamFor(Utils::tryFopen($cache, "r")), self::MIME_TYPES[$format], 200, [
+        return $context->send(Stream::create(fopen($cache, "r")), self::MIME_TYPES[$format], 200, [
             // Versioned URLs change when the image does
             "Cache-Control" => $context->req->query("v") !== null ? "public, max-age=31536000, immutable" : "public, max-age=3600",
         ]);
