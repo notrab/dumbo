@@ -1,9 +1,7 @@
 {
   "require": {
-    "notrab/dumbo": "dev-main"
+    "notrab/dumbo": "^1.4.6"
   },
-  "minimum-stability": "dev",
-  "prefer-stable": true,
   "scripts": {
     "start": [
       "Composer\\Config::disableProcessTimeout",
