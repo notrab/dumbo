@@ -209,11 +209,10 @@ class Dumbo implements RequestHandlerInterface
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $uri = $request->getUri();
-        $path = $uri->getPath();
+        $path = LazyRequest::pathOf($request);
 
         if ($this->removeTrailingSlash && strlen($path) > 1 && str_ends_with($path, "/")) {
-            $location = (string) $uri->withPath(rtrim($path, "/"));
+            $location = (string) $request->getUri()->withPath(rtrim($path, "/"));
 
             // 308 keeps the method and body; clients turn a 301 POST into a GET
             $status = in_array($request->getMethod(), ["GET", "HEAD"], true) ? 301 : 308;
@@ -295,7 +294,7 @@ class Dumbo implements RequestHandlerInterface
     private function respond(): void
     {
         try {
-            $response = $this->handle(Globals::request());
+            $response = $this->handle(LazyRequest::fromGlobals());
         } catch (\Throwable $error) {
             $response = $this->errorResponse($error);
         }

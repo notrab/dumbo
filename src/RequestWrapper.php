@@ -65,7 +65,7 @@ class RequestWrapper
      */
     public function path(): string
     {
-        return Router::normalize($this->request->getUri()->getPath());
+        return Router::normalize(LazyRequest::pathOf($this->request));
     }
 
     /**

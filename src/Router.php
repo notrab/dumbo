@@ -86,7 +86,7 @@ class Router
     public function dispatch(ServerRequestInterface $request): array
     {
         $method = $request->getMethod();
-        $path = self::normalize($request->getUri()->getPath());
+        $path = self::normalize(LazyRequest::pathOf($request));
         $segment = substr($path, 1, strcspn($path, "/", 1));
 
         if (!isset($this->variable[$segment])) {
